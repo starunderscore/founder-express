@@ -1,0 +1,73 @@
+{
+  "generated": "2025-12-26T19:34:08.321Z",
+  "iconType": "web",
+  "svgDataIncluded": true,
+  "icons": [
+    {
+      "name": "favicon-16.png",
+      "size": "16x16",
+      "type": "png"
+    },
+    {
+      "name": "favicon-32.png",
+      "size": "32x32",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-57.png",
+      "size": "57x57",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-60.png",
+      "size": "60x60",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-72.png",
+      "size": "72x72",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-76.png",
+      "size": "76x76",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-114.png",
+      "size": "114x114",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-120.png",
+      "size": "120x120",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-144.png",
+      "size": "144x144",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-152.png",
+      "size": "152x152",
+      "type": "png"
+    },
+    {
+      "name": "apple-touch-icon-180.png",
+      "size": "180x180",
+      "type": "png"
+    },
+    {
+      "name": "manifest-192.png",
+      "size": "192x192",
+      "type": "png"
+    },
+    {
+      "name": "manifest-512.png",
+      "size": "512x512",
+      "type": "png"
+    }
+  ],
+  "additionalFiles": []
+}

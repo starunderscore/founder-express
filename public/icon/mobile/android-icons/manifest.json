@@ -1,0 +1,43 @@
+{
+  "generated": "2025-12-26T19:34:11.599Z",
+  "iconType": "android",
+  "svgDataIncluded": true,
+  "icons": [
+    {
+      "name": "mipmap-ldpi/ic_launcher.png",
+      "size": "36x36",
+      "type": "png"
+    },
+    {
+      "name": "mipmap-mdpi/ic_launcher.png",
+      "size": "48x48",
+      "type": "png"
+    },
+    {
+      "name": "mipmap-hdpi/ic_launcher.png",
+      "size": "72x72",
+      "type": "png"
+    },
+    {
+      "name": "mipmap-xhdpi/ic_launcher.png",
+      "size": "96x96",
+      "type": "png"
+    },
+    {
+      "name": "mipmap-xxhdpi/ic_launcher.png",
+      "size": "144x144",
+      "type": "png"
+    },
+    {
+      "name": "mipmap-xxxhdpi/ic_launcher.png",
+      "size": "192x192",
+      "type": "png"
+    },
+    {
+      "name": "playstore-icon.png",
+      "size": "512x512",
+      "type": "png"
+    }
+  ],
+  "additionalFiles": []
+}

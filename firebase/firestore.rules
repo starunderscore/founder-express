@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Convenience functions
+    function authed() { return request.auth != null; }
+    function isOwner() {
+      return authed() && exists(/databases/$(database)/documents/meta/owner)
+        && get(/databases/$(database)/documents/meta/owner).data.ownerUid == request.auth.uid;
+    }
+
+    // Owner claim — one‑time create only
+    match /meta/owner {
+      allow create: if authed()
+        && !exists(/databases/$(database)/documents/meta/owner)
+        && request.resource.data.ownerUid == request.auth.uid;
+      // Allow public read so sign‑in can detect the no‑owner state
+      allow get: if true;
+      // Disallow changing ownerUid after claim
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Employees collection — only owner creates; users can read self; limited self‑edit
+    match /employees/{uid} {
+      allow get: if authed() && (isOwner() || request.auth.uid == uid);
+      allow list: if isOwner();
+
+      // Only owner can create employee docs
+      allow create: if isOwner() && request.resource.data.email is string;
+
+      // Only owner can delete
+      allow delete: if isOwner();
+
+      // Update rules:
+      // - Owner can update any employee, but cannot change isAdmin here (keep admin outside portal)
+      // - A user may update their own profile fields only (name), not roles/permissions/isAdmin
+      allow update: if authed() && (
+        // Owner path
+        (isOwner() && (
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['name','email','roleIds','permissionIds'])
+        )) ||
+        // Self‑service path
+        (request.auth.uid == uid && request.resource.data.diff(resource.data).changedKeys().hasOnly(['name']))
+      );
+    }
+
+    // CRM customers/vendors
+    // Helper: admin based on employees/{auth.uid}.isAdmin
+    function isAdmin() {
+      return authed()
+        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Helper: has any CRM permission based on employees/{auth.uid}.permissionIds
+    function hasCrmPermission() {
+      return authed()
+        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && (
+          isAdmin() ||
+          ('perm-customers-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds) ||
+          ('perm-customers-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds) ||
+          ('perm-customers-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+        );
+    }
+
+    // Helper: has CRM edit permission
+    function hasCrmEdit() {
+      return authed()
+        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && ('perm-customers-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds);
+    }
+
+    // Helper: has CRM delete permission
+    function hasCrmDelete() {
+      return authed()
+        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && ('perm-customers-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds);
+    }
+
+    // Company delete permission helper
+    function hasCompanyDelete() {
+      return isOwner() || (
+        authed() && exists(/databases/$(database)/documents/employees/$(request.auth.uid)) &&
+        ('perm-company-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+      );
+    }
+
+    // Admin Settings — restrict deletes to company delete permission; other writes allowed to admins/owner
+    match /admin_settings/{document=**} {
+      allow get, list: if isAdmin() || isOwner();
+      allow create, update: if isAdmin() || isOwner();
+      allow delete: if hasCompanyDelete();
+    }
+
+    match /crm_customers/{id} {
+      // Reads: users with any CRM permission OR owner/admin
+      allow get, list: if hasCrmPermission() || isOwner() || isAdmin();
+      // Creates/Updates: users with CRM edit permission OR owner/admin
+      allow create, update: if hasCrmEdit() || isOwner() || isAdmin();
+      // Deletes: users with CRM delete permission OR owner/admin
+      allow delete: if hasCrmDelete() || isOwner() || isAdmin();
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
