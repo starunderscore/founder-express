@@ -1,19 +1,28 @@
 "use client";
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEmployerStore } from '@/state/employerStore';
 import { Button, Card, Checkbox, Group, MultiSelect, Stack, Text, TextInput, Title, ActionIcon, Badge } from '@mantine/core';
 import { PermissionsMatrix, labelFor, RESOURCES } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { db } from '@/lib/firebase/client';
-import { collection, addDoc, setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, serverTimestamp, query } from 'firebase/firestore';
+import { namesToIds, idsToNames } from '@/lib/permissions';
 
 export default function NewEmployeePage() {
   const router = useRouter();
-  const roles = useEmployerStore((s) => s.roles);
-  const permissions = useEmployerStore((s) => s.permissions);
-  const addPermission = useEmployerStore((s) => s.addPermission);
-  // Firestore-backed creation; store remains the source for roles/permissions labels
+  const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    const qRoles = query(collection(db(), 'employee_roles'));
+    const unsub = onSnapshot(qRoles, (snap) => {
+      const list: Array<{ id: string; name: string }> = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        if (!data.deletedAt && !data.isArchived) list.push({ id: d.id, name: data.name || '' });
+      });
+      setRoles(list);
+    });
+    return () => unsub();
+  }, []);
 
   const roleOptions = useMemo(() => roles.map((r) => ({ value: r.id, label: r.name })), [roles]);
   const [name, setName] = useState('');
@@ -22,20 +31,31 @@ export default function NewEmployeePage() {
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [extraNames, setExtraNames] = useState<string[]>([]);
 
-  // Compute permission names coming from selected roles
+  // Compute permission names coming from selected roles — requires loading role docs in this component
+  const [rolePermIdsById, setRolePermIdsById] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    // Build a map of roleId -> permissionIds from current roles subscription
+    // Extend roles subscription to also capture permissionIds
+    const qRoles = query(collection(db(), 'employee_roles'));
+    const unsub = onSnapshot(qRoles, (snap) => {
+      const map: Record<string, string[]> = {};
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        if (!data.deletedAt && !data.isArchived) map[d.id] = Array.isArray(data.permissionIds) ? data.permissionIds : [];
+      });
+      setRolePermIdsById(map);
+    });
+    return () => unsub();
+  }, []);
   const rolePermissionNames = useMemo(() => {
-    const byId = new Map(permissions.map((p) => [p.id, p.name] as const));
-    return Array.from(new Set(roleIds.flatMap((rid) => (roles.find((r) => r.id === rid)?.permissionIds || []).map((pid) => byId.get(pid) || '')))).filter(Boolean) as string[];
-  }, [roleIds, roles, permissions]);
+    const ids = roleIds.flatMap((rid) => rolePermIdsById[rid] || []);
+    return Array.from(new Set(idsToNames(ids)));
+  }, [roleIds, rolePermIdsById]);
 
   const onCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!name.trim() || !email.trim()) return;
-    // Ensure extra permission names exist in store for label consistency
-    const currentByName = new Map(permissions.map((p) => [p.name, p.id] as const));
-    extraNames.forEach((nm) => { if (!currentByName.has(nm)) addPermission(nm); });
-    const nextByName = new Map(useEmployerStore.getState().permissions.map((p) => [p.name, p.id] as const));
-    const directIds = isAdmin ? [] : (extraNames.map((nm) => nextByName.get(nm)).filter(Boolean) as string[]);
+    const directIds = isAdmin ? [] : namesToIds(extraNames);
 
     try {
       // Use auto-id docs for employees created by the owner

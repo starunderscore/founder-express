@@ -1,7 +1,6 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { type LeadSource, type Note, type Address, type Contact, type Phone, type Email } from '@/state/crmStore';
-import { useEmployerStore } from '@/state/employerStore';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Title, Text, Group, Badge, Button, Stack, Divider, Modal, TextInput, Select, TagsInput, Textarea, Radio, Tabs, ActionIcon, Avatar, Menu, CopyButton, Anchor, Table, Switch, Alert } from '@mantine/core';
@@ -18,7 +17,7 @@ import VendorAddressModal from '@/components/crm/vendor/VendorAddressModal';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
-import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, deleteDoc, collection } from 'firebase/firestore';
 
 export default function VendorDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -28,7 +27,18 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     const unsub = onSnapshot(ref, (snap) => setVendor(snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null));
     return () => unsub();
   }, [params.id]);
-  const employees = useEmployerStore((s) => s.employees);
+  const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db(), 'employees'), (snap: any) => {
+      const rows: Array<{ id: string; name: string }> = [];
+      snap.forEach((d: any) => {
+        const data = d.data() as any;
+        rows.push({ id: d.id, name: data.name || '' });
+      });
+      setEmployees(rows);
+    });
+    return () => unsub();
+  }, []);
   const toast = useToast();
 
   const [editOpen, setEditOpen] = useState(false);

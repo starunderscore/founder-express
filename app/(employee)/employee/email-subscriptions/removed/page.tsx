@@ -1,22 +1,29 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useSubscriptionsStore } from '@/state/subscriptionsStore';
 import { Title, Text, Card, Stack, Group, Badge, Tabs, Anchor, Button, Modal } from '@mantine/core';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useState } from 'react';
+import { useEffect } from 'react';
+import { collection, onSnapshot, updateDoc, deleteDoc, doc, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 export default function EmailSubscriptionsRemovedPage() {
-  const waitlists = useSubscriptionsStore((s) => s.waitlists);
-  const restoreWaitlist = useSubscriptionsStore((s) => s.restoreWaitlist);
-  const hardDeleteWaitlist = useSubscriptionsStore((s) => s.hardDeleteWaitlist);
-
-  const removed = (waitlists || []).filter((w: any) => !!w?.deletedAt);
+  const [removed, setRemoved] = useState<Array<{ id: string; name: string; deletedAt: number }>>([]);
+  useEffect(() => {
+    const qW = query(collection(db(), 'waitlists'));
+    const unsub = onSnapshot(qW, (snap) => {
+      const arr: Array<{ id: string; name: string; deletedAt: number }> = [];
+      snap.forEach((d) => { const data = d.data() as any; if (typeof data.deletedAt === 'number') arr.push({ id: d.id, name: data.name || '', deletedAt: data.deletedAt }); });
+      setRemoved(arr);
+    });
+    return () => unsub();
+  }, []);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetId, setTargetId] = useState<string | null>(null);
 
   const openConfirm = (id: string) => { setTargetId(id); setConfirmOpen(true); };
-  const doDelete = () => { if (targetId) hardDeleteWaitlist(targetId); setConfirmOpen(false); setTargetId(null); };
+  const doDelete = async () => { if (targetId) await deleteDoc(doc(db(), 'waitlists', targetId)); setConfirmOpen(false); setTargetId(null); };
 
   return (
     <EmployerAuthGate>
@@ -49,7 +56,7 @@ export default function EmailSubscriptionsRemovedPage() {
                       <Text size="xs" c="dimmed">Removed {new Date(b.deletedAt).toLocaleString()}</Text>
                     </div>
                     <Group gap="xs">
-                      <Button size="xs" variant="light" onClick={() => restoreWaitlist(b.id)}>Restore</Button>
+                      <Button size="xs" variant="light" onClick={async () => { await updateDoc(doc(db(), 'waitlists', b.id), { deletedAt: undefined }); }}>Restore</Button>
                       <Button size="xs" variant="subtle" color="red" onClick={() => openConfirm(b.id)}>Permanently delete</Button>
                     </Group>
                   </Group>

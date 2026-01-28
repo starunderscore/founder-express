@@ -1,19 +1,26 @@
 "use client";
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useSubscriptionsStore } from '@/state/subscriptionsStore';
 import { Title, Text, Card, Stack, Group, Button, Badge, ActionIcon } from '@mantine/core';
+import { db } from '@/lib/firebase/client';
+import { doc, onSnapshot } from 'firebase/firestore';
+
+type Newsletter = { id: string; subject: string; status: 'Draft'|'Scheduled'|'Sent'; recipients: number; sentAt?: number; body?: string };
 
 export default function NewsletterDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const newsletters = useSubscriptionsStore((s) => s.newsletters);
-  const waitlists = useSubscriptionsStore((s) => s.waitlists);
-  const removeNewsletter = useSubscriptionsStore((s) => s.removeNewsletterCampaign);
-
-  const nl = useMemo(() => newsletters.find((n) => n.id === params.id) || null, [newsletters, params.id]);
-  const ctx = useMemo(() => (nl?.contextWaitlistId ? waitlists.find((w) => w.id === nl.contextWaitlistId) || null : null), [waitlists, nl?.contextWaitlistId]);
+  const [nl, setNl] = useState<Newsletter | null>(null);
+  useEffect(() => {
+    const ref = doc(db(), 'newsletters', params.id);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) { setNl(null); return; }
+      const d = snap.data() as any;
+      setNl({ id: snap.id, subject: d.subject || '', status: d.status || 'Draft', recipients: Number(d.recipients || 0), sentAt: typeof d.sentAt === 'number' ? d.sentAt : undefined, body: d.body || '' });
+    });
+    return () => unsub();
+  }, [params.id]);
 
   if (!nl) {
     return (
@@ -64,12 +71,7 @@ export default function NewsletterDetailPage({ params }: { params: { id: string 
               <Text fw={600} style={{ width: 100 }}>Sent</Text>
               <Text>{dateStr(nl.sentAt)}</Text>
             </Group>
-            {ctx && (
-              <Group gap={10}>
-                <Text fw={600} style={{ width: 100 }}>Context</Text>
-                <Text>{ctx.name} ({ctx.entries.length})</Text>
-              </Group>
-            )}
+            {/* Context removed in Firebase version */}
           </Stack>
         </Card>
 

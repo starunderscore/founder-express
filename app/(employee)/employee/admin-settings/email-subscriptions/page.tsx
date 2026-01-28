@@ -1,12 +1,33 @@
 "use client";
 import Link from 'next/link';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { useSubscriptionsStore } from '@/state/subscriptionsStore';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import { Title, Text, Card, Stack, Group, Button, Badge, Tabs } from '@mantine/core';
 
+type EmailRow = { id: string; email: string; name?: string; createdAt: number; source?: string };
+type Waitlist = { id: string; name: string; entriesCount?: number; draftsCount?: number; sentCount?: number };
+
 export default function AdminEmailSubscriptionsPage() {
-  const emailList = useSubscriptionsStore((s) => s.emailList);
-  const waitlists = useSubscriptionsStore((s) => s.waitlists);
+  const [emailList, setEmailList] = useState<EmailRow[]>([]);
+  const [waitlists, setWaitlists] = useState<Waitlist[]>([]);
+  useEffect(() => {
+    const unsub1 = onSnapshot(query(collection(db(), 'email_list')), (snap) => {
+      const rows: EmailRow[] = [];
+      snap.forEach((d) => { const x = d.data() as any; rows.push({ id: d.id, email: x.email || '', name: x.name || undefined, createdAt: Number(x.createdAt || Date.now()), source: x.source || undefined }); });
+      setEmailList(rows);
+    });
+    const unsub2 = onSnapshot(query(collection(db(), 'waitlists')), (snap) => {
+      const rows: Waitlist[] = [];
+      snap.forEach((d) => {
+        const x = d.data() as any;
+        rows.push({ id: d.id, name: x.name || '', entriesCount: Number(x.entriesCount || 0), draftsCount: Number(x.draftsCount || 0), sentCount: Number(x.sentCount || 0) });
+      });
+      setWaitlists(rows);
+    });
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   const downloadCsv = () => {
     const headers = ['email', 'name', 'createdAt', 'source'];
@@ -55,10 +76,14 @@ export default function AdminEmailSubscriptionsPage() {
               <Stack>
                 {waitlists.map((w) => (
                   <Card key={w.id} withBorder>
-                    <Group justify="space-between">
+                    <Group justify="space-between" align="center">
                       <div>
                         <Text fw={600}>{w.name}</Text>
-                        <Text size="xs" c="dimmed">{w.entries.length} emails</Text>
+                        <Group gap={6} mt={4}>
+                          <Badge variant="light" color="indigo">{Number(w.entriesCount || 0)} emails</Badge>
+                          <Badge variant="light" color="gray">drafts {Number(w.draftsCount || 0)}</Badge>
+                          <Badge variant="light" color="green">sent {Number(w.sentCount || 0)}</Badge>
+                        </Group>
                       </div>
                       <Button size="xs" component={Link as any} href={`/employee/email-subscriptions/waiting/${w.id}`}>Open</Button>
                     </Group>
@@ -77,4 +102,3 @@ export default function AdminEmailSubscriptionsPage() {
     </EmployerAdminGate>
   );
 }
-

@@ -1,30 +1,36 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEmployerStore } from '@/state/employerStore';
 import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, Textarea } from '@mantine/core';
 import { PermissionsMatrix } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
+import { db } from '@/lib/firebase/client';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { idsToNames, namesToIds } from '@/lib/permissions';
 
 export default function EditRolePage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const role = useEmployerStore((s) => s.roles.find((r) => r.id === params.id));
-  const permissions = useEmployerStore((s) => s.permissions);
-  const addPermission = useEmployerStore((s) => s.addPermission);
-  const renameRole = useEmployerStore((s) => s.renameRole);
-  const updateRolePermissions = useEmployerStore((s) => s.updateRolePermissions);
-  const updateRoleDescription = useEmployerStore((s) => s.updateRoleDescription);
+  const [role, setRole] = useState<{ id: string; name: string; description?: string; permissionIds: string[] } | null>(null);
+  useEffect(() => {
+    const ref = doc(db(), 'employee_roles', params.id);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) { setRole(null); return; }
+      const d = snap.data() as any;
+      setRole({ id: snap.id, name: d.name || '', description: d.description || undefined, permissionIds: Array.isArray(d.permissionIds) ? d.permissionIds : [] });
+    });
+    return () => unsub();
+  }, [params.id]);
 
-  const [name, setName] = useState(role?.name || '');
-  const [description, setDescription] = useState(role?.description || '');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
 
   useEffect(() => {
     if (!role) return;
-    const byId = new Map(permissions.map((p) => [p.id, p.name] as const));
-    const names = (role.permissionIds || []).map((id) => byId.get(id)).filter(Boolean) as string[];
-    setSelectedNames(names);
-  }, [role?.id, permissions]);
+    setName(role.name || '');
+    setDescription(role.description || '');
+    setSelectedNames(idsToNames(role.permissionIds || []));
+  }, [role?.id]);
 
   if (!role) {
     return (
@@ -35,17 +41,12 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
     );
   }
 
-  const onSave = (e?: React.FormEvent) => {
+  const onSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const nm = name.trim();
     if (!nm) return;
-    const currentByName = new Map(permissions.map((p) => [p.name, p.id] as const));
-    selectedNames.forEach((n) => { if (!currentByName.has(n)) addPermission(n); });
-    const nextByName = new Map(useEmployerStore.getState().permissions.map((p) => [p.name, p.id] as const));
-    const ids = selectedNames.map((n) => nextByName.get(n)).filter(Boolean) as string[];
-    renameRole(role.id, nm);
-    updateRoleDescription(role.id, description.trim() || undefined);
-    updateRolePermissions(role.id, ids);
+    const ids = namesToIds(selectedNames);
+    await updateDoc(doc(db(), 'employee_roles', role.id), { name: nm, description: description.trim() || undefined, permissionIds: ids });
     router.push('/employee/employees/roles');
   };
 

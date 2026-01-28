@@ -13,6 +13,7 @@ export default function NewEmailTemplatePage() {
   const search = useSearchParams();
   const editId = search.get('edit') || '';
   const isEditing = !!editId;
+  const isAuthSpecial = editId === 'auth-password-reset' || editId === 'auth-email-verification';
 
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState('');
@@ -56,10 +57,17 @@ export default function NewEmailTemplatePage() {
   }, [editId]);
 
   const onSave = async () => {
-    if (!name.trim()) { setError('Name required'); return; }
+    const trimmed = name.trim();
+    if (!trimmed) { setError('Name required'); return; }
+    // Disallow reserved system template names
+    const reserved = ['password reset', 'verify email'];
+    if (reserved.includes(trimmed.toLowerCase())) {
+      setError('This name is reserved. Please choose another.');
+      return;
+    }
     const body = html || '';
-    if (editId) await updateEmailTemplate(editId, { name: name.trim(), subject: subject.trim(), body });
-    else await addEmailTemplate({ name: name.trim(), subject: subject.trim(), body });
+    if (editId) await updateEmailTemplate(editId, { name: trimmed, subject: subject.trim(), body });
+    else await addEmailTemplate({ name: trimmed, subject: subject.trim(), body });
     router.push('/employee/company-settings/email/templates');
   };
 
@@ -67,8 +75,11 @@ export default function NewEmailTemplatePage() {
     const map: Record<string, string> = Object.fromEntries(vars.map((v) => [v.key, v.value]));
     // Built-in
     map.USERNAME = 'there';
+    if (isAuthSpecial) {
+      map.ACTION_URL = 'https://example.com/action';
+    }
     return map;
-  }, [vars]);
+  }, [vars, isAuthSpecial]);
 
   const renderTokens = (s: string) =>
     (s || '').replace(/\{\{([A-Z0-9_]+)\}\}/g, (_m, key: string) => (varMap[key] ?? `{{${key}}}`));
@@ -99,7 +110,14 @@ export default function NewEmailTemplatePage() {
 
         <Card withBorder>
           <Stack>
-            <TextInput label="Name" placeholder="Welcome Email" value={name} onChange={(e) => setName(e.currentTarget.value)} required />
+            <TextInput
+              label="Name"
+              placeholder="Welcome Email"
+              value={name}
+              onChange={(e) => setName(e.currentTarget.value)}
+              required
+              readOnly={isAuthSpecial}
+            />
             <Stack gap={6} style={{ width: '100%' }}>
               <Text size="sm" fw={500}>Subject</Text>
               <Select
@@ -109,7 +127,13 @@ export default function NewEmailTemplatePage() {
                 value={selectedVar}
                 onChange={(val) => { if (!val) return; setSelectedVar(null); insertVarIntoSubject(val); }}
                 data={[
-                  { group: 'Built-in', items: [{ value: 'USERNAME', label: 'USERNAME' }] },
+                  {
+                    group: 'Built-in',
+                    items: [
+                      { value: 'USERNAME', label: 'USERNAME' },
+                      ...(isAuthSpecial ? [{ value: 'ACTION_URL', label: 'ACTION_URL' }] : []),
+                    ],
+                  },
                   { group: 'Email variables', items: vars.map((v) => ({ value: v.key, label: v.key })) },
                 ] as any}
                 aria-label="Insert variable"

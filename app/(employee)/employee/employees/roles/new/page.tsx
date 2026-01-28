@@ -1,16 +1,15 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEmployerStore } from '@/state/employerStore';
 import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, Textarea } from '@mantine/core';
 import { PermissionsMatrix, allPermissionNames } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
+import { addDoc, collection } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import { namesToIds } from '@/lib/permissions';
 
 export default function NewRolePage() {
   const router = useRouter();
-  const permissions = useEmployerStore((s) => s.permissions);
-  const addRole = useEmployerStore((s) => s.addRole);
-  const addPermission = useEmployerStore((s) => s.addPermission);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -18,18 +17,11 @@ export default function NewRolePage() {
 
   // Start with no permissions selected by default
 
-  const onCreate = (e?: React.FormEvent) => {
+  const onCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!name.trim()) return;
-    // Ensure selected permission names exist; create any missing
-    const currentByName = new Map(permissions.map((p) => [p.name, p.id] as const));
-    selectedNames.forEach((nm) => {
-      if (!currentByName.has(nm)) addPermission(nm);
-    });
-    // Refresh mapping after creating any missing
-    const nextByName = new Map(useEmployerStore.getState().permissions.map((p) => [p.name, p.id] as const));
-    const ids = selectedNames.map((nm) => nextByName.get(nm)).filter(Boolean) as string[];
-    addRole(name.trim(), ids, description.trim() || undefined);
+    const ids = namesToIds(selectedNames);
+    await addDoc(collection(db(), 'employee_roles'), { name: name.trim(), description: description.trim() || undefined, permissionIds: ids, isArchived: false, createdAt: Date.now() });
     router.push('/employee/employees/roles');
   };
 

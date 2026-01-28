@@ -1,22 +1,45 @@
 "use client";
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Title, Text, TextInput, Button, Group, Stack, Alert, Tabs, Card, Badge } from '@mantine/core';
 import { useAuth } from '@/lib/firebase/auth';
 import { updateUserProfile, updateUserPassword, reauthWithPassword } from '@/lib/firebase/auth';
-import { useEmployerStore } from '@/state/employerStore';
+import { collection, onSnapshot, query, updateDoc, where, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 // layout provides header/sidebar
 
 export default function EmployeeAccountPage() {
   const { user } = useAuth();
-  const employees = useEmployerStore((s) => s.employees);
-  const permissions = useEmployerStore((s) => s.permissions);
-  const roles = useEmployerStore((s) => s.roles);
-  const getEffectivePermissionIds = useEmployerStore((s) => s.getEffectivePermissionIds);
-  const updateEmployee = useEmployerStore((s) => s.updateEmployee);
+  // Load current employee doc from Firestore by matching email
+  const [employee, setEmployee] = useState<any | null>(null);
+  useEffect(() => {
+    if (!user?.email) { setEmployee(null); return; }
+    const q = query(collection(db(), 'employees'), where('email', '==', user.email));
+    const unsub = onSnapshot(q, (snap) => {
+      let found: any | null = null;
+      snap.forEach((d) => { if (!found) found = { id: d.id, ...(d.data() as any) }; });
+      setEmployee(found);
+    });
+    return () => unsub();
+  }, [user?.email]);
 
-  const employee = useMemo(() => employees.find((e) => e.email === user?.email), [employees, user?.email]);
-  const effectivePermIds = useMemo(() => (employee ? getEffectivePermissionIds(employee.id) : []), [employee, getEffectivePermissionIds]);
-  const permMap = useMemo(() => Object.fromEntries(permissions.map((p) => [p.id, p.name])), [permissions]);
+  // Roles/permissions labels may still come from local store; replace later if/when migrated
+  const [roleNames, setRoleNames] = useState<Record<string, string>>({});
+  const [permNames, setPermNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    // Load role names for display
+    const qRoles = query(collection(db(), 'employee_roles'));
+    const unsub = onSnapshot(qRoles, (snap) => {
+      const map: Record<string, string> = {};
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        map[d.id] = data.name || d.id;
+      });
+      setRoleNames(map);
+    });
+    return () => unsub();
+  }, []);
+  const effectivePermIds: string[] = useMemo(() => Array.isArray(employee?.permissionIds) ? employee!.permissionIds : [], [employee?.permissionIds]);
+  const permMap = permNames; // placeholder mapping if/when migrated
 
   // Profile state
   const [displayName, setDisplayName] = useState(user?.displayName || '');
@@ -31,7 +54,12 @@ export default function EmployeeAccountPage() {
     setSaveError(null);
     try {
       await updateUserProfile({ displayName });
-      updateEmployee(employee.id, { name: fullName, dateOfBirth: dob });
+      try {
+        await updateDoc(doc(db(), 'employees', employee.id), { name: fullName, dateOfBirth: dob });
+      } catch (e) {
+        // Surface failure; keep user profile update even if employee doc fails
+        throw e;
+      }
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 1500);
     } catch (e: any) {
@@ -112,10 +140,9 @@ export default function EmployeeAccountPage() {
                     <Stack gap={6}>
                       <Text fw={600}>Your roles</Text>
                       <Group gap={8} wrap="wrap">
-                        {employee.roleIds.map((rid) => {
-                          const r = roles.find((x) => x.id === rid);
-                          return r ? <Badge key={rid} variant="light">{r.name}</Badge> : null;
-                        })}
+                        {(Array.isArray(employee.roleIds) ? employee.roleIds : []).map((rid: string) => (
+                          <Badge key={rid} variant="light">{roleNames[rid] || rid}</Badge>
+                        ))}
                         {employee.roleIds.length === 0 && <Text c="dimmed">No roles assigned</Text>}
                       </Group>
                       <Text c="dimmed" size="sm">Additional permissions: {employee.permissionIds.length}</Text>

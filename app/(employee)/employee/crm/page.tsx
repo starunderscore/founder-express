@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { type LeadSource, type Note } from '@/state/crmStore';
 import { db } from '@/lib/firebase/client';
 import { collection, addDoc, onSnapshot, doc, updateDoc, query } from 'firebase/firestore';
-import { useEmployerStore } from '@/state/employerStore';
+// Employees list from Firestore (no Zustand persistence)
 import { useAuthUser } from '@/lib/firebase/auth';
 import { RouteTabs } from '@/components/RouteTabs';
 
@@ -71,7 +71,18 @@ export default function EmployerCRMPage() {
   // Top-level list tabs are now navigational links; main page always shows Database
   const [typeFilter, setTypeFilter] = useState<'all' | 'customer' | 'vendor'>('all');
   const authUser = useAuthUser();
-  const employees = useEmployerStore((s) => s.employees);
+  const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db(), 'employees'), (snap) => {
+      const rows: Array<{ id: string; name: string }> = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        rows.push({ id: d.id, name: data.name || '' });
+      });
+      setEmployees(rows);
+    });
+    return () => unsub();
+  }, []);
   // Removed/Archive panes moved to dedicated pages
 
   // Add vendor: Email/Phone/Address tabs

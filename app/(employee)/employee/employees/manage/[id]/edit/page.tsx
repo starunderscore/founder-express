@@ -1,19 +1,29 @@
 "use client";
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEmployerStore } from '@/state/employerStore';
 import { Button, Card, Checkbox, Group, MultiSelect, Stack, Text, TextInput, Title, ActionIcon, Badge } from '@mantine/core';
 import { PermissionsMatrix } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { db } from '@/lib/firebase/client';
-import { doc, getDoc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, updateDoc } from 'firebase/firestore';
+import { namesToIds, idsToNames } from '@/lib/permissions';
 
 export default function EditEmployeePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [emp, setEmp] = useState<{ id: string; name: string; email: string; isAdmin?: boolean; roleIds: string[]; permissionIds: string[] } | null>(null);
-  const roles = useEmployerStore((s) => s.roles);
-  const permissions = useEmployerStore((s) => s.permissions);
-  const addPermission = useEmployerStore((s) => s.addPermission);
+  const [roles, setRoles] = useState<Array<{ id: string; name: string; permissionIds: string[] }>>([]);
+  useEffect(() => {
+    const qRoles = query(collection(db(), 'employee_roles'));
+    const unsub = onSnapshot(qRoles, (snap) => {
+      const list: Array<{ id: string; name: string; permissionIds: string[] }> = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        if (!data.deletedAt) list.push({ id: d.id, name: data.name || '', permissionIds: Array.isArray(data.permissionIds) ? data.permissionIds : [] });
+      });
+      setRoles(list);
+    });
+    return () => unsub();
+  }, []);
   useEffect(() => {
     const ref = doc(db(), 'employees', params.id);
     const unsub = onSnapshot(ref, (snap) => {
@@ -24,7 +34,7 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
     return () => unsub();
   }, [params.id]);
 
-  const roleOptions = useMemo(() => roles.map((r) => ({ value: r.id, label: r.name })), [roles]);
+  const roleOptions = useMemo(() => roles.filter((r) => !('isArchived' in r) || !(r as any).isArchived).map((r) => ({ value: r.id, label: r.name })), [roles]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -34,18 +44,17 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
   useEffect(() => {
     if (!emp) return;
     // derive extraNames from direct permission ids on employee
-    const byId = new Map(permissions.map((p) => [p.id, p.name] as const));
-    setExtraNames((emp.permissionIds || []).map((id) => byId.get(id) || '').filter(Boolean) as string[]);
+    setExtraNames(idsToNames(emp.permissionIds || []));
     setName(emp.name || '');
     setEmail(emp.email || '');
     setIsAdmin(!!emp.isAdmin);
     setRoleIds(emp.roleIds || []);
-  }, [emp?.id, permissions]);
+  }, [emp?.id]);
 
   const rolePermissionNames = useMemo(() => {
-    const byId = new Map(permissions.map((p) => [p.id, p.name] as const));
-    return Array.from(new Set(roleIds.flatMap((rid) => (roles.find((r) => r.id === rid)?.permissionIds || []).map((pid) => byId.get(pid) || '')))).filter(Boolean) as string[];
-  }, [roleIds, roles, permissions]);
+    const ids = roleIds.flatMap((rid) => (roles.find((r) => r.id === rid)?.permissionIds || []));
+    return Array.from(new Set(idsToNames(ids)));
+  }, [roleIds, roles]);
 
   if (!emp) {
     return (
@@ -59,11 +68,7 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
   const onSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!name.trim() || !email.trim()) return;
-    // Ensure extra permission names exist in store for label consistency
-    const currentByName = new Map(permissions.map((p) => [p.name, p.id] as const));
-    extraNames.forEach((nm) => { if (!currentByName.has(nm)) addPermission(nm); });
-    const nextByName = new Map(useEmployerStore.getState().permissions.map((p) => [p.name, p.id] as const));
-    const directIds = isAdmin ? [] : (extraNames.map((nm) => nextByName.get(nm)).filter(Boolean) as string[]);
+    const directIds = isAdmin ? [] : namesToIds(extraNames);
     await updateDoc(doc(db(), 'employees', emp.id), {
       name: name.trim(),
       email: email.trim(),

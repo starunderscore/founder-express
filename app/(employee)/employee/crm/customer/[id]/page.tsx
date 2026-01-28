@@ -1,7 +1,6 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { type LeadSource, type Note, type Phone } from '@/state/crmStore';
-import { useEmployerStore } from '@/state/employerStore';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -14,7 +13,18 @@ import { doc, onSnapshot, updateDoc, deleteDoc, collection } from 'firebase/fire
 
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const employees = useEmployerStore((s) => s.employees);
+  const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db(), 'employees'), (snap) => {
+      const rows: Array<{ id: string; name: string }> = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        rows.push({ id: d.id, name: data.name || '' });
+      });
+      setEmployees(rows);
+    });
+    return () => unsub();
+  }, []);
   const [customer, setCustomer] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {

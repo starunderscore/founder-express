@@ -60,9 +60,17 @@ export default function EmailTemplatesPage() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {templates.filter((t)=>!t.archivedAt && !t.deletedAt).map((t) => (
+                  {templates
+                    .filter((t) => !t.archivedAt && !t.deletedAt)
+                    .filter((t) => t.id !== 'auth-password-reset' && t.id !== 'auth-email-verification')
+                    .map((t) => {
+                      const reserved = ['password reset', 'verify email'];
+                      const displayName = reserved.includes((t.name || '').toLowerCase())
+                        ? (t.name || '').split('').reverse().join('')
+                        : t.name;
+                      return (
                     <Table.Tr key={t.id}>
-                      <Table.Td>{t.name}</Table.Td>
+                      <Table.Td>{displayName}</Table.Td>
                       <Table.Td><Text c="dimmed" size="sm">{t.subject || '—'}</Text></Table.Td>
                       <Table.Td>
                         <Menu withinPortal position="bottom-end" shadow="md" width={200}>
@@ -83,8 +91,12 @@ export default function EmailTemplatesPage() {
                         </Menu>
                       </Table.Td>
                     </Table.Tr>
-                  ))}
-                  {templates.filter((t)=>!t.archivedAt && !t.deletedAt).length === 0 && (
+                    );
+                  })}
+                  {templates
+                    .filter((t) => !t.archivedAt && !t.deletedAt)
+                    .filter((t) => t.id !== 'auth-password-reset' && t.id !== 'auth-email-verification')
+                    .length === 0 && (
                     <Table.Tr>
                       <Table.Td colSpan={3}><Text c="dimmed">No templates</Text></Table.Td>
                     </Table.Tr>

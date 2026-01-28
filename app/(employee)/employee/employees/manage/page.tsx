@@ -2,15 +2,26 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Button, Card, Group, Stack, Table, Text, Title, Badge, Menu, ActionIcon, Center, Loader } from '@mantine/core';
-import { useEmployerStore } from '@/state/employerStore';
-import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { collection, onSnapshot, deleteDoc, doc, query, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 
 type EmployeeDoc = { id: string; name: string; email: string; roleIds: string[]; permissionIds: string[]; isAdmin?: boolean; isArchived?: boolean; deletedAt?: number };
 
 export default function EmployerEmployeesManagePage() {
-  const roles = useEmployerStore((s) => s.roles);
+  const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    const qRoles = query(collection(db(), 'employee_roles'));
+    const unsub = onSnapshot(qRoles, (snap) => {
+      const list: Array<{ id: string; name: string }> = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        if (!data.deletedAt) list.push({ id: d.id, name: data.name || '' });
+      });
+      setRoles(list);
+    });
+    return () => unsub();
+  }, []);
   const [employees, setEmployees] = useState<EmployeeDoc[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 

@@ -1,14 +1,50 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useSubscriptionsStore } from '@/state/subscriptionsStore';
-import { Title, Text, Card, Stack, Group, Button, Table, Badge, Tabs, Anchor } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Table, Badge, Tabs, Anchor, TextInput, Alert } from '@mantine/core';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
+import { useAppSettingsStore } from '@/state/appSettingsStore';
+import { useToast } from '@/components/ToastProvider';
+
+type Newsletter = { id: string; subject: string; status: 'Draft'|'Scheduled'|'Sent'; recipients: number; sentAt?: number; body?: string };
 
 export default function EmployerEmailNewslettersPage() {
-  const newsletters = useSubscriptionsStore((s) => s.newsletters);
+  const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
+  const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
+  const setWebsiteUrl = useAppSettingsStore((s) => s.setWebsiteUrl);
+  const [urlInput, setUrlInput] = useState('');
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const toast = useToast();
+  useEffect(() => { setUrlInput(websiteUrl || ''); }, [websiteUrl]);
 
-  const nlCount = newsletters.length;
+  const validUrl = (u: string) => {
+    try {
+      const x = new URL(u);
+      return !!x.protocol && !!x.host;
+    } catch { return false; }
+  };
+  const onSaveUrl = () => {
+    const v = urlInput.trim();
+    if (!validUrl(v)) { setUrlError('Enter a valid URL, e.g. https://www.example.com'); return; }
+    setUrlError(null);
+    setWebsiteUrl(v);
+    toast.show({ title: 'Saved', message: 'WEBSITE_URL updated.' });
+  };
+  useEffect(() => {
+    const qN = query(collection(db(), 'newsletters'));
+    const unsub = onSnapshot(qN, (snap) => {
+      const rows: Newsletter[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        rows.push({ id: d.id, subject: data.subject || '', status: (data.status || 'Draft'), recipients: Number(data.recipients || 0), sentAt: typeof data.sentAt === 'number' ? data.sentAt : undefined, body: data.body || '' });
+      });
+      setNewsletters(rows);
+    });
+    return () => unsub();
+  }, []);
 
   const dateStr = (ts: number) => new Date(ts).toLocaleString();
 
@@ -16,8 +52,10 @@ export default function EmployerEmailNewslettersPage() {
   const drafts = newsletters.filter((n) => n.status === 'Draft');
 
   const CodeSnippet = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.example';
-    const action = `${origin}/api/newsletter/subscribe`;
+    const base = (websiteUrl && validUrl(websiteUrl))
+      ? websiteUrl
+      : (typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.example');
+    const action = `${base}/api/newsletter/subscribe`;
     const snippet = `<!-- Newsletter signup form -->\n<form action="${action}" method="POST">\n  <label>\n    Email\n    <input type=\"email\" name=\"email\" required />\n  </label>\n  <label>\n    Name (optional)\n    <input type=\"text\" name=\"name\" />\n  </label>\n  <!-- Optional: categorize where this submission came from -->\n  <input type=\"hidden\" name=\"list\" value=\"newsletter\" />\n  <button type=\"submit\">Subscribe</button>\n</form>`;
     const copy = async () => {
       try { await navigator.clipboard.writeText(snippet); } catch {}
@@ -132,7 +170,19 @@ export default function EmployerEmailNewslettersPage() {
               <Card withBorder>
                 <Stack>
                   <Text c="dimmed">Copy and paste this HTML form into your website. Submissions post to this app's API and can be wired to Firebase.</Text>
-                  <CodeSnippet />
+                  {(!websiteUrl || !validUrl(websiteUrl)) && (
+                    <Alert color="yellow" title="Set WEBSITE_URL">
+                      Update Company settings → Configuration → WEBSITE_URL to replace localhost in the form action.
+                    </Alert>
+                  )}
+                  <Group align="end" gap="sm">
+                    <div style={{ flex: 1 }}>
+                      <TextInput label="Website URL (WEBSITE_URL)" placeholder="https://www.example.com" value={urlInput} onChange={(e) => setUrlInput(e.currentTarget.value)} error={urlError || undefined} />
+                    </div>
+                    <Button onClick={onSaveUrl}>Save</Button>
+                    <Button variant="light" component={Link as any} href="/employee/company-settings/configuration">Open settings</Button>
+                  </Group>
+                  {websiteUrl && validUrl(websiteUrl) && <CodeSnippet />}
                 </Stack>
               </Card>
             </Tabs.Panel>

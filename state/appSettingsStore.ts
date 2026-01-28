@@ -150,7 +150,7 @@ export const useAppSettingsStore = create<AppSettingsState>()(
     }),
     {
       name: 'app-settings',
-      version: 6,
+      version: 8,
       migrate: (persisted: any, version) => {
         if (!persisted) return undefined as any;
         if (!persisted.settings) persisted.settings = defaults;
@@ -183,6 +183,11 @@ export const useAppSettingsStore = create<AppSettingsState>()(
               { id: 'tmpl-seed-1', name: 'Welcome Email', subject: 'Welcome to {{COMPANY_NAME}}', body: '<p>Hi {{name}},</p><p>Welcome to <strong>{{COMPANY_NAME}}</strong>! We\'re excited to have you on board.</p><p>Cheers,<br/>The {{COMPANY_NAME}} Team</p>', createdAt: now, updatedAt: now },
               { id: 'tmpl-seed-2', name: 'Weekly Update', subject: 'This week at {{COMPANY_NAME}}', body: '<p>Hi {{name}},</p><p>Here\'s what\'s new this week at {{COMPANY_NAME}}:</p><ul><li>Feature A improvements</li><li>Upcoming events</li><li>Community highlights</li></ul><p>Best,<br/>{{COMPANY_NAME}}</p>', createdAt: now, updatedAt: now },
             ];
+          }
+        }
+        if (version < 8) {
+          if (persisted.settings?.email && 'activeProvider' in persisted.settings.email) {
+            delete persisted.settings.email.activeProvider;
           }
         }
         return persisted as any;

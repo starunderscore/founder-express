@@ -2,17 +2,27 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Group, Stack, Table, Text, Title, SegmentedControl } from '@mantine/core';
-import { useEmployerStore } from '@/state/employerStore';
-import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 
 type EmployeeDoc = { id: string; name: string; email: string; deletedAt?: number };
 
 export default function EmployerEmployeesRemovedPage() {
-  const roles = useEmployerStore((s) => s.roles);
-  const removeRole = useEmployerStore((s) => s.removeRole);
-  const restoreRole = useEmployerStore((s) => s.restoreRole);
+  type RoleDoc = { id: string; name: string; deletedAt?: number };
+  const [roles, setRoles] = useState<RoleDoc[]>([]);
+  useEffect(() => {
+    const qRoles = query(collection(db(), 'employee_roles'));
+    const unsub = onSnapshot(qRoles, (snap) => {
+      const list: RoleDoc[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        list.push({ id: d.id, name: data.name || '', deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined });
+      });
+      setRoles(list);
+    });
+    return () => unsub();
+  }, []);
 
   const [mode, setMode] = useState<'employees' | 'roles'>('employees');
   const [employees, setEmployees] = useState<EmployeeDoc[] | null>(null);
@@ -31,7 +41,7 @@ export default function EmployerEmployeesRemovedPage() {
   }, []);
 
   const removedEmployees = useMemo(() => (employees || []).filter((e) => !!e.deletedAt), [employees]);
-  const removedRoles = useMemo(() => roles.filter((r: any) => !!(r as any).deletedAt), [roles]);
+  const removedRoles = useMemo(() => roles.filter((r) => !!r.deletedAt), [roles]);
 
   const restoreEmployee = async (id: string) => {
     await updateDoc(doc(db(), 'employees', id), { deletedAt: undefined });
@@ -99,8 +109,8 @@ export default function EmployerEmployeesRemovedPage() {
                     <Table.Td>{r.name}</Table.Td>
                     <Table.Td>
                       <Group justify="flex-end">
-                        <Button size="xs" variant="light" onClick={() => restoreRole(r.id)}>Restore</Button>
-                        <Button size="xs" variant="subtle" color="red" onClick={() => removeRole(r.id)}>Permanently delete</Button>
+                        <Button size="xs" variant="light" onClick={async () => { await updateDoc(doc(db(), 'employee_roles', r.id), { deletedAt: undefined }); }}>Restore</Button>
+                        <Button size="xs" variant="subtle" color="red" onClick={async () => { await deleteDoc(doc(db(), 'employee_roles', r.id)); }}>Permanently delete</Button>
                       </Group>
                     </Table.Td>
                   </Table.Tr>
@@ -116,4 +126,3 @@ export default function EmployerEmployeesRemovedPage() {
     </EmployerAdminGate>
   );
 }
-

@@ -1,12 +1,31 @@
 "use client";
 import Link from 'next/link';
 import { Button, Card, Group, Stack, Text, Title, Table, Menu, ActionIcon } from '@mantine/core';
-import { useEmployerStore } from '@/state/employerStore';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 
+type RoleDoc = { id: string; name: string; description?: string; permissionIds: string[]; isArchived?: boolean; deletedAt?: number };
+
 export default function EmployerRolesPage() {
-  const roles = useEmployerStore((s) => s.roles);
-  const removeRole = useEmployerStore((s) => s.removeRole);
+  const [roles, setRoles] = useState<RoleDoc[]>([]);
+  useEffect(() => {
+    const q = query(collection(db(), 'employee_roles'));
+    const unsub = onSnapshot(q, (snap) => {
+      const list: RoleDoc[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        list.push({ id: d.id, name: data.name || '', description: data.description || undefined, permissionIds: Array.isArray(data.permissionIds) ? data.permissionIds : [], isArchived: !!data.isArchived, deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined });
+      });
+      setRoles(list.filter((r) => !r.deletedAt));
+    });
+    return () => unsub();
+  }, []);
+
+  const softRemove = async (id: string) => {
+    await updateDoc(doc(db(), 'employee_roles', id), { deletedAt: Date.now() });
+  };
 
   return (
     <EmployerAdminGate>
@@ -30,7 +49,7 @@ export default function EmployerRolesPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-              {roles.map((r) => (
+              {roles.filter((r) => !r.isArchived && !r.deletedAt).map((r) => (
               <Table.Tr key={r.id}>
                 <Table.Td>
                   <Link href={`/employee/employees/roles/${r.id}/edit`} style={{ textDecoration: 'none' }}>
@@ -47,7 +66,7 @@ export default function EmployerRolesPage() {
                       </Menu.Target>
                       <Menu.Dropdown>
                         <Menu.Item component={Link as any} href={`/employee/employees/roles/${r.id}/edit`}>Edit</Menu.Item>
-                        <Menu.Item color="red" onClick={() => removeRole(r.id)}>Remove</Menu.Item>
+                        <Menu.Item color="red" onClick={() => softRemove(r.id)}>Remove</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
                   </Group>

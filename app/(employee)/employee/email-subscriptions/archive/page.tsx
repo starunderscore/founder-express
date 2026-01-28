@@ -1,14 +1,25 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useSubscriptionsStore } from '@/state/subscriptionsStore';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import { Title, Text, Card, Stack, Group, Badge, Tabs, Anchor, Button } from '@mantine/core';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
 
-export default function EmailSubscriptionsArchivePage() {
-  const waitlists = useSubscriptionsStore((s) => s.waitlists);
+type Waitlist = { id: string; name: string; isArchived?: boolean };
 
-  const archived = (waitlists || []).filter((w: any) => !!w?.isArchived);
+export default function EmailSubscriptionsArchivePage() {
+  const [archived, setArchived] = useState<Waitlist[]>([]);
+  useEffect(() => {
+    const qW = query(collection(db(), 'waitlists'));
+    const unsub = onSnapshot(qW, (snap) => {
+      const arr: Waitlist[] = [];
+      snap.forEach((d) => { const data = d.data() as any; if (data.isArchived) arr.push({ id: d.id, name: data.name || '' }); });
+      setArchived(arr);
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <EmployerAuthGate>

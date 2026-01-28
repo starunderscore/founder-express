@@ -2,17 +2,27 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Group, Stack, Table, Text, Title, Badge, SegmentedControl } from '@mantine/core';
-import { useEmployerStore } from '@/state/employerStore';
-import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { collection, onSnapshot, doc, updateDoc, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 
 type EmployeeDoc = { id: string; name: string; email: string; roleIds: string[]; permissionIds: string[]; isAdmin?: boolean; isArchived?: boolean };
 
 export default function EmployerEmployeesArchivePage() {
-  const roles = useEmployerStore((s) => s.roles);
-  const archiveRole = useEmployerStore((s) => s.archiveRole);
-  const restoreRole = useEmployerStore((s) => s.restoreRole);
+  type RoleDoc = { id: string; name: string; isArchived?: boolean; deletedAt?: number };
+  const [roles, setRoles] = useState<RoleDoc[]>([]);
+  useEffect(() => {
+    const qRoles = query(collection(db(), 'employee_roles'));
+    const unsub = onSnapshot(qRoles, (snap) => {
+      const list: RoleDoc[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        list.push({ id: d.id, name: data.name || '', isArchived: !!data.isArchived, deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined });
+      });
+      setRoles(list.filter((r) => !r.deletedAt));
+    });
+    return () => unsub();
+  }, []);
 
   const [mode, setMode] = useState<'employees' | 'roles'>('employees');
   const [employees, setEmployees] = useState<EmployeeDoc[] | null>(null);
@@ -40,7 +50,6 @@ export default function EmployerEmployeesArchivePage() {
 
   const archivedEmployees = useMemo(() => (employees || []).filter((e) => !!e.isArchived), [employees]);
   const archivedRoles = useMemo(() => roles.filter((r) => !!r.isArchived), [roles]);
-  const activeRoles = useMemo(() => roles.filter((r) => !r.isArchived), [roles]);
 
   const setEmployeeArchived = async (id: string, flag: boolean) => {
     await updateDoc(doc(db(), 'employees', id), { isArchived: flag });
@@ -106,7 +115,7 @@ export default function EmployerEmployeesArchivePage() {
                     <Table.Td><Badge variant="light" color="gray">archived</Badge></Table.Td>
                     <Table.Td>
                       <Group justify="flex-end">
-                        <Button size="xs" variant="light" onClick={() => restoreRole(r.id)}>Restore</Button>
+                        <Button size="xs" variant="light" onClick={async () => { await updateDoc(doc(db(), 'employee_roles', r.id), { isArchived: false }); }}>Restore</Button>
                       </Group>
                     </Table.Td>
                   </Table.Tr>

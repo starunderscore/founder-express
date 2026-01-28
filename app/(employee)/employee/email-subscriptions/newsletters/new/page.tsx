@@ -3,14 +3,20 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useSubscriptionsStore } from '@/state/subscriptionsStore';
 import { Title, Text, Card, Stack, Group, Button, TextInput, Badge, ActionIcon, Modal } from '@mantine/core';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
+import { useEffect } from 'react';
+import { collection, addDoc, onSnapshot, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 export default function NewsletterComposePage() {
   const router = useRouter();
-  const emailList = useSubscriptionsStore((s) => s.emailList);
-  const addNewsletter = useSubscriptionsStore((s) => s.addNewsletterCampaign);
+  const [recipientCount, setRecipientCount] = useState(0);
+  useEffect(() => {
+    const qList = query(collection(db(), 'email_list'));
+    const unsub = onSnapshot(qList, (snap) => setRecipientCount(snap.size));
+    return () => unsub();
+  }, []);
 
   const [subject, setSubject] = useState('');
   const [previewText] = useState('');
@@ -21,17 +27,10 @@ export default function NewsletterComposePage() {
 
   // HTML content is provided by RichEmailEditor via setHtml
 
-  const onSave = () => {
+  const onSave = async () => {
     if (!subject.trim()) { setError('Subject required'); return; }
     const bodyHtml = html;
-    addNewsletter({
-      subject: subject.trim(),
-      // preview text removed from minimal compose
-      status: 'Draft',
-      recipients: recipientCount,
-      body: bodyHtml,
-      // context waitlist removed from minimal compose
-    });
+    await addDoc(collection(db(), 'newsletters'), { subject: subject.trim(), status: 'Draft', recipients: recipientCount, body: bodyHtml, createdAt: Date.now() });
     router.push('/employee/email-subscriptions/newsletters');
   };
 
@@ -40,22 +39,14 @@ export default function NewsletterComposePage() {
     setPreviewOpen(true);
   };
 
-  const onSend = () => {
+  const onSend = async () => {
     if (!subject.trim()) { setError('Subject required'); return; }
     const ok = window.confirm(`Send this newsletter to ${recipientCount} recipients?`);
     if (!ok) return;
     const bodyHtml = html;
-    addNewsletter({
-      subject: subject.trim(),
-      status: 'Sent',
-      recipients: recipientCount,
-      sentAt: Date.now(),
-      body: bodyHtml,
-    } as any);
+    await addDoc(collection(db(), 'newsletters'), { subject: subject.trim(), status: 'Sent', recipients: recipientCount, sentAt: Date.now(), body: bodyHtml, createdAt: Date.now() });
     router.push('/employee/email-subscriptions/newsletters');
   };
-
-  const recipientCount = emailList.length;
 
   return (
     <EmployerAuthGate>
