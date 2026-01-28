@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, TextInput, Button, Table, Badge, Tabs, Anchor, SimpleGrid, Modal } from '@mantine/core';
+import { RouteTabs } from '@/components/RouteTabs';
 import Link from 'next/link';
 import { useSubscriptionsStore } from '@/state/subscriptionsStore';
 

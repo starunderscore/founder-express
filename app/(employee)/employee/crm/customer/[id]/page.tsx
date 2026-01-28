@@ -1,6 +1,6 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { type LeadSource } from '@/state/crmStore';
+import { type LeadSource, type Note, type Phone } from '@/state/crmStore';
 import { useEmployerStore } from '@/state/employerStore';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -68,7 +68,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const [archiveCustomerInput, setArchiveCustomerInput] = useState('');
 
   const openEditNote = (id: string) => {
-    const note = (customer?.notes || []).find((n) => n.id === id);
+    const note = (customer?.notes || []).find((n: Note) => n.id === id);
     if (!note) return;
     setEditNoteId(id);
     setEditNoteBody(note.body || '');
@@ -93,13 +93,13 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     if (!customer || !editNoteId) return;
     const body = editNoteBody.trim();
     const title = deriveTitleFromMarkdown(body);
-    const notes = (customer.notes || []).map((n) => (n.id === editNoteId ? { ...n, body, title } : n));
+    const notes = (customer.notes || []).map((n: Note) => (n.id === editNoteId ? { ...n, body, title } : n));
     await updateDoc(doc(db(), 'crm_customers', customer.id), { notes: prune(notes) });
     setEditNoteOpen(false);
   };
   const openDeleteNote = (id: string) => {
     if (!customer) return;
-    const note = (customer.notes || []).find((n) => n.id === id);
+    const note = (customer.notes || []).find((n: Note) => n.id === id);
     if (!note) return;
     const snippet = (note.body || '').trim().slice(0, 10);
     setDeleteNoteId(id);
@@ -112,7 +112,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     if (!customer || !deleteNoteId) return;
     const required = deleteNoteSnippet;
     if (required.length > 0 && deleteNoteInput !== required) return;
-    const notes = (customer.notes || []).filter((n) => n.id !== deleteNoteId);
+    const notes = (customer.notes || []).filter((n: Note) => n.id !== deleteNoteId);
     await updateDoc(doc(db(), 'crm_customers', customer.id), { notes: prune(notes) });
     setDeleteNoteOpen(false);
   };
@@ -136,7 +136,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     if (!num) return;
     let phones = (customer.phones || []);
     if (editingPhoneId) {
-      phones = phones.map((p) => (p.id === editingPhoneId ? { ...p, number: num, ext: phoneExt.trim() || undefined, label: phoneLabel.trim() || undefined, kind: phoneKind } : p));
+      phones = phones.map((p: Phone) => (p.id === editingPhoneId ? { ...p, number: num, ext: phoneExt.trim() || undefined, label: phoneLabel.trim() || undefined, kind: phoneKind } : p));
     } else {
       phones = [{ id: `ph-${Date.now()}`, number: num, ext: phoneExt.trim() || undefined, label: phoneLabel.trim() || undefined, kind: phoneKind }, ...phones];
     }
@@ -276,7 +276,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <Stack gap={6}>
             <Text c="dimmed" size="sm">Tags</Text>
             <Group gap={6} wrap="wrap">
-              {(customer.tags && customer.tags.length > 0) ? customer.tags.map((t) => (<Badge key={t} variant="light">{t}</Badge>)) : <Text>—</Text>}
+              {(customer.tags && customer.tags.length > 0) ? customer.tags.map((t: string) => (<Badge key={t} variant="light">{t}</Badge>)) : <Text>—</Text>}
             </Group>
           </Stack>
           <Stack gap={6}>
@@ -315,7 +315,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             </Table.Tr>
           </Table.Thead>
       <Table.Tbody>
-        {(customer.phones || []).map((p) => (
+        {(customer.phones || []).map((p: Phone) => (
               <Table.Tr key={p.id}>
                 <Table.Td>{p.number}</Table.Td>
                 <Table.Td>{p.ext || '—'}</Table.Td>
@@ -545,7 +545,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <Button variant="default" onClick={() => setDeletePhoneOpen(false)}>Cancel</Button>
             <Button color="red" disabled={deletePhoneSnippet.length > 0 && deletePhoneInput !== deletePhoneSnippet} onClick={async () => {
               if (!customer || !deletePhoneId) return;
-              const phones = (customer.phones || []).filter((p) => p.id !== deletePhoneId);
+              const phones = (customer.phones || []).filter((p: Phone) => p.id !== deletePhoneId);
               await updateDoc(doc(db(), 'crm_customers', customer.id), { phones: prune(phones) });
               setDeletePhoneOpen(false);
             }}>Delete</Button>

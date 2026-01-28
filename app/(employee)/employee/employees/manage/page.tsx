@@ -7,7 +7,7 @@ import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { collection, onSnapshot, deleteDoc, doc, query, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 
-type EmployeeDoc = { id: string; name: string; email: string; roleIds: string[]; permissionIds: string[]; isAdmin?: boolean; isArchived?: boolean };
+type EmployeeDoc = { id: string; name: string; email: string; roleIds: string[]; permissionIds: string[]; isAdmin?: boolean; isArchived?: boolean; deletedAt?: number };
 
 export default function EmployerEmployeesManagePage() {
   const roles = useEmployerStore((s) => s.roles);

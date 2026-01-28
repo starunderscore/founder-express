@@ -5,6 +5,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Title, Text, Group, Badge, Button, Stack, Tabs, ActionIcon, Avatar, Textarea, Modal, Anchor, TextInput, Table, Select, Radio, Menu, CopyButton, Switch, Divider, Alert, Center, Loader } from '@mantine/core';
 import Link from 'next/link';
+import { RouteTabs } from '@/components/RouteTabs';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
@@ -565,8 +566,6 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
           </Group>
         </Stack>
       </Modal>
-
-      </div>
 
       {/* Edit overview modal */}
       <Modal

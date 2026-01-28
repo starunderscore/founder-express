@@ -42,7 +42,7 @@ export function RichEmailEditor({ placeholder = 'Write your message…', initial
   useEffect(() => {
     if (!editor) return;
     if (typeof initialHTML === 'string' && editor.getHTML() !== initialHTML) {
-      editor.commands.setContent(initialHTML, false);
+      editor.commands.setContent(initialHTML, { emitUpdate: false } as any);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, initialHTML]);
@@ -63,11 +63,11 @@ export function RichEmailEditor({ placeholder = 'Write your message…', initial
   const setBlock = (val: string | null) => {
     if (!editor) return;
     const v = val || 'paragraph';
-    editor.chain().focus();
-    if (v === 'paragraph') editor.setParagraph().run();
-    else if (v === 'h1') editor.toggleHeading({ level: 1 }).run();
-    else if (v === 'h2') editor.toggleHeading({ level: 2 }).run();
-    else if (v === 'h3') editor.toggleHeading({ level: 3 }).run();
+    const chain = editor.chain().focus();
+    if (v === 'paragraph') chain.setParagraph().run();
+    else if (v === 'h1') chain.toggleHeading({ level: 1 }).run();
+    else if (v === 'h2') chain.toggleHeading({ level: 2 }).run();
+    else if (v === 'h3') chain.toggleHeading({ level: 3 }).run();
   };
 
   return (
@@ -100,7 +100,7 @@ export function RichEmailEditor({ placeholder = 'Write your message…', initial
             { group: 'Email variables', items: vars.map((v) => ({ value: v.key, label: v.key })) },
           ] as any}
           aria-label="Insert variable"
-          withinPortal
+          comboboxProps={{ withinPortal: true } as any}
         />
         {showLabels ? (
           <Button size="xs" variant={editor?.isActive('bold') ? 'filled' : 'light'} leftSection={<IconBold size={14} />} onClick={() => editor?.chain().focus().toggleBold().run()}>Bold</Button>

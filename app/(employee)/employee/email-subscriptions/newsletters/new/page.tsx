@@ -23,13 +23,13 @@ export default function NewsletterComposePage() {
 
   const onSave = () => {
     if (!subject.trim()) { setError('Subject required'); return; }
-    const html = (htmlStateRef || html) as string;
+    const bodyHtml = html;
     addNewsletter({
       subject: subject.trim(),
       // preview text removed from minimal compose
       status: 'Draft',
       recipients: recipientCount,
-      body: html,
+      body: bodyHtml,
       // context waitlist removed from minimal compose
     });
     router.push('/employee/email-subscriptions/newsletters');
@@ -44,19 +44,18 @@ export default function NewsletterComposePage() {
     if (!subject.trim()) { setError('Subject required'); return; }
     const ok = window.confirm(`Send this newsletter to ${recipientCount} recipients?`);
     if (!ok) return;
-    const html = (htmlStateRef || html) as string;
+    const bodyHtml = html;
     addNewsletter({
       subject: subject.trim(),
       status: 'Sent',
       recipients: recipientCount,
       sentAt: Date.now(),
-      body: html,
+      body: bodyHtml,
     } as any);
     router.push('/employee/email-subscriptions/newsletters');
   };
 
   const recipientCount = emailList.length;
-  const htmlStateRef = html;
 
   return (
     <EmployerAuthGate>

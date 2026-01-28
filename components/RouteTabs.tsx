@@ -22,7 +22,7 @@ export function RouteTabs({ value, tabs, radius = "md", mb }: RouteTabsProps) {
   const handleChange = (next: string | null) => {
     if (!next) return;
     const t = tabs.find((x) => x.value === next);
-    if (t) router.push(t.href);
+    if (t) router.push(t.href as any);
   };
 
   return (
@@ -37,4 +37,3 @@ export function RouteTabs({ value, tabs, radius = "md", mb }: RouteTabsProps) {
     </Tabs>
   );
 }
-

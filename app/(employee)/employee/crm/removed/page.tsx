@@ -7,6 +7,7 @@ import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 import { RouteTabs } from '@/components/RouteTabs';
+import { type Contact } from '@/state/crmStore';
 
 export default function CRMRemovedPage() {
   const toast = useToast();
@@ -34,8 +35,8 @@ export default function CRMRemovedPage() {
     }));
     const trashedContacts = customers.flatMap((c) =>
       (c.contacts || [])
-        .filter((ct) => !!ct.deletedAt)
-        .map((ct) => ({ kind: 'contact' as const, id: ct.id, name: ct.name || '—', email: (ct.emails && ct.emails[0]?.email) || '', parentId: c.id, vendorName: c.type === 'vendor' ? c.name : '', vendorId: c.type === 'vendor' ? c.id : undefined }))
+        .filter((ct: Contact) => !!ct.deletedAt)
+        .map((ct: Contact) => ({ kind: 'contact' as const, id: ct.id, name: ct.name || '—', email: (ct.emails && ct.emails[0]?.email) || '', parentId: c.id, vendorName: c.type === 'vendor' ? c.name : '', vendorId: c.type === 'vendor' ? c.id : undefined }))
     );
     let all = [...trashedRecords, ...trashedContacts];
     if (typeFilter !== 'all') all = all.filter((it) => it.kind === (typeFilter as any));
