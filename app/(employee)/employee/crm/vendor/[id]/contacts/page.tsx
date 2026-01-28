@@ -83,7 +83,7 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
     <EmployerAuthGate>
       <Group justify="space-between" mb="md">
         <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`/employee/crm/vendor/${vendor.id}`)}>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/crm')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>

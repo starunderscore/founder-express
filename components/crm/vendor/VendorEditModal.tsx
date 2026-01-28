@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Modal, Stack, Group, Button, TextInput, Select, TagsInput, Tabs, Title } from "@mantine/core";
+import { Modal, Stack, Group, Button, TextInput, Select, Tabs, Title, MultiSelect } from "@mantine/core";
+import { db } from '@/lib/firebase/client';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 type Employee = { id: string; name: string };
 
@@ -24,6 +26,7 @@ export default function VendorEditModal({ opened, onClose, vendor, employees, on
   const [source, setSource] = useState<string>("no-source");
   const [sourceDetail, setSourceDetail] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [tagOptions, setTagOptions] = useState<{ value: string; label: string }[]>([]);
   const [ownerId, setOwnerId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,6 +39,22 @@ export default function VendorEditModal({ opened, onClose, vendor, employees, on
       setOwnerId(typeof vendor.ownerId === "string" ? vendor.ownerId : null);
     }
   }, [opened, vendor]);
+
+  // Load tag options from Tag Manager (Firestore)
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db(), 'crm_tags'), (snap) => {
+      const rows: { value: string; label: string; createdAt: number }[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        const name = (data.name || '').toString();
+        if (!name) return;
+        rows.push({ value: name, label: name, createdAt: typeof data.createdAt === 'number' ? data.createdAt : 0 });
+      });
+      rows.sort((a, b) => (b.createdAt - a.createdAt) || a.label.localeCompare(b.label));
+      setTagOptions(rows.map(({ value, label }) => ({ value, label })));
+    });
+    return () => unsub();
+  }, []);
 
   const save = async () => {
     await onSave({
@@ -66,7 +85,15 @@ export default function VendorEditModal({ opened, onClose, vendor, employees, on
               <TextInput mt="sm" label="Other source" value={sourceDetail} onChange={(e) => setSourceDetail(e.currentTarget.value)} />
             )}
             <Group mt="sm" align="end" grow>
-              <TagsInput label="Tags" placeholder="Add tags" value={tags} onChange={setTags} />
+              <MultiSelect
+                label="Tags"
+                placeholder="Search and select tags"
+                searchable
+                data={tagOptions}
+                value={tags}
+                onChange={setTags}
+                comboboxProps={{ withinPortal: true }}
+              />
             </Group>
             <Group mt="sm" grow>
               <Select
@@ -89,4 +116,3 @@ export default function VendorEditModal({ opened, onClose, vendor, employees, on
     </Modal>
   );
 }
-

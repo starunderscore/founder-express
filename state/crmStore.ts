@@ -60,6 +60,7 @@ export type Contact = {
   title?: string;
   createdAt?: number;
   deletedAt?: number; // soft-deleted timestamp for contacts
+  tags?: string[];
   emails?: Email[];
   phones?: Phone[];
   addresses?: Address[];
@@ -187,6 +188,7 @@ export const useCRMStore = create<CRMState>()(
             const cc: any = { ...c };
             if (typeof cc.createdAt !== 'number') cc.createdAt = Date.now();
             if (typeof cc.deletedAt !== 'number') cc.deletedAt = undefined;
+            if (!Array.isArray(cc.tags)) cc.tags = [];
             if (!Array.isArray(cc.emails)) cc.emails = [];
             if (!Array.isArray(cc.phones)) cc.phones = [];
             if (!Array.isArray(cc.addresses)) cc.addresses = [];

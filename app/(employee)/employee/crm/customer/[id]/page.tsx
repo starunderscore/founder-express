@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
-import { Card, Title, Text, Group, Badge, Button, Stack, Select, Modal, Tabs, TextInput, Avatar, ActionIcon, Menu, CopyButton, Table, Textarea, Switch, Alert, Divider, MultiSelect } from '@mantine/core';
+import { Card, Title, Text, Group, Badge, Button, Stack, Select, Modal, Tabs, TextInput, Avatar, ActionIcon, Menu, CopyButton, Table, Textarea, Switch, Alert, Divider, MultiSelect, Center, Loader } from '@mantine/core';
 import { useAuthUser, sendPasswordReset } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
@@ -16,9 +16,20 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const router = useRouter();
   const employees = useEmployerStore((s) => s.employees);
   const [customer, setCustomer] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     const ref = doc(db(), 'crm_customers', params.id);
-    const unsub = onSnapshot(ref, (snap) => setCustomer(snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null));
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        setCustomer(snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null);
+        setLoading(false);
+      },
+      () => {
+        setCustomer(null);
+        setLoading(false);
+      }
+    );
     return () => unsub();
   }, [params.id]);
   const authUser = useAuthUser();
@@ -169,6 +180,16 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   // removed legacy edit customer modal handlers
 
+  if (loading) {
+    return (
+      <EmployerAuthGate>
+        <Center mih={200}>
+          <Loader size="sm" />
+        </Center>
+      </EmployerAuthGate>
+    );
+  }
+
   if (!customer) {
     return (
       <EmployerAuthGate>
@@ -236,7 +257,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           This customer is blocked and cannot access their account.
         </Alert>
       )}
-      <Card withBorder radius="md" style={{ borderLeft: '4px solid var(--mantine-color-blue-6)', background: 'linear-gradient(90deg, var(--mantine-color-blue-0), transparent 40%)' }} mb="md">
+      <Card withBorder radius="md" className="customer-general-card" style={{ borderLeft: '4px solid var(--mantine-color-blue-6)' }} mb="md">
         <Stack gap="sm">
           <Group justify="space-between" align="center">
             <Title order={4}>General</Title>
@@ -552,6 +573,14 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           </Group>
         </Stack>
       </Modal>
+      <style jsx>{`
+        .customer-general-card {
+          background: linear-gradient(90deg, var(--mantine-color-blue-0), transparent 60%);
+        }
+        [data-mantine-color-scheme="dark"] .customer-general-card {
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 60%);
+        }
+      `}</style>
     </EmployerAuthGate>
   );
 }

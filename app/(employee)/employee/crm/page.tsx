@@ -615,7 +615,7 @@ export default function EmployerCRMPage() {
               value={typeFilter}
               onChange={(v) => setTypeFilter((v as any) || 'all')}
               color={typeFilter === 'vendor' ? 'orange' : typeFilter === 'customer' ? 'blue' : 'gray'}
-              styles={{ root: { background: 'var(--mantine-color-gray-3)' } }}
+              className="crm-type-filter"
             />
           </Group>
         </div>
@@ -682,6 +682,16 @@ export default function EmployerCRMPage() {
           </Table.Tbody>
         </Table>
       </Card>
+
+      <style jsx>{`
+        .crm-type-filter {
+          background: var(--mantine-color-gray-3);
+          border-radius: var(--mantine-radius-default);
+        }
+        [data-mantine-color-scheme="dark"] .crm-type-filter {
+          background: var(--mantine-color-dark-6);
+        }
+      `}</style>
 
       {/* Confirm archive modal */}
       <Modal opened={confirmArchiveOpen} onClose={() => setConfirmArchiveOpen(false)} title="Archive record" centered>

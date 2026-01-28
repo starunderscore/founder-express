@@ -3,7 +3,7 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { type Note, type Contact, type Phone, type Email, type Address } from '@/state/crmStore';
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Title, Text, Group, Badge, Button, Stack, Tabs, ActionIcon, Avatar, Textarea, Modal, Anchor, TextInput, Table, Select, Radio, Menu, CopyButton, Switch, Divider, Alert, Center, Loader } from '@mantine/core';
+import { Card, Title, Text, Group, Badge, Button, Stack, Tabs, ActionIcon, Avatar, Textarea, Modal, Anchor, TextInput, Table, Select, Radio, Menu, CopyButton, Switch, Divider, Alert, Center, Loader, MultiSelect } from '@mantine/core';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useAuthUser } from '@/lib/firebase/auth';
@@ -40,6 +40,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
   const [noteBody, setNoteBody] = useState('');
   const [cName, setCName] = useState('');
   const [cTitle, setCTitle] = useState('');
+  const [cTags, setCTags] = useState<string[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [editActiveTab, setEditActiveTab] = useState<string | null>('overview');
   const [editPhonesOpen, setEditPhonesOpen] = useState(false);
@@ -68,6 +69,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
   const [deleteAddressId, setDeleteAddressId] = useState<string | null>(null);
   const [deleteAddressSnippet, setDeleteAddressSnippet] = useState('');
   const [deleteAddressInput, setDeleteAddressInput] = useState('');
+  const [tagOptions, setTagOptions] = useState<{ value: string; label: string }[]>([]);
   // contact actions
   const [deleteContactOpen, setDeleteContactOpen] = useState(false);
   const [deleteContactSnippet, setDeleteContactSnippet] = useState('');
@@ -81,8 +83,26 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
     if (contact) {
       setCName(contact.name || '');
       setCTitle(contact.title || '');
+      setCTags(Array.isArray((contact as any).tags) ? (contact as any).tags : []);
     }
   }, [contact?.id]);
+
+  // Load tag options from Tag Manager (Firestore)
+  useEffect(() => {
+    const q = query(collection(db(), 'crm_tags'));
+    const unsub = onSnapshot(q, (snap) => {
+      const rows: { value: string; label: string; createdAt: number }[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        const name = (data.name || '').toString();
+        if (!name) return;
+        rows.push({ value: name, label: name, createdAt: typeof data.createdAt === 'number' ? data.createdAt : 0 });
+      });
+      rows.sort((a, b) => (b.createdAt - a.createdAt) || a.label.localeCompare(b.label));
+      setTagOptions(rows.map(({ value, label }) => ({ value, label })));
+    });
+    return () => unsub();
+  }, []);
 
   if (!vendor || !contact) {
     return (
@@ -111,7 +131,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
   };
 
   const saveOverview = async () => {
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, name: cName.trim() || c.name, title: cTitle.trim() || undefined } : c));
+    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, name: cName.trim() || c.name, title: cTitle.trim() || undefined, tags: cTags } : c));
     await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
   };
 
@@ -240,7 +260,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
               </Group>
             </Alert>
           )}
-          <Card withBorder radius="md" mb="md" style={{ borderLeft: '4px solid var(--mantine-color-grape-6)', background: 'linear-gradient(90deg, var(--mantine-color-grape-0), transparent 40%)' }}>
+          <Card withBorder radius="md" mb="md" className="contact-general-card" style={{ borderLeft: '4px solid var(--mantine-color-grape-6)' }}>
             <Stack gap={4}>
               <Group justify="space-between">
                 <Title order={4}>General</Title>
@@ -254,6 +274,12 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
                 <Stack gap={2}>
                   <Text c="dimmed" size="xs">Title</Text>
                   <Text size="sm">{contact.title || '—'}</Text>
+                </Stack>
+                <Stack gap={2}>
+                  <Text c="dimmed" size="xs">Tags</Text>
+                  <Group gap={6} wrap="wrap">
+                    {(contact as any).tags && (contact as any).tags.length > 0 ? (contact as any).tags.map((t: string) => (<Badge key={t} variant="light">{t}</Badge>)) : <Text size="sm">—</Text>}
+                  </Group>
                 </Stack>
                 <Stack gap={2}>
                   <Text c="dimmed" size="xs">Joined</Text>
@@ -589,6 +615,16 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
                 <TextInput label="Name" value={cName} onChange={(e) => setCName(e.currentTarget.value)} required />
                 <TextInput label="Title" value={cTitle} onChange={(e) => setCTitle(e.currentTarget.value)} />
               </Group>
+              <MultiSelect
+                mt="sm"
+                label="Tags"
+                placeholder="Search and select tags"
+                searchable
+                data={tagOptions}
+                value={cTags}
+                onChange={setCTags}
+                comboboxProps={{ withinPortal: true, zIndex: 11000 }}
+              />
             </Tabs.Panel>
           </Tabs>
           <div
@@ -705,6 +741,14 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
           </div>
         </div>
       </Modal>
+      <style jsx>{`
+        .contact-general-card {
+          background: linear-gradient(90deg, var(--mantine-color-grape-0), transparent 60%);
+        }
+        [data-mantine-color-scheme="dark"] .contact-general-card {
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 60%);
+        }
+      `}</style>
     </EmployerAuthGate>
   );
 }

@@ -255,7 +255,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
             </Alert>
           )}
 
-          <Card id="overview-core" withBorder radius="md" style={{ borderLeft: '4px solid var(--mantine-color-orange-6)', background: 'linear-gradient(90deg, var(--mantine-color-orange-0), transparent 40%)' }}>
+          <Card id="overview-core" withBorder radius="md" className="vendor-general-card" style={{ borderLeft: '4px solid var(--mantine-color-orange-6)' }}>
             <Stack gap="sm">
               <Group justify="space-between">
                 <Title order={4}>General</Title>
@@ -295,7 +295,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                 </Group>
               </Stack>
             </Stack>
-          </Card>
+      </Card>
 
           <Card id="overview-org-emails" withBorder radius="md" mt="md" padding={0}>
             <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -511,6 +511,14 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
       />
 
       
+      <style jsx>{`
+        .vendor-general-card {
+          background: linear-gradient(90deg, var(--mantine-color-orange-0), transparent 60%);
+        }
+        [data-mantine-color-scheme="dark"] .vendor-general-card {
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 60%);
+        }
+      `}</style>
     </EmployerAuthGate>
   );
 }

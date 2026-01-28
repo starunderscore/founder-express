@@ -3,7 +3,7 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Title, Text, Group, Badge, Button, Stack, Modal, Textarea, ActionIcon, Menu, Avatar, Tabs } from '@mantine/core';
+import { Card, Title, Text, Group, Badge, Button, Stack, Modal, Textarea, ActionIcon, Menu, Avatar, Tabs, Center, Loader } from '@mantine/core';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
@@ -12,9 +12,20 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 export default function CustomerNotesPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [customer, setCustomer] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     const ref = doc(db(), 'crm_customers', params.id);
-    const unsub = onSnapshot(ref, (snap) => setCustomer(snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null));
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        setCustomer(snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null);
+        setLoading(false);
+      },
+      () => {
+        setCustomer(null);
+        setLoading(false);
+      }
+    );
     return () => unsub();
   }, [params.id]);
   const authUser = useAuthUser();
@@ -99,13 +110,22 @@ export default function CustomerNotesPage({ params }: { params: { id: string } }
     setDeleteNoteOpen(false);
   };
 
+  if (loading) {
+    return (
+      <EmployerAuthGate>
+        <Center mih={200}>
+          <Loader size="sm" />
+        </Center>
+      </EmployerAuthGate>
+    );
+  }
+
   if (!customer) {
     return (
       <EmployerAuthGate>
-        <Stack>
-          <Title order={3}>Customer not found</Title>
-          <Button variant="light" onClick={() => router.push('/employee/crm')}>Back to CRM</Button>
-        </Stack>
+        <Center mih={200}>
+          <Text>Customer not found</Text>
+        </Center>
       </EmployerAuthGate>
     );
   }
@@ -114,7 +134,7 @@ export default function CustomerNotesPage({ params }: { params: { id: string } }
     <EmployerAuthGate>
       <Group justify="space-between" mb="md">
         <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`/employee/crm/customer/${customer.id}`)}>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/crm')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
