@@ -201,14 +201,16 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
         </Group>
       </Group>
 
-      <Tabs value={"overview"} radius="md">
-        <Tabs.List>
-          <Tabs.Tab value="overview">Overview</Tabs.Tab>
-          <Tabs.Tab value="notes" component={Link as any} href={`/employee/crm/vendor/contact/${contact.id}/notes` as any}>Notes</Tabs.Tab>
-          <Tabs.Tab value="actions" component={Link as any} href={`/employee/crm/vendor/contact/${contact.id}/actions` as any}>Actions</Tabs.Tab>
-        </Tabs.List>
+      <RouteTabs
+        value={"overview"}
+        tabs={[
+          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/contact/${contact.id}` },
+          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/contact/${contact.id}/notes` },
+          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/contact/${contact.id}/actions` },
+        ]}
+      />
 
-        <Tabs.Panel value="overview" pt="md">
+      <div style={{ paddingTop: 'var(--mantine-spacing-md)' }}>
           {contact.deletedAt && (
             <Alert color="red" variant="light" mb="md" title="Removed">
               <Group justify="space-between" align="center">
@@ -414,12 +416,12 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
               </Table.Tbody>
             </Table>
           </Card>
-        </Tabs.Panel>
+      </div>
 
         
 
         
-      </Tabs>
+
 
       <Modal opened={noteOpen} onClose={() => setNoteOpen(false)} title="Add note" closeOnClickOutside={false} closeOnEscape={false} centered size="lg">
         <Stack>
@@ -563,6 +565,8 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
           </Group>
         </Stack>
       </Modal>
+
+      </div>
 
       {/* Edit overview modal */}
       <Modal

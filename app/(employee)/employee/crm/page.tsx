@@ -10,6 +10,7 @@ import { db } from '@/lib/firebase/client';
 import { collection, addDoc, onSnapshot, doc, updateDoc, query } from 'firebase/firestore';
 import { useEmployerStore } from '@/state/employerStore';
 import { useAuthUser } from '@/lib/firebase/auth';
+import { RouteTabs } from '@/components/RouteTabs';
 
 const SOURCE_OPTIONS: LeadSource[] = ['no-source', 'Website', 'Referral', 'Paid Ads', 'Social', 'Event', 'Import', 'Waiting List', 'Other'];
 
@@ -237,14 +238,16 @@ export default function EmployerCRMPage() {
       <Text c="dimmed" mb="md">New users automatically appear in CRM (Customer Relationship Management).</Text>
 
       {/* Top-level tabs now navigate to dedicated pages */}
-      <Tabs value={"main"} radius="md" mb="md">
-        <Tabs.List>
-          <Tabs.Tab value="main" component={Link as any} href={"/employee/crm" as any}>Database</Tabs.Tab>
-          <Tabs.Tab value="merge" component={Link as any} href={"/employee/crm/merge" as any}>Merge</Tabs.Tab>
-          <Tabs.Tab value="archive" component={Link as any} href={"/employee/crm/archive" as any}>Archive</Tabs.Tab>
-          <Tabs.Tab value="removed" component={Link as any} href={"/employee/crm/removed" as any}>Removed</Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+      <RouteTabs
+        value={"main"}
+        mb="md"
+        tabs={[
+          { value: 'main', label: 'Database', href: '/employee/crm' },
+          { value: 'merge', label: 'Merge', href: '/employee/crm/merge' },
+          { value: 'archive', label: 'Archive', href: '/employee/crm/archive' },
+          { value: 'removed', label: 'Removed', href: '/employee/crm/removed' },
+        ]}
+      />
 
       <Group mb="lg">
         <Button variant="default" onClick={() => { setActiveTab('overview'); setVendorModalOpen(true); }}>Add vendor</Button>

@@ -5,6 +5,7 @@ import { useEmployerStore } from '@/state/employerStore';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { RouteTabs } from '@/components/RouteTabs';
 import { Card, Title, Text, Group, Badge, Button, Stack, Select, Modal, Tabs, TextInput, Avatar, ActionIcon, Menu, CopyButton, Table, Textarea, Switch, Alert, Divider, MultiSelect } from '@mantine/core';
 import { useAuthUser, sendPasswordReset } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
@@ -201,14 +202,16 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       </Group>
 
 
-      <Tabs value={activeTab} onChange={setActiveTab} radius="md">
-        <Tabs.List>
-          <Tabs.Tab value="overview">Overview</Tabs.Tab>
-          <Tabs.Tab value="notes" component={Link as any} href={`/employee/crm/customer/${customer.id}/notes` as any}>Notes</Tabs.Tab>
-          <Tabs.Tab value="actions" component={Link as any} href={`/employee/crm/customer/${customer.id}/actions` as any}>Actions</Tabs.Tab>
-        </Tabs.List>
+      <RouteTabs
+        value={"overview"}
+        tabs={[
+          { value: 'overview', label: 'Overview', href: `/employee/crm/customer/${customer.id}` },
+          { value: 'notes', label: 'Notes', href: `/employee/crm/customer/${customer.id}/notes` },
+          { value: 'actions', label: 'Actions', href: `/employee/crm/customer/${customer.id}/actions` },
+        ]}
+      />
 
-        <Tabs.Panel value="overview" pt="md">
+      <div style={{ paddingTop: 'var(--mantine-spacing-md)' }}>
       {customer?.deletedAt && (
         <Alert color="red" variant="light" mb="md" title="Removed">
           <Group justify="space-between" align="center">
@@ -311,8 +314,8 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               <Table.Th></Table.Th>
             </Table.Tr>
           </Table.Thead>
-          <Table.Tbody>
-            {(customer.phones || []).map((p) => (
+      <Table.Tbody>
+        {(customer.phones || []).map((p) => (
               <Table.Tr key={p.id}>
                 <Table.Td>{p.number}</Table.Td>
                 <Table.Td>{p.ext || '—'}</Table.Td>
@@ -345,100 +348,10 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               </Table.Tr>
             )}
           </Table.Tbody>
-        </Table>
-      </Card>
-        </Tabs.Panel>
+      </Table>
+    </Card>
 
-        <Tabs.Panel value="notes" pt="md">
-      <Card withBorder radius="md" padding={0}>
-        <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Title order={4} m={0} style={{ color: 'inherit' }}>Notes</Title>
-          <Button variant="default" onClick={() => setNoteOpen(true)}>Add note</Button>
-        </div>
-        <div style={{ padding: '12px 16px' }}>
-        {Array.isArray(customer.notes) && customer.notes.length > 0 ? (
-          <Stack>
-            {customer.notes.map((n) => (
-              <Card key={n.id} withBorder radius="md" padding="sm">
-                <Group justify="space-between" align="flex-start">
-                  <div>
-                    <Group gap={8} align="center">
-                      <Avatar size="sm" radius="xl" src={n.createdByPhotoURL} color="indigo">
-                        {(n.createdByName || 'U').slice(0,1).toUpperCase()}
-                      </Avatar>
-                      <Text size="sm" fw={600}>{n.createdByName || 'Unknown'}</Text>
-                      <Text size="xs" c="dimmed">{new Date(n.createdAt).toLocaleString()}</Text>
-                    </Group>
-                    <Text size="sm" style={{ whiteSpace: 'pre-wrap', marginTop: 4 }}>{n.body || '—'}</Text>
-                  </div>
-                  {n.createdByEmail && authUser?.email === n.createdByEmail && (
-                    <Menu withinPortal position="bottom-end" shadow="md" width={160}>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="Note actions">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="12" cy="5" r="2" fill="currentColor"/>
-                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="12" cy="19" r="2" fill="currentColor"/>
-                          </svg>
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item onClick={() => openEditNote(n.id)}>Edit</Menu.Item>
-                        <Menu.Item color="red" onClick={() => openDeleteNote(n.id)}>Delete</Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  )}
-                </Group>
-              </Card>
-            ))}
-          </Stack>
-        ) : (
-          <Text c="dimmed">No notes</Text>
-        )}
-        </div>
-      </Card>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="actions" pt="md">
-          {customer.isBlocked && (
-            <Alert color="red" variant="light" mb="md" title="This customer is blocked">
-              Blocked customers cannot access their account until unblocked.
-            </Alert>
-          )}
-          <Card withBorder radius="md" mb="md">
-            <Stack>
-              <Title order={4}>Account controls</Title>
-              <Group>
-                <Switch
-                  checked={!!customer.isBlocked}
-                  onChange={async (e) => { await updateDoc(doc(db(), 'crm_customers', customer.id), { isBlocked: e.currentTarget.checked }); }}
-                  label="Block customer"
-                />
-              </Group>
-            </Stack>
-          </Card>
-
-          <Title order={4} c="red" mb="xs">Danger zone</Title>
-
-          <Card withBorder radius="md" mb="md">
-            <Stack>
-              <Title order={5}>Archive customer</Title>
-              <Group>
-                <Button color="orange" variant="light" onClick={() => { setArchiveCustomerInput(''); setArchiveCustomerOpen(true); }}>Archive customer</Button>
-              </Group>
-            </Stack>
-          </Card>
-
-          <Card withBorder radius="md" mb="md">
-            <Stack>
-              <Title order={5}>Remove customer</Title>
-              <Group>
-                <Button color="red" variant="light" onClick={() => { setDeleteCustomerInput(''); setDeleteCustomerOpen(true); }}>Remove customer</Button>
-              </Group>
-            </Stack>
-          </Card>
-        </Tabs.Panel>
-      </Tabs>
+      </div>
 
       {/* Edit note modal */}
       <Modal opened={editNoteOpen} onClose={() => setEditNoteOpen(false)} title="Edit note" closeOnClickOutside={false} closeOnEscape={false} centered size="lg">

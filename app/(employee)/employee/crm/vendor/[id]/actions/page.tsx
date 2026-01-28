@@ -49,14 +49,16 @@ export default function VendorActionsPage({ params }: { params: { id: string } }
         </Group>
       </Group>
 
-      <Tabs value={"actions"} radius={"md"} mb={"md"}>
-        <Tabs.List>
-          <Tabs.Tab value="overview" component={Link as any} href={`/employee/crm/vendor/${vendor.id}` as any}>Overview</Tabs.Tab>
-          <Tabs.Tab value="notes" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/notes` as any}>Notes</Tabs.Tab>
-          <Tabs.Tab value="contacts" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/contacts` as any}>Contacts</Tabs.Tab>
-          <Tabs.Tab value="actions" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/actions` as any}>Actions</Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+      <RouteTabs
+        value={"actions"}
+        mb="md"
+        tabs={[
+          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/${vendor.id}` },
+          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/${vendor.id}/notes` },
+          { value: 'contacts', label: 'Contacts', href: `/employee/crm/vendor/${vendor.id}/contacts` },
+          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/${vendor.id}/actions` },
+        ]}
+      />
 
       {vendor.isArchived && (
         <Alert color="gray" variant="light" mb="md" title="Archived">
@@ -163,3 +165,4 @@ export default function VendorActionsPage({ params }: { params: { id: string } }
     </EmployerAuthGate>
   );
 }
+import { RouteTabs } from '@/components/RouteTabs';

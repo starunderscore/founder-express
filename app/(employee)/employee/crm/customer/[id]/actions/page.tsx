@@ -53,13 +53,15 @@ export default function CustomerActionsPage({ params }: { params: { id: string }
         </Group>
       </Group>
 
-      <Tabs value={"actions"} radius="md" mb="md">
-        <Tabs.List>
-          <Tabs.Tab value="overview" component={Link as any} href={`/employee/crm/customer/${customer.id}` as any}>Overview</Tabs.Tab>
-          <Tabs.Tab value="notes" component={Link as any} href={`/employee/crm/customer/${customer.id}/notes` as any}>Notes</Tabs.Tab>
-          <Tabs.Tab value="actions" component={Link as any} href={`/employee/crm/customer/${customer.id}/actions` as any}>Actions</Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+      <RouteTabs
+        value={"actions"}
+        mb="md"
+        tabs={[
+          { value: 'overview', label: 'Overview', href: `/employee/crm/customer/${customer.id}` },
+          { value: 'notes', label: 'Notes', href: `/employee/crm/customer/${customer.id}/notes` },
+          { value: 'actions', label: 'Actions', href: `/employee/crm/customer/${customer.id}/actions` },
+        ]}
+      />
 
       {customer.isBlocked && (
         <Alert color="red" variant="light" mb="md" title="This customer is blocked">
@@ -163,3 +165,4 @@ export default function CustomerActionsPage({ params }: { params: { id: string }
     </EmployerAuthGate>
   );
 }
+import { RouteTabs } from '@/components/RouteTabs';

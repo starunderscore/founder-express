@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, TextInput, Button, Badge, Tabs, Anchor, Modal } from '@mantine/core';
 import Link from 'next/link';
+import { RouteTabs } from '@/components/RouteTabs';
 import { useSubscriptionsStore } from '@/state/subscriptionsStore';
 
 export default function WaitingListsPage() {
@@ -35,15 +36,17 @@ export default function WaitingListsPage() {
           <Text c="dimmed">Manage waiting lists and newsletter subscribers.</Text>
         </div>
 
-        <Tabs value={"waiting"}>
-          <Tabs.List>
-            <Tabs.Tab value="newsletters" component={Link as any} href={"/employee/email-subscriptions/newsletters" as any}>Newsletters</Tabs.Tab>
-            <Tabs.Tab value="waiting" component={Link as any} href={"/employee/email-subscriptions/waiting" as any}>Waiting Lists</Tabs.Tab>
-            <Tabs.Tab value="archive" component={Link as any} href={"/employee/email-subscriptions/archive" as any}>Archive</Tabs.Tab>
-            <Tabs.Tab value="removed" component={Link as any} href={"/employee/email-subscriptions/removed" as any}>Removed</Tabs.Tab>
-          </Tabs.List>
+        <RouteTabs
+          value={"waiting"}
+          tabs={[
+            { value: 'newsletters', label: 'Newsletters', href: '/employee/email-subscriptions/newsletters' },
+            { value: 'waiting', label: 'Waiting Lists', href: '/employee/email-subscriptions/waiting' },
+            { value: 'archive', label: 'Archive', href: '/employee/email-subscriptions/archive' },
+            { value: 'removed', label: 'Removed', href: '/employee/email-subscriptions/removed' },
+          ]}
+        />
 
-          <Tabs.Panel value="waiting" pt="md">
+        <div style={{ paddingTop: 'var(--mantine-spacing-md)' }}>
             <Group justify="flex-end" mb="md">
               <Button onClick={() => { setCreateOpen(true); setWError(null); }}>Create waiting list</Button>
             </Group>
@@ -86,8 +89,7 @@ export default function WaitingListsPage() {
                 <Text c="dimmed">No waiting lists yet</Text>
               </Card>
             )}
-          </Tabs.Panel>
-        </Tabs>
+          </div>
       </Stack>
     </EmployerAuthGate>
   );

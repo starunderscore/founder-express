@@ -3,6 +3,7 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useSubscriptionsStore } from '@/state/subscriptionsStore';
 import { Title, Text, Card, Stack, Group, Button, Table, Badge, Tabs, Anchor } from '@mantine/core';
 import Link from 'next/link';
+import { RouteTabs } from '@/components/RouteTabs';
 
 export default function EmployerEmailNewslettersPage() {
   const newsletters = useSubscriptionsStore((s) => s.newsletters);
@@ -40,14 +41,15 @@ export default function EmployerEmailNewslettersPage() {
           <Text c="dimmed">Manage waiting lists and newsletter subscribers.</Text>
         </div>
 
-        <Tabs value={"newsletters"}>
-          <Tabs.List>
-            <Tabs.Tab value="newsletters" component={Link as any} href={"/employee/email-subscriptions/newsletters" as any}>Newsletters</Tabs.Tab>
-            <Tabs.Tab value="waiting" component={Link as any} href={"/employee/email-subscriptions/waiting" as any}>Waiting Lists</Tabs.Tab>
-            <Tabs.Tab value="archive" component={Link as any} href={"/employee/email-subscriptions/archive" as any}>Archive</Tabs.Tab>
-            <Tabs.Tab value="removed" component={Link as any} href={"/employee/email-subscriptions/removed" as any}>Removed</Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
+        <RouteTabs
+          value={"newsletters"}
+          tabs={[
+            { value: 'newsletters', label: 'Newsletters', href: '/employee/email-subscriptions/newsletters' },
+            { value: 'waiting', label: 'Waiting Lists', href: '/employee/email-subscriptions/waiting' },
+            { value: 'archive', label: 'Archive', href: '/employee/email-subscriptions/archive' },
+            { value: 'removed', label: 'Removed', href: '/employee/email-subscriptions/removed' },
+          ]}
+        />
 
         <Card withBorder>
           <Group justify="space-between" mb="sm">

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
 import { collection, onSnapshot, doc, updateDoc, query } from 'firebase/firestore';
+import { RouteTabs } from '@/components/RouteTabs';
 
 export default function CRMArchivePage() {
   const toast = useToast();
@@ -48,14 +49,16 @@ export default function CRMArchivePage() {
       <Title order={2} mb="sm">CRM</Title>
       <Text c="dimmed" mb="md">New users automatically appear in CRM (Customer Relationship Management).</Text>
 
-      <Tabs value={"archive"} radius="md" mb="md">
-        <Tabs.List>
-          <Tabs.Tab value="main"><Link href="/employee/crm">Database</Link></Tabs.Tab>
-          <Tabs.Tab value="merge"><Link href="/employee/crm/merge">Merge</Link></Tabs.Tab>
-          <Tabs.Tab value="archive"><Link href="/employee/crm/archive">Archive</Link></Tabs.Tab>
-          <Tabs.Tab value="removed"><Link href="/employee/crm/removed">Removed</Link></Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+      <RouteTabs
+        value={"archive"}
+        mb="md"
+        tabs={[
+          { value: 'main', label: 'Database', href: '/employee/crm' },
+          { value: 'merge', label: 'Merge', href: '/employee/crm/merge' },
+          { value: 'archive', label: 'Archive', href: '/employee/crm/archive' },
+          { value: 'removed', label: 'Removed', href: '/employee/crm/removed' },
+        ]}
+      />
 
       <Card withBorder padding={0}>
         <div style={{ padding: '12px 16px' }}>

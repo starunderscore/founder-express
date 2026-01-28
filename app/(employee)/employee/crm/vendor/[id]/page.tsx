@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Title, Text, Group, Badge, Button, Stack, Divider, Modal, TextInput, Select, TagsInput, Textarea, Radio, Tabs, ActionIcon, Avatar, Menu, CopyButton, Anchor, Table, Switch, Alert } from '@mantine/core';
 import Link from 'next/link';
+import { RouteTabs } from '@/components/RouteTabs';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
@@ -328,15 +329,17 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         </Group>
       </Group>
 
-      <Tabs value={activeTab} onChange={setActiveTab} radius="md">
-        <Tabs.List>
-          <Tabs.Tab value="overview">Overview</Tabs.Tab>
-          <Tabs.Tab value="notes" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/notes` as any}>Notes</Tabs.Tab>
-          <Tabs.Tab value="contacts" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/contacts` as any}>Contacts</Tabs.Tab>
-          <Tabs.Tab value="actions" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/actions` as any}>Actions</Tabs.Tab>
-        </Tabs.List>
+      <RouteTabs
+        value={"overview"}
+        tabs={[
+          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/${vendor.id}` },
+          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/${vendor.id}/notes` },
+          { value: 'contacts', label: 'Contacts', href: `/employee/crm/vendor/${vendor.id}/contacts` },
+          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/${vendor.id}/actions` },
+        ]}
+      />
 
-        <Tabs.Panel value="overview" pt="md">
+      <div style={{ paddingTop: 'var(--mantine-spacing-md)' }}>
           {vendor?.deletedAt && (
             <Alert color="red" variant="light" mb="md" title="Removed">
               <Group justify="space-between" align="center">
@@ -499,9 +502,9 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
             </Stack>
             </div>
           </Card>
-        </Tabs.Panel>
+      </div>
 
-        <Tabs.Panel value="notes" pt="md">
+        
           <Card withBorder radius="md" padding={0}>
             <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Title order={4} m={0} style={{ color: 'inherit' }}>Notes</Title>
@@ -549,9 +552,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
             )}
             </div>
           </Card>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="contacts" pt="md">
+        
           <Card withBorder radius="md" padding={0}>
             <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Title order={4} m={0} style={{ color: 'inherit' }}>Contacts</Title>
@@ -637,9 +638,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
               );
             })()}
           </Card>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="actions" pt="md">
+        
           <Card withBorder radius="md" mb="md">
             <Stack>
               <Title order={4}>Account controls</Title>
@@ -683,8 +682,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
               </Group>
             </Stack>
           </Card>
-        </Tabs.Panel>
-      </Tabs>
+        </div>
 
       {/* Edit details modal */}
       <Modal
@@ -730,7 +728,6 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                 />
               </Group>
             </Tabs.Panel>
-            
           </Tabs>
           <div
             style={{

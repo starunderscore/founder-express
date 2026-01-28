@@ -126,13 +126,15 @@ export default function CustomerNotesPage({ params }: { params: { id: string } }
         </Group>
       </Group>
 
-      <Tabs value={"notes"} radius="md" mb="md">
-        <Tabs.List>
-          <Tabs.Tab value="overview" component={Link as any} href={`/employee/crm/customer/${customer.id}` as any}>Overview</Tabs.Tab>
-          <Tabs.Tab value="notes" component={Link as any} href={`/employee/crm/customer/${customer.id}/notes` as any}>Notes</Tabs.Tab>
-          <Tabs.Tab value="actions" component={Link as any} href={`/employee/crm/customer/${customer.id}/actions` as any}>Actions</Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+      <RouteTabs
+        value={"notes"}
+        mb="md"
+        tabs={[
+          { value: 'overview', label: 'Overview', href: `/employee/crm/customer/${customer.id}` },
+          { value: 'notes', label: 'Notes', href: `/employee/crm/customer/${customer.id}/notes` },
+          { value: 'actions', label: 'Actions', href: `/employee/crm/customer/${customer.id}/actions` },
+        ]}
+      />
 
       <Card withBorder radius="md" padding={0}>
         <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -225,3 +227,4 @@ const deriveTitleFromMarkdown = (body: string): string => {
   const cleaned = firstNonEmpty.replace(/^#+\s*/, '').trim();
   return cleaned.slice(0, 60) || 'Note';
 };
+import { RouteTabs } from '@/components/RouteTabs';

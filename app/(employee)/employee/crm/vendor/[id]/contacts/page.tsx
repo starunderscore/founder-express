@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Title, Text, Card, Stack, Group, Button, Tabs, TextInput, Table, Badge, Anchor, Menu, ActionIcon, Modal, Center, Loader } from '@mantine/core';
+import { RouteTabs } from '@/components/RouteTabs';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 
@@ -94,14 +95,16 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
         </Group>
       </Group>
 
-      <Tabs value={"contacts"} radius={"md"} mb={"md"}>
-        <Tabs.List>
-          <Tabs.Tab value="overview" component={Link as any} href={`/employee/crm/vendor/${vendor.id}` as any}>Overview</Tabs.Tab>
-          <Tabs.Tab value="notes" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/notes` as any}>Notes</Tabs.Tab>
-          <Tabs.Tab value="contacts" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/contacts` as any}>Contacts</Tabs.Tab>
-          <Tabs.Tab value="actions" component={Link as any} href={`/employee/crm/vendor/${vendor.id}/actions` as any}>Actions</Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+      <RouteTabs
+        value={"contacts"}
+        mb="md"
+        tabs={[
+          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/${vendor.id}` },
+          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/${vendor.id}/notes` },
+          { value: 'contacts', label: 'Contacts', href: `/employee/crm/vendor/${vendor.id}/contacts` },
+          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/${vendor.id}/actions` },
+        ]}
+      />
 
       <Card withBorder radius="md" padding={0}>
         <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
