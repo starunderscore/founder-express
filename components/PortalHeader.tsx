@@ -13,8 +13,8 @@ export function PortalHeader() {
       style={{ borderBottom: '1px solid var(--mantine-color-gray-3)', background: 'var(--mantine-color-body)' }}
     >
       <Link href="/portal" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--mantine-color-text)' }}>
-        <Image src="/icon/web/manifest-192.png" alt="Pattern Typing" width={20} height={20} />
-        <Text fw={700} c="inherit">Pattern Typing</Text>
+        <Image src="/icon/web/manifest-192.png" alt="Founder Express" width={20} height={20} />
+        <Text fw={700} c="inherit">Founder Express</Text>
       </Link>
       <div />
     </Group>

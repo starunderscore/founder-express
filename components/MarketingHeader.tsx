@@ -7,8 +7,8 @@ export function MarketingHeader() {
     <nav style={nav}>
       <div style={navInner}>
         <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--mantine-color-text)' }}>
-          <Image src="/icon/web/manifest-192.png" alt="Pattern Typing" width={24} height={24} />
-          <span style={{ fontWeight: 700 }}>Pattern Typing</span>
+          <Image src="/icon/web/manifest-192.png" alt="Founder Express" width={24} height={24} />
+          <span style={{ fontWeight: 700 }}>Founder Express</span>
         </Link>
         <Button component={Link} href="/account/signin" size="xs" variant="filled">
           Explore
@@ -30,7 +30,7 @@ const navInner: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   height: '100%',
-  maxWidth: 1200,
+  maxWidth: 960,
   margin: '0 auto',
   width: '100%',
   padding: '0 1rem',
