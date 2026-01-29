@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signUpWithEmail, useAuth } from '@/lib/firebase/auth';
-import { Title, Text, Stack, TextInput, PasswordInput, Button, Anchor } from '@mantine/core';
+import { Title, Text, Stack, TextInput, PasswordInput, Button, Anchor, Group, Badge, ActionIcon } from '@mantine/core';
 import { motion } from 'framer-motion';
 
 export default function SignUpPage() {
@@ -34,6 +34,7 @@ export default function SignUpPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      {/* Header moved to Account layout */}
       <Title order={2}>Create account</Title>
       <Text c="dimmed" mb="md">Start practicing now</Text>
       <form onSubmit={onSubmit}>

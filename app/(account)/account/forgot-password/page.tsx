@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { sendPasswordReset, useAuth } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Title, Text, Stack, TextInput, Button, Anchor, Alert } from '@mantine/core';
+import { Title, Text, Stack, TextInput, Button, Anchor, Alert, Group, Badge, ActionIcon } from '@mantine/core';
 import { motion } from 'framer-motion';
 
 export default function ForgotPasswordPage() {
@@ -30,6 +30,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      {/* Header moved to Account layout */}
       <Title order={2}>Reset password</Title>
       {!sent ? (
         <>
