@@ -74,12 +74,12 @@ export default function CRMArchivePage() {
           </Group>
         </div>
         <Table verticalSpacing="sm" highlightOnHover>
-          <Table.Thead style={{ background: 'var(--mantine-color-dark-6)' }}>
+          <Table.Thead className="crm-thead">
             <Table.Tr>
-              <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Name</Table.Th>
-              <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Email</Table.Th>
-              <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Vendor</Table.Th>
-              <Table.Th style={{ color: 'var(--mantine-color-white)', width: 280, minWidth: 280 }}></Table.Th>
+              <Table.Th>Name</Table.Th>
+              <Table.Th>Email</Table.Th>
+              <Table.Th>Vendor</Table.Th>
+              <Table.Th style={{ width: 280, minWidth: 280 }}></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -171,6 +171,11 @@ export default function CRMArchivePage() {
           </Group>
         </Stack>
       </Modal>
+      <style jsx>{`
+        .crm-thead { background: var(--mantine-color-gray-2); }
+        [data-mantine-color-scheme="dark"] .crm-thead { background: var(--mantine-color-dark-6); }
+        [data-mantine-color-scheme="dark"] .crm-thead th { color: var(--mantine-color-white); }
+      `}</style>
     </EmployerAuthGate>
   );
 }

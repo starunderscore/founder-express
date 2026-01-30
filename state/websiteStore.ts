@@ -14,7 +14,14 @@ type WebsiteState = {
   blogs: BlogPost[];
   addBlog: (p: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateBlog: (id: string, patch: Partial<BlogPost>) => void;
+  // Soft remove: mark as deleted; restore available in Removed tab
   removeBlog: (id: string) => void;
+  // Restore a previously removed blog
+  restoreBlog: (id: string) => void;
+  // Permanently delete a blog (from Removed tab)
+  hardDeleteBlog: (id: string) => void;
+  // Archive/unarchive a blog (soft archive separate from remove)
+  setBlogArchived: (id: string, archived: boolean) => void;
   reset: () => void;
 };
 
@@ -32,7 +39,10 @@ export const useWebsiteStore = create<WebsiteState>()(
       updateNewsbar: (patch) => set((s) => ({ newsbar: { ...s.newsbar, ...patch } })),
       addBlog: (p) => set((s) => ({ blogs: [{ id: `blog-${Date.now()}`, ...p, createdAt: Date.now(), updatedAt: Date.now() }, ...s.blogs] })),
       updateBlog: (id, patch) => set((s) => ({ blogs: s.blogs.map((b) => (b.id === id ? { ...b, ...patch, updatedAt: Date.now() } : b)) })),
-      removeBlog: (id) => set((s) => ({ blogs: s.blogs.filter((b) => b.id !== id) })),
+      removeBlog: (id) => set((s) => ({ blogs: s.blogs.map((b) => (b.id === id ? { ...b, deletedAt: Date.now(), updatedAt: Date.now() } : b)) })),
+      restoreBlog: (id) => set((s) => ({ blogs: s.blogs.map((b) => (b.id === id ? { ...b, deletedAt: undefined, updatedAt: Date.now() } : b)) })),
+      hardDeleteBlog: (id) => set((s) => ({ blogs: s.blogs.filter((b) => b.id !== id) })),
+      setBlogArchived: (id, archived) => set((s) => ({ blogs: s.blogs.map((b) => (b.id === id ? { ...b, isArchived: archived, updatedAt: Date.now() } : b)) })),
       reset: () => set(() => ({ newsbar: defaultNewsbar, blogs: [] })),
     }),
     {
@@ -61,4 +71,8 @@ export type BlogPost = {
   tags?: string[];
   createdAt: number;
   updatedAt: number;
+  // Soft delete marker; present when in Removed tab
+  deletedAt?: number;
+  // Soft archive flag; present when in Archive tab
+  isArchived?: boolean;
 };

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmail, signInWithGoogle, useAuth } from '@/lib/firebase/auth';
-import { Title, Text, Stack, TextInput, PasswordInput, Button, Group, Anchor, Divider, Badge, ActionIcon } from '@mantine/core';
+import { Title, Text, Stack, TextInput, PasswordInput, Button, Group, Anchor, Divider } from '@mantine/core';
 import { motion } from 'framer-motion';
 
 export default function SignInPage() {
@@ -17,6 +17,8 @@ export default function SignInPage() {
   useEffect(() => {
     if (user) router.replace('/portal');
   }, [user, router]);
+
+  const googleEnabled = !!process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,24 +53,28 @@ export default function SignInPage() {
           New here? <Anchor component={Link} href="/account/signup">Create an account</Anchor>
         </Text>
       </Group>
-      <Divider my="md" label="or" labelPosition="center" />
-      <Button
-        variant="default"
-        fullWidth
-        disabled={loading}
-        onClick={async () => {
-          setLoading(true);
-          try {
-            await signInWithGoogle();
-            router.replace('/portal');
-          } finally {
-            // Ensure re-enable happens last after the async flow
-            setLoading(false);
-          }
-        }}
-      >
-        Continue with Google
-      </Button>
+      {googleEnabled && (
+        <>
+          <Divider my="md" label="or" labelPosition="center" />
+          <Button
+            variant="default"
+            fullWidth
+            disabled={loading}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                await signInWithGoogle();
+                router.replace('/portal');
+              } finally {
+                // Ensure re-enable happens last after the async flow
+                setLoading(false);
+              }
+            }}
+          >
+            Continue with Google
+          </Button>
+        </>
+      )}
     </motion.div>
   );
 }

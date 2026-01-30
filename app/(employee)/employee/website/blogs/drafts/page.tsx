@@ -1,6 +1,6 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, Table, Modal, TextInput, Textarea, Switch, ActionIcon, Menu } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Table, TextInput, Textarea, Switch, Badge, ActionIcon, Menu, Modal } from '@mantine/core';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useWebsiteStore } from '@/state/websiteStore';
 import { useMemo, useState } from 'react';
@@ -15,49 +15,34 @@ function slugify(input: string): string {
     .replace(/-+/g, '-');
 }
 
-export default function WebsiteBlogsPage() {
+export default function WebsiteBlogsDraftsPage() {
   const router = useRouter();
   const blogs = useWebsiteStore((s) => s.blogs);
-  const addBlog = useWebsiteStore((s) => s.addBlog);
   const updateBlog = useWebsiteStore((s) => s.updateBlog);
   const removeBlog = useWebsiteStore((s) => s.removeBlog);
   const setBlogArchived = useWebsiteStore((s) => s.setBlogArchived);
 
+  const activeDrafts = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived && !b.published), [blogs]);
+  const total = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived).length, [blogs]);
+  const publishedCount = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived && b.published).length, [blogs]);
+  const draftsCount = total - publishedCount;
+
+  // Inline editor modal (optional quick edit)
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<'create' | 'edit'>('create');
   const [editId, setEditId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [excerpt, setExcerpt] = useState('');
   const [content, setContent] = useState('');
-  const [published, setPublished] = useState(false);
-
-  const activeBlogs = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived), [blogs]);
-  const total = activeBlogs.length;
-  const publishedCount = useMemo(() => activeBlogs.filter((b) => b.published).length, [activeBlogs]);
-  const draftsCount = total - publishedCount;
-
-  const openCreate = () => {
-    setMode('create');
-    setEditId('');
-    setTitle('');
-    setSlug('');
-    setExcerpt('');
-    setContent('');
-    setPublished(false);
-    setOpen(true);
-  };
 
   const openEdit = (id: string) => {
     const b = blogs.find((x) => x.id === id);
     if (!b) return;
-    setMode('edit');
     setEditId(id);
     setTitle(b.title);
     setSlug(b.slug);
     setExcerpt(b.excerpt || '');
     setContent(b.content);
-    setPublished(b.published);
     setOpen(true);
   };
 
@@ -66,11 +51,7 @@ export default function WebsiteBlogsPage() {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
     const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    if (mode === 'create') {
-      addBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published });
-    } else {
-      updateBlog(editId, { title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published });
-    }
+    updateBlog(editId, { title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content });
     setOpen(false);
   };
 
@@ -89,10 +70,16 @@ export default function WebsiteBlogsPage() {
               <Text c="dimmed">Create and manage blog posts displayed on your site.</Text>
             </div>
           </Group>
+          <Group gap={8}>
+            <Badge variant="light" color="blue">Total: {total}</Badge>
+            <Badge variant="light" color="green">Published: {publishedCount}</Badge>
+            <Badge variant="light" color="gray">Drafts: {draftsCount}</Badge>
+            <Button onClick={() => router.push('/employee/website/blogs/new')}>New post</Button>
+          </Group>
         </Group>
 
         <RouteTabs
-          value={'all'}
+          value={'drafts'}
           mb="md"
           tabs={[
             { value: 'all', label: 'Blogs', href: '/employee/website/blogs' },
@@ -101,10 +88,6 @@ export default function WebsiteBlogsPage() {
             { value: 'removed', label: 'Removed', href: '/employee/website/blogs/removed' },
           ]}
         />
-
-        <Group justify="flex-end" mb="sm">
-          <Button onClick={() => router.push('/employee/website/blogs/new')}>New post</Button>
-        </Group>
 
         <Card withBorder>
           <Table verticalSpacing="xs">
@@ -118,7 +101,7 @@ export default function WebsiteBlogsPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {activeBlogs.map((b) => (
+              {activeDrafts.map((b) => (
                 <Table.Tr key={b.id}>
                   <Table.Td>
                     <Text fw={600}>{b.title}</Text>
@@ -143,28 +126,25 @@ export default function WebsiteBlogsPage() {
                   </Table.Td>
                 </Table.Tr>
               ))}
-              {activeBlogs.length === 0 && (
+              {activeDrafts.length === 0 && (
                 <Table.Tr>
-                  <Table.Td colSpan={5}><Text c="dimmed">No posts yet</Text></Table.Td>
+                  <Table.Td colSpan={5}><Text c="dimmed">No drafts</Text></Table.Td>
                 </Table.Tr>
               )}
             </Table.Tbody>
           </Table>
         </Card>
 
-        <Modal opened={open} onClose={() => setOpen(false)} title={mode === 'create' ? 'New post' : 'Edit post'} size="lg" centered>
+        <Modal opened={open} onClose={() => setOpen(false)} title={'Edit draft'} size="lg" centered>
           <form onSubmit={onSubmit}>
             <Stack>
               <TextInput label="Title" placeholder="Post title" value={title} onChange={(e) => { setTitle(e.currentTarget.value); if (!slug) setSlug(slugify(e.currentTarget.value)); }} required />
               <TextInput label="Slug" description="URL segment" leftSection={<span style={{ color: 'var(--mantine-color-dimmed)' }}>/</span>} value={slug} onChange={(e) => setSlug(slugify(e.currentTarget.value))} />
               <TextInput label="Excerpt" placeholder="Short summary (optional)" value={excerpt} onChange={(e) => setExcerpt(e.currentTarget.value)} />
               <Textarea label="Content" minRows={8} placeholder="Write your post content..." value={content} onChange={(e) => setContent(e.currentTarget.value)} />
-              <Group justify="space-between" align="center">
-                <Switch label="Published" checked={published} onChange={(e) => setPublished(e.currentTarget.checked)} />
-                <Group>
-                  <Button variant="default" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-                  <Button type="submit">{mode === 'create' ? 'Create' : 'Save'}</Button>
-                </Group>
+              <Group justify="flex-end">
+                <Button variant="default" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button type="submit">Save</Button>
               </Group>
             </Stack>
           </form>

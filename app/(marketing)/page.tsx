@@ -1,23 +1,36 @@
 import { Title, Text, Card, Group, Badge, Button, Stack } from '@mantine/core';
 import Link from 'next/link';
 import pkg from '../../package.json';
+import { Newsbar } from '@/components/Newsbar';
 
 export default function LandingPage() {
   return (
-    <main style={{ padding: '3rem 1.5rem' }}>
+    <main style={{ padding: '0 1.5rem 3rem 1.5rem' }}>
+      <Newsbar />
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         {/* Branding hero */}
-        <Card withBorder radius="md" padding="xl" className="hero-block">
-          <Stack gap="xs" align="start">
+        <Card withBorder radius="md" padding="xl" className="hero-block" style={{ marginTop: 24, position: 'relative' }}>
+          <div className="hero-stars" aria-hidden>
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+          <Stack gap="xs" align="start" style={{ position: 'relative', zIndex: 1 }}>
             <Group gap={6}>
               <Badge variant="light" color="indigo">Founder Express</Badge>
               <Badge variant="light" color="gray">v{pkg.version}</Badge>
             </Group>
-            <Title order={1} style={{ lineHeight: 1.05 }}>Boilerplate to build startups — fast</Title>
-            <Text c="dimmed">Ship a usable stack day one: auth, roles, email, CRM, and an Employee Portal that actually helps.</Text>
+            <Title order={1} c="white" style={{ lineHeight: 1.05 }}>Boilerplate to build startups — fast</Title>
+            <Text c="white" style={{ opacity: 0.9 }}>Ship a usable stack day one: auth, roles, email, CRM, and an Employee Portal that actually helps.</Text>
             <Group gap="sm" mt="xs">
               <Button component={Link as any} href="/account/signup" color="indigo">Client sign up</Button>
               <Button component={Link as any} href="/employee/signin" variant="light">Employee sign in</Button>
+              <Button component={Link as any} href="/blogs" variant="default">Read our blog</Button>
             </Group>
           </Stack>
         </Card>
@@ -160,18 +173,71 @@ export default function LandingPage() {
         {/* dark mode styles */}
         <style>
           {`
-          .hero-block{background:linear-gradient(135deg, var(--mantine-color-gray-0) 0%, #ffffff 60%);} 
+          /* Fancy hero: bold gradient + shimmer on hover */
+          .hero-block{
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #eef2ff 0%, #e9d5ff 45%, #dbeafe 100%);
+            border:1px solid var(--mantine-color-gray-3) !important;
+            transition: transform .18s ease, box-shadow .18s ease;
+          }
+          .hero-block:hover{ transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.12); }
+          .hero-block::after{
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -30%;
+            width: 40%;
+            height: 200%;
+            background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.45) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-20deg);
+            opacity: 0;
+            pointer-events: none;
+          }
+          .hero-block:hover::after{ animation: hero-shimmer 1s ease forwards; }
+          @keyframes hero-shimmer {
+            0% { left: -30%; opacity: .0; }
+            10% { opacity: .6; }
+            100% { left: 130%; opacity: 0; }
+          }
           @media (prefers-color-scheme: dark){
-            .hero-block{background:linear-gradient(135deg, var(--mantine-color-dark-7) 0%, var(--mantine-color-dark-6) 60%);} 
+            /* Keep hero vibrant but readable in dark mode */
+            .hero-block{
+              background: linear-gradient(135deg, #1f2937 0%, #312e81 50%, #0f172a 100%);
+              border-color: var(--mantine-color-gray-3) !important;
+            }
+            .hero-block::after{ background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.35) 50%, rgba(255,255,255,0) 100%); }
+          }
+          /* Star shooters */
+          .hero-stars{ position:absolute; inset:0; pointer-events:none; z-index:0; }
+          .hero-stars span{
+            position:absolute; left:-24px; width:6px; height:6px; border-radius:6px;
+            background: radial-gradient(circle at 30% 30%, #fff, #ffd166 60%, rgba(255,255,255,0) 70%);
+            opacity:0; transform: translateX(0) translateY(0) scale(0.9);
+          }
+          .hero-block:hover .hero-stars span{ animation: star-shoot 900ms ease-out forwards; }
+          .hero-stars span:nth-child(1){ top:10%; animation-delay: 0ms; }
+          .hero-stars span:nth-child(2){ top:25%; animation-delay: 60ms; }
+          .hero-stars span:nth-child(3){ top:40%; animation-delay: 120ms; }
+          .hero-stars span:nth-child(4){ top:55%; animation-delay: 180ms; }
+          .hero-stars span:nth-child(5){ top:70%; animation-delay: 240ms; }
+          .hero-stars span:nth-child(6){ top:20%; animation-delay: 300ms; }
+          .hero-stars span:nth-child(7){ top:50%; animation-delay: 360ms; }
+          .hero-stars span:nth-child(8){ top:80%; animation-delay: 420ms; }
+          @keyframes star-shoot{
+            0%{ opacity:0; transform: translateX(0) scale(0.8); }
+            10%{ opacity:.9; }
+            100%{ opacity:0; transform: translateX(1100px) scale(1.1); }
           }
           .portal-section{--block-border: var(--mantine-color-gray-3); background: var(--mantine-color-gray-0);} 
           @media (prefers-color-scheme: dark){
-            .portal-section{--block-border: var(--mantine-color-dark-4); background: var(--mantine-color-dark-7);} 
+            /* Keep marketing cards light even in dark mode for contrast and unify outlines */
+            .portal-section{--block-border: var(--mantine-color-gray-3); background: var(--mantine-color-gray-0);} 
           }
           .table-block{--block-border: var(--mantine-color-gray-3); background: var(--mantine-color-gray-0); border:1px solid var(--block-border); border-radius:8px; padding:8px;}
           .table-block th{border-bottom:1px solid var(--block-border);} 
           @media (prefers-color-scheme: dark){
-            .table-block{--block-border: var(--mantine-color-dark-4); background: var(--mantine-color-dark-6);} 
+            .table-block{--block-border: var(--mantine-color-gray-3); background: var(--mantine-color-gray-0);} 
           }
           `}
         </style>

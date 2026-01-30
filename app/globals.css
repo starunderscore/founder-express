@@ -39,3 +39,26 @@ button { cursor: pointer; }
 .newsletter-editor ul, .newsletter-editor ol { margin: 0.5rem 0 0.5rem 1.25rem; }
 .newsletter-editor a { color: var(--mantine-color-blue-6); text-decoration: underline; }
 .newsletter-editor:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mantine-color-blue-6) 20%, transparent); }
+
+/* Web content editor styles */
+.webcontent-editor {
+  min-height: 320px;
+  padding: 12px;
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: 8px;
+  outline: none;
+  background: var(--mantine-color-body);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.webcontent-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--mantine-color-dimmed);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.webcontent-editor p { margin: 0 0 0.5rem; }
+.webcontent-editor ul, .webcontent-editor ol { margin: 0.5rem 0 0.5rem 1.25rem; }
+.webcontent-editor a { color: var(--mantine-color-blue-6); text-decoration: underline; }
+.webcontent-editor:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mantine-color-blue-6) 20%, transparent); }

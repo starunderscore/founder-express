@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmail, signInWithGoogle, useAuth } from '@/lib/firebase/auth';
 import { Title, Text, Stack, TextInput, PasswordInput, Button, Group, Anchor, Divider, Badge, Paper, Container, useComputedColorScheme } from '@mantine/core';
 import { motion } from 'framer-motion';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 
 export default function EmployerSignInPage() {
@@ -18,22 +18,42 @@ export default function EmployerSignInPage() {
   const scheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
 
   const [showOwnerHint, setShowOwnerHint] = useState(false);
+  const googleEnabled = !!process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      let ownerExists = false;
       try {
         const ownerSnap = await getDoc(doc(db(), 'meta', 'owner'));
-        if (!cancelled) {
-          const owner = ownerSnap.exists();
-          setShowOwnerHint(!!user && !owner);
-          // If a user is signed in and an owner exists, go to dashboard
-          if (user && owner) router.replace('/employee');
-        }
-      } catch (_e) {
-        if (!cancelled) {
-          setShowOwnerHint(false);
-        }
+        ownerExists = ownerSnap.exists();
+      } catch (e) {
+        console.warn('[employee/signin] owner check failed', e);
+        ownerExists = false; // default to no owner on failure to encourage claim
+      }
+
+      let hasEmployees: boolean | null = null;
+      try {
+        const anyEmployeeSnap = await getDocs(query(collection(db(), 'employees'), limit(1)));
+        hasEmployees = anyEmployeeSnap.size > 0;
+      } catch (e) {
+        console.warn('[employee/signin] employees list check failed (likely rules)', e);
+        hasEmployees = null; // unknown due to permission; treat as unknown
+      }
+
+      if (cancelled) return;
+      console.log('[employee/signin] checks', { ownerExists, hasEmployees, isAuthed: !!user });
+
+      // Show Help when there is no owner. If employees count is unknown due to rules,
+      // we still show Help to guide the first-run claim path.
+      const hint = !ownerExists && (hasEmployees === false || hasEmployees === null);
+      console.log('[employee/signin] showOwnerHint =>', hint);
+      setShowOwnerHint(hint);
+
+      // If a user is signed in and an owner exists, go to dashboard
+      if (user && ownerExists) {
+        console.log('[employee/signin] owner exists and user is signed in; redirecting to /employee');
+        router.replace('/employee');
       }
     })();
     return () => { cancelled = true; };
@@ -57,7 +77,7 @@ export default function EmployerSignInPage() {
   const paperBorder = scheme === 'dark' ? '1px solid rgba(255,255,255,0.15)' : '1px solid var(--mantine-color-gray-3)';
 
   return (
-    <div style={{ position: 'relative', minHeight: 'calc(100vh - 56px)', paddingTop: 32 }}>
+    <div style={{ position: 'relative', minHeight: '100vh', paddingTop: 32, background: 'var(--mantine-color-body)' }}>
       <div
         aria-hidden
         style={{
@@ -93,24 +113,28 @@ export default function EmployerSignInPage() {
                 Personal account? <Anchor component={Link} href="/account/signin">Go to user login</Anchor>
               </Text>
             </Group>
-            <Divider my="md" label="or" labelPosition="center" />
-            <Button
-              variant="default"
-              fullWidth
-              disabled={loading}
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  await signInWithGoogle();
-                  // Redirect is handled by owner check effect
-                } finally {
-                  // Release enable at the very end of the async flow
-                  setLoading(false);
-                }
-              }}
-            >
-              Continue with Google
-            </Button>
+            {googleEnabled && (
+              <>
+                <Divider my="md" label="or" labelPosition="center" />
+                <Button
+                  variant="default"
+                  fullWidth
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      await signInWithGoogle();
+                      // Redirect is handled by owner check effect
+                    } finally {
+                      // Release enable at the very end of the async flow
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  Continue with Google
+                </Button>
+              </>
+            )}
             {showOwnerHint && (
               <Group justify="flex-end" mt="md">
                 <Button component={Link as any} href="/employee/first-owner" variant="subtle" size="xs">Help</Button>

@@ -1,26 +1,25 @@
 "use client";
-import { useState, useMemo, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
 import LinkExt from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
-import { Button, Group, Divider, Switch, Tooltip, Select, ActionIcon } from '@mantine/core';
+import { Button, Group, Divider, Tooltip, Select, ActionIcon, Switch } from '@mantine/core';
 import { IconBold, IconItalic, IconUnderline, IconList, IconListNumbers, IconAlignLeft, IconAlignCenter, IconAlignRight, IconLink, IconClearFormatting, IconArrowBackUp, IconArrowForwardUp } from '@tabler/icons-react';
-import { listenEmailVars, type EmailVar } from '@/lib/firebase/emailSettings';
 
 type Props = {
   placeholder?: string;
   initialHTML?: string;
   onChangeHTML?: (html: string) => void;
   defaultShowLabels?: boolean;
+  // Minimum starting height in rows (approximate).
+  minRows?: number;
 };
 
-export function RichEmailEditor({ placeholder = 'Write your message…', initialHTML = '', onChangeHTML, defaultShowLabels = true }: Props) {
+export function WebContentEditor({ placeholder = 'Write your blog content…', initialHTML = '', onChangeHTML, defaultShowLabels = true, minRows = 10 }: Props) {
   const [showLabels, setShowLabels] = useState<boolean>(defaultShowLabels);
-  const [vars, setVars] = useState<EmailVar[]>([]);
-  const [selectedVar, setSelectedVar] = useState<string | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -32,13 +31,13 @@ export function RichEmailEditor({ placeholder = 'Write your message…', initial
     ],
     content: initialHTML,
     immediatelyRender: false,
-    editorProps: { attributes: { class: 'newsletter-editor' } },
+    editorProps: { attributes: { class: 'webcontent-editor' } },
     onUpdate({ editor }) {
       onChangeHTML?.(editor.getHTML());
     },
   });
 
-  // Update editor content when initialHTML changes (e.g., editing an existing template)
+  // Update editor content when initialHTML changes (e.g., editing an existing item)
   useEffect(() => {
     if (!editor) return;
     if (typeof initialHTML === 'string' && editor.getHTML() !== initialHTML) {
@@ -46,11 +45,6 @@ export function RichEmailEditor({ placeholder = 'Write your message…', initial
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, initialHTML]);
-
-  useEffect(() => {
-    const off = listenEmailVars(setVars);
-    return () => off();
-  }, []);
 
   const blockValue = useMemo(() => {
     if (!editor) return 'paragraph';
@@ -84,23 +78,6 @@ export function RichEmailEditor({ placeholder = 'Write your message…', initial
           value={blockValue}
           onChange={setBlock}
           aria-label="Text format"
-        />
-        <Select
-          size="xs"
-          placeholder="Insert variable"
-          value={selectedVar}
-          onChange={(val) => {
-            if (!val) return;
-            setSelectedVar(null);
-            const token = `{{${val}}}`;
-            editor?.chain().focus().insertContent(token).run();
-          }}
-          data={[
-            { group: 'Built-in', items: [{ value: 'USERNAME', label: 'USERNAME' }] },
-            { group: 'Email variables', items: vars.map((v) => ({ value: v.key, label: v.key })) },
-          ] as any}
-          aria-label="Insert variable"
-          comboboxProps={{ withinPortal: true } as any}
         />
         {showLabels ? (
           <Button size="xs" variant={editor?.isActive('bold') ? 'filled' : 'light'} leftSection={<IconBold size={14} />} onClick={() => editor?.chain().focus().toggleBold().run()}>Bold</Button>
@@ -171,9 +148,9 @@ export function RichEmailEditor({ placeholder = 'Write your message…', initial
         <Switch size="xs" checked={showLabels} onChange={(e) => setShowLabels(e.currentTarget.checked)} label="Labels" style={{ marginLeft: 'auto' }} />
       </Group>
 
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} style={{ marginTop: 8 }} />
     </>
   );
 }
 
-export default RichEmailEditor;
+export default WebContentEditor;

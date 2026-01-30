@@ -3,27 +3,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useWebsiteStore } from '@/state/websiteStore';
-import { Title, Text, Card, Stack, Group, Button, TextInput, Badge, ActionIcon, Tooltip, Divider, Popover, Modal } from '@mantine/core';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import Placeholder from '@tiptap/extension-placeholder';
-import LinkExt from '@tiptap/extension-link';
-import TextAlign from '@tiptap/extension-text-align';
-import {
-  IconBold,
-  IconItalic,
-  IconUnderline,
-  IconList,
-  IconListNumbers,
-  IconAlignLeft,
-  IconAlignCenter,
-  IconAlignRight,
-  IconLink,
-  IconClearFormatting,
-  IconArrowBackUp,
-  IconArrowForwardUp,
-} from '@tabler/icons-react';
+import { Title, Text, Card, Stack, Group, Button, TextInput, ActionIcon, Modal } from '@mantine/core';
+import { useAppSettingsStore } from '@/state/appSettingsStore';
+import { WebContentEditor } from '@/components/WebContentEditor';
 
 function slugify(input: string): string {
   return input
@@ -37,33 +19,21 @@ function slugify(input: string): string {
 export default function NewBlogPostPage() {
   const router = useRouter();
   const addBlog = useWebsiteStore((s) => s.addBlog);
+  const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [excerpt, setExcerpt] = useState('');
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      Placeholder.configure({ placeholder: 'Write your blog content...' }),
-      LinkExt.configure({ openOnClick: false }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    ],
-    content: '',
-    immediatelyRender: false,
-  });
+  const [html, setHtml] = useState('');
 
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [linkOpen, setLinkOpen] = useState(false);
-  const [linkUrl, setLinkUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const onSaveDraft = () => {
     const cleanTitle = title.trim();
     if (!cleanTitle) { setError('Title is required'); return; }
     const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    const content = editor?.getHTML() || '';
-    addBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published: false });
+    addBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: false });
     router.push('/employee/website/blogs');
   };
 
@@ -71,8 +41,7 @@ export default function NewBlogPostPage() {
     const cleanTitle = title.trim();
     if (!cleanTitle) { setError('Title is required'); return; }
     const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    const content = editor?.getHTML() || '';
-    addBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published: true });
+    addBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: true });
     router.push('/employee/website/blogs');
   };
 
@@ -90,7 +59,6 @@ export default function NewBlogPostPage() {
               <Title order={2}>New blog post</Title>
               <Group gap={8} mt={4}>
                 <Text c="dimmed">Write and publish a blog post</Text>
-                <Badge variant="light">Draft until published</Badge>
               </Group>
             </div>
           </Group>
@@ -107,58 +75,67 @@ export default function NewBlogPostPage() {
             <TextInput label="Slug" description="URL segment" leftSection={<span style={{ color: 'var(--mantine-color-dimmed)' }}>/</span>} value={slug} onChange={(e) => setSlug(slugify(e.currentTarget.value))} />
             <TextInput label="Excerpt" placeholder="Short summary (optional)" value={excerpt} onChange={(e) => setExcerpt(e.currentTarget.value)} />
 
-            <Card withBorder>
-              <Stack gap={8}>
-                <Group justify="space-between" align="center" wrap="wrap">
-                  <Group gap={4} wrap="nowrap">
-                    <Tooltip label="Bold"><ActionIcon variant={editor?.isActive('bold') ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); editor?.chain().focus().toggleBold().run(); }}><IconBold size={16} /></ActionIcon></Tooltip>
-                    <Tooltip label="Italic"><ActionIcon variant={editor?.isActive('italic') ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); editor?.chain().focus().toggleItalic().run(); }}><IconItalic size={16} /></ActionIcon></Tooltip>
-                    <Tooltip label="Underline"><ActionIcon variant={editor?.isActive('underline') ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); editor?.chain().focus().toggleUnderline().run(); }}><IconUnderline size={16} /></ActionIcon></Tooltip>
-                    <Divider orientation="vertical" />
-                    <Tooltip label="Bulleted list"><ActionIcon variant={editor?.isActive('bulletList') ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); editor?.chain().focus().toggleBulletList().run(); }}><IconList size={16} /></ActionIcon></Tooltip>
-                    <Tooltip label="Numbered list"><ActionIcon variant={editor?.isActive('orderedList') ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); editor?.chain().focus().toggleOrderedList().run(); }}><IconListNumbers size={16} /></ActionIcon></Tooltip>
-                    <Divider orientation="vertical" />
-                    <Tooltip label="Align left"><ActionIcon variant={editor?.isActive({ textAlign: 'left' }) ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('left').run(); }}><IconAlignLeft size={16} /></ActionIcon></Tooltip>
-                    <Tooltip label="Align center"><ActionIcon variant={editor?.isActive({ textAlign: 'center' }) ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('center').run(); }}><IconAlignCenter size={16} /></ActionIcon></Tooltip>
-                    <Tooltip label="Align right"><ActionIcon variant={editor?.isActive({ textAlign: 'right' }) ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('right').run(); }}><IconAlignRight size={16} /></ActionIcon></Tooltip>
-                    <Divider orientation="vertical" />
-                    <Popover opened={linkOpen} onChange={setLinkOpen} width={300} position="bottom-start" withArrow>
-                      <Popover.Target>
-                        <Tooltip label="Insert link"><ActionIcon variant={editor?.isActive('link') ? 'filled' : 'light'} onClick={(e) => { e.preventDefault(); setLinkOpen((o) => !o); }}><IconLink size={16} /></ActionIcon></Tooltip>
-                      </Popover.Target>
-                      <Popover.Dropdown>
-                        <Stack gap={8}>
-                          <TextInput placeholder="https://example.com" value={linkUrl} onChange={(e) => setLinkUrl(e.currentTarget.value)} />
-                          <Group justify="flex-end">
-                            <Button size="xs" variant="default" onClick={() => { setLinkOpen(false); setLinkUrl(''); }}>Cancel</Button>
-                            <Button size="xs" onClick={() => { if (!editor) return; if (linkUrl) { editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run(); } else { editor.chain().focus().unsetLink().run(); } setLinkOpen(false); setLinkUrl(''); }}>Apply</Button>
-                          </Group>
-                        </Stack>
-                      </Popover.Dropdown>
-                    </Popover>
-                    <Tooltip label="Clear formatting"><ActionIcon variant="light" color="gray" onClick={(e) => { e.preventDefault(); editor?.chain().focus().unsetAllMarks().clearNodes().run(); }}><IconClearFormatting size={16} /></ActionIcon></Tooltip>
-                    <Divider orientation="vertical" />
-                    <Tooltip label="Undo"><ActionIcon variant="light" onClick={(e) => { e.preventDefault(); editor?.chain().focus().undo().run(); }}><IconArrowBackUp size={16} /></ActionIcon></Tooltip>
-                    <Tooltip label="Redo"><ActionIcon variant="light" onClick={(e) => { e.preventDefault(); editor?.chain().focus().redo().run(); }}><IconArrowForwardUp size={16} /></ActionIcon></Tooltip>
-                  </Group>
-                </Group>
-                <div style={{ minHeight: 260, padding: 12, border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8 }}>
-                  <EditorContent editor={editor} />
-                </div>
-              </Stack>
-            </Card>
+            <Stack gap={2}>
+              <Text fw={500} size="sm">Post content</Text>
+              <Card padding={0}>
+                <WebContentEditor placeholder="Write your blog content…" onChangeHTML={setHtml} />
+              </Card>
+            </Stack>
             <Text size="sm" c="dimmed">Tip: Use headings and lists to structure your post. You can also paste formatted content.</Text>
             {error && <Text c="red" size="sm">{error}</Text>}
           </Stack>
         </Card>
 
-        <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title="Preview post" size="lg" centered>
-          <Stack>
-            <Text><Text span fw={600}>Title:</Text> {title || '(no title)'}</Text>
-            <Text size="sm" c="dimmed">URL: /{slug || slugify(title || 'post')}</Text>
-            <Card withBorder>
-              <div dangerouslySetInnerHTML={{ __html: editor?.getHTML() || '' }} />
-            </Card>
+        <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title="Website preview" size="90%" centered>
+          <Stack gap="md">
+            {/* Fake browser chrome */}
+            <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+              <div style={{
+                border: '1px solid var(--mantine-color-gray-3)',
+                background: 'var(--mantine-color-gray-0)',
+                borderRadius: 12,
+                padding: '8px 12px',
+              }}>
+                <Group gap={8} align="center">
+                  <Group gap={6} align="center" style={{ width: 64 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#ff5f56', display: 'inline-block' }} />
+                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#ffbd2e', display: 'inline-block' }} />
+                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#27c93f', display: 'inline-block' }} />
+                  </Group>
+                  <div style={{ flex: 1, background: 'var(--mantine-color-body)', border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8, padding: '6px 10px', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--mantine-color-dimmed)' }}>
+                    {(function() {
+                      let base = 'https://yourwebsite.com';
+                      try { const u = new URL(websiteUrl); base = u.origin; } catch {}
+                      const path = `/blog/${slug || slugify(title || 'post')}`;
+                      return `${base}${path}`;
+                    })()}
+                  </div>
+                  <div style={{ width: 64 }} />
+                </Group>
+              </div>
+            </div>
+
+            {/* Fake site topbar */}
+            <div style={{ width: '100%', background: 'var(--mantine-color-gray-0)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+              <div style={{ maxWidth: 1000, margin: '0 auto', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text fw={700}>Your Site</Text>
+                <Group gap={12}>
+                  <Text c="dimmed" size="sm">Home</Text>
+                  <Text c="dimmed" size="sm">Blog</Text>
+                  <Text c="dimmed" size="sm">Contact</Text>
+                </Group>
+              </div>
+            </div>
+
+            {/* Page content */}
+            <div style={{ padding: '8px 0' }}>
+              <div style={{ maxWidth: 960, margin: '0 auto' }}>
+                <Title order={1} style={{ lineHeight: 1.05 }}>{title || '(no title)'}</Title>
+                <Card withBorder mt="sm">
+                  <div dangerouslySetInnerHTML={{ __html: html || '<em>No content</em>' }} />
+                </Card>
+              </div>
+            </div>
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setPreviewOpen(false)}>Close</Button>
               <Button onClick={onPublish}>Publish</Button>

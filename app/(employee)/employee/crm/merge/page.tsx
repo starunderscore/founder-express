@@ -174,12 +174,12 @@ function MergeWorkspacePageInner() {
         </div>
         <div style={{ padding: 0 }}>
           <Table verticalSpacing="sm" highlightOnHover mt="sm">
-            <Table.Thead style={{ background: 'var(--mantine-color-dark-6)' }}>
+            <Table.Thead className="crm-thead">
               <Table.Tr>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}></Table.Th>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Name</Table.Th>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Email</Table.Th>
-                <Table.Th style={{ color: 'var(--mantine-color-white)', width: 120 }}>Type</Table.Th>
+                <Table.Th></Table.Th>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Email</Table.Th>
+                <Table.Th width={120}>Type</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -200,6 +200,11 @@ function MergeWorkspacePageInner() {
           </Table>
         </div>
       </Card>
+      <style jsx>{`
+        .crm-thead { background: var(--mantine-color-gray-2); }
+        [data-mantine-color-scheme="dark"] .crm-thead { background: var(--mantine-color-dark-6); }
+        [data-mantine-color-scheme="dark"] .crm-thead th { color: var(--mantine-color-white); }
+      `}</style>
     </EmployerAuthGate>
   ) : (
     <EmployerAuthGate>
@@ -223,12 +228,12 @@ function MergeWorkspacePageInner() {
         <div style={{ padding: '12px 16px' }}>
           <Title order={6} mb={6}>Selected</Title>
           <Table verticalSpacing="sm" highlightOnHover>
-            <Table.Thead style={{ background: 'var(--mantine-color-dark-6)' }}>
+            <Table.Thead className="crm-thead">
               <Table.Tr>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Root</Table.Th>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Name</Table.Th>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Email</Table.Th>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Type</Table.Th>
+                <Table.Th>Root</Table.Th>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Email</Table.Th>
+                <Table.Th>Type</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -248,11 +253,11 @@ function MergeWorkspacePageInner() {
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--mantine-color-gray-3)' }}>
           <Title order={6} mb={6}>Fields</Title>
           <Table withRowBorders={false} verticalSpacing="xs">
-            <Table.Thead style={{ background: 'var(--mantine-color-dark-6)' }}>
+            <Table.Thead className="crm-thead">
               <Table.Tr>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Key</Table.Th>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Root value</Table.Th>
-                <Table.Th style={{ color: 'var(--mantine-color-white)' }}>Final value</Table.Th>
+                <Table.Th>Key</Table.Th>
+                <Table.Th>Root value</Table.Th>
+                <Table.Th>Final value</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>

@@ -23,11 +23,12 @@ Managed via Firebase CLI. See docs/firebase-cli-setup.md and the canonical rules
 
 Client‑side gating (recommended)
 - On employee portal routes, gate access with this logic:
-  1) If no `meta/owner` exists and there are zero employees: the Employee sign‑in page at `/employee/signin` shows a subtle Help button in the bottom‑right. This button only appears for authenticated users and links to `/employee/first-owner`.
-  2) The First Owner page at `/employee/first-owner` requires the viewer to be signed in and:
-     - If no owner and no employees exist, shows a “Claim ownership” button that writes `meta/owner` with the viewer’s UID.
-     - If an owner already exists or any employees exist, it redirects back to `/employee/signin` (page is effectively non‑navigable afterward).
-  3) If `meta/owner` exists: allow access only if the current UID is ownerUid, or if an `employees/{uid}` document exists.
+  1) If no `meta/owner` exists: the Employee sign‑in page at `/employee/signin` shows a subtle Help button in the bottom‑right that links to `/employee/first-owner`. If the employees list cannot be read due to rules, the Help button still appears (first‑run guidance).
+  2) The First Owner page at `/employee/first-owner` lets you claim ownership in one step:
+     - If you are not signed in, enter Your name + Email + Password, click “Create account & claim”. The page creates a Firebase Auth account, sets your display name, writes `meta/owner`, and creates `employees/{uid}` with admin privileges.
+     - If you are signed in, enter Your name and click “Claim ownership”. The page writes `meta/owner` and creates/updates `employees/{uid}` accordingly.
+     - If an owner already exists, it redirects back to `/employee/signin` (page is not navigable afterward).
+  3) If `meta/owner` exists: allow employee portal access only if the current UID is `ownerUid`, or if an `employees/{uid}` document exists.
 - Owner flow: After claim, the owner lands on Employee management to add employees.
   - The claim process also creates `employees/{ownerUid}` with:
     - `name` from the claim form (fallback to the authenticated user display name)
@@ -39,12 +40,12 @@ Client‑side gating (recommended)
 - Non‑owner flow: Show “Ask your owner to add you” if no `employees/{uid}`.
 
 Example claim UI flow
-- As a normal signed‑in user (not yet an employee), visit `/employee/signin`.
-- If no owner exists and no employees are present, a small Help button appears bottom‑right; click it to go to `/employee/first-owner`.
-- Claim page asks for your name and shows a “Claim ownership” button if eligible and you are signed in.
-- Button handler: `setDoc(doc(db, 'meta', 'owner'), { ownerUid: user.uid, claimedAt: serverTimestamp() })`.
-- On success, redirect to the employee dashboard (e.g., `/employee/employees/manage`).
-- After claim, the Help button no longer appears and `/employee/first-owner` redirects back to sign‑in.
+- Visit `/employee/signin`. When no owner exists, you’ll see a Help button → click to open `/employee/first-owner`.
+- On `/employee/first-owner`:
+  - Option A: Not signed in → enter Your name, Email, Password → “Create account & claim”.
+  - Option B: Signed in → enter Your name → “Claim ownership”.
+- Internals: `setDoc(doc(db, 'meta', 'owner'), { ownerUid, claimedAt: serverTimestamp() })` then `setDoc(doc(db, 'employees', ownerUid), { name, email, isAdmin: true, roleIds: [], permissionIds: [], createdAt })`.
+- Redirects to `/employee/employees/manage` after claim.
 
 Admin flag
 - Keep `isAdmin` as an account‑level attribute (outside this portal), set via your admin console or a privileged backend.

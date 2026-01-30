@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useWebsiteStore } from '@/state/websiteStore';
-import { Title, Text, Card, Stack, Group, TextInput, Button, Alert, Switch, Badge } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, TextInput, Button, Alert, Switch, Badge, ActionIcon } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 
 export default function NewsbarSettingsPage() {
@@ -39,14 +39,20 @@ export default function NewsbarSettingsPage() {
     <EmployerAuthGate>
       <Stack>
         <Group justify="space-between" align="center">
-          <div>
-            <Title order={2}>News Bar</Title>
-            <Group gap={8}>
-              <Text c="dimmed">Set a short message and link shown at the top of your site.</Text>
-              <Badge variant="light" color={enabled ? 'green' : 'gray'}>{enabled ? 'On' : 'Off'}</Badge>
-            </Group>
-          </div>
-          <Button variant="light" onClick={() => router.push('/employee/website')}>Back</Button>
+          <Group>
+            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/website')}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
+              </svg>
+            </ActionIcon>
+            <div>
+              <Title order={2}>News Bar</Title>
+              <Group gap={8}>
+                <Text c="dimmed">Set a short message and link shown at the top of your site.</Text>
+                <Badge variant="light" color={enabled ? 'green' : 'gray'}>{enabled ? 'On' : 'Off'}</Badge>
+              </Group>
+            </div>
+          </Group>
         </Group>
 
         <Card withBorder>
