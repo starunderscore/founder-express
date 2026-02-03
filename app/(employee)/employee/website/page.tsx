@@ -6,6 +6,7 @@ import { useWebsiteStore } from '@/state/websiteStore';
 
 export default function EmployerWebsitePage() {
   const newsbar = useWebsiteStore((s) => s.newsbar);
+  const preview = stripHtml(newsbar.primaryHtml || '');
 
   return (
     <EmployerAuthGate>
@@ -21,7 +22,7 @@ export default function EmployerWebsitePage() {
                 <Badge variant="light" color={newsbar.enabled ? 'green' : 'gray'}>{newsbar.enabled ? 'On' : 'Off'}</Badge>
               </Group>
               <Text size="sm" c="dimmed" mt={4}>
-                {newsbar.headline ? `“${newsbar.headline}”` : 'Set a headline and link shown in your site header.'}
+                {preview ? `“${preview}”` : 'Configure a primary and secondary line shown at the top of your site.'}
               </Text>
             </div>
             <Button component={Link} href="/employee/website/newsbar" variant="light">Configure</Button>
@@ -42,4 +43,12 @@ export default function EmployerWebsitePage() {
       </Stack>
     </EmployerAuthGate>
   );
+}
+
+function stripHtml(html: string): string {
+  if (!html) return '';
+  const div = typeof window !== 'undefined' ? document.createElement('div') : null;
+  if (!div) return html;
+  div.innerHTML = html;
+  return (div.textContent || div.innerText || '').trim();
 }

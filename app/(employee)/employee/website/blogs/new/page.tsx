@@ -87,20 +87,20 @@ export default function NewBlogPostPage() {
         </Card>
 
         <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title="Website preview" size="90%" centered>
-          <Stack gap="md">
+          <Stack gap={0}>
             {/* Fake browser chrome */}
             <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
               <div style={{
                 border: '1px solid var(--mantine-color-gray-3)',
                 background: 'var(--mantine-color-gray-0)',
-                borderRadius: 12,
+                borderRadius: 0,
                 padding: '8px 12px',
               }}>
                 <Group gap={8} align="center">
+                  {/* Left filler (simulated nav buttons/tab) */}
                   <Group gap={6} align="center" style={{ width: 64 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#ff5f56', display: 'inline-block' }} />
-                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#ffbd2e', display: 'inline-block' }} />
-                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#27c93f', display: 'inline-block' }} />
+                    <span style={{ width: 18, height: 18, borderRadius: 6, background: 'var(--mantine-color-body)', border: '1px solid var(--mantine-color-gray-3)', display: 'inline-block' }} />
+                    <span style={{ width: 18, height: 18, borderRadius: 6, background: 'var(--mantine-color-body)', border: '1px solid var(--mantine-color-gray-3)', display: 'inline-block' }} />
                   </Group>
                   <div style={{ flex: 1, background: 'var(--mantine-color-body)', border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8, padding: '6px 10px', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--mantine-color-dimmed)' }}>
                     {(function() {
@@ -110,33 +110,41 @@ export default function NewBlogPostPage() {
                       return `${base}${path}`;
                     })()}
                   </div>
-                  <div style={{ width: 64 }} />
+                  {/* Right side window controls */}
+                  <Group gap={6} align="center" justify="flex-end" style={{ width: 64 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#ff5f56', display: 'inline-block' }} />
+                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#ffbd2e', display: 'inline-block' }} />
+                    <span style={{ width: 10, height: 10, borderRadius: 10, background: '#27c93f', display: 'inline-block' }} />
+                  </Group>
                 </Group>
               </div>
             </div>
 
-            {/* Fake site topbar */}
-            <div style={{ width: '100%', background: 'var(--mantine-color-gray-0)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
-              <div style={{ maxWidth: 1000, margin: '0 auto', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text fw={700}>Your Site</Text>
-                <Group gap={12}>
-                  <Text c="dimmed" size="sm">Home</Text>
-                  <Text c="dimmed" size="sm">Blog</Text>
-                  <Text c="dimmed" size="sm">Contact</Text>
-                </Group>
+            {/* Window frame (sides + bottom outline) wrapping the site preview */}
+            <div style={{ maxWidth: 1000, margin: '0 auto', borderLeft: '1px solid var(--mantine-color-gray-3)', borderRight: '1px solid var(--mantine-color-gray-3)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+              {/* Fake site topbar */}
+              <div style={{ width: '100%', background: 'var(--mantine-color-gray-0)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+                <div style={{ maxWidth: 1000, margin: '0 auto', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text fw={700}>Your Site</Text>
+                  <Group gap={12}>
+                    <Text c="dimmed" size="sm">Home</Text>
+                    <Text c="dimmed" size="sm">Blog</Text>
+                    <Text c="dimmed" size="sm">Contact</Text>
+                  </Group>
+                </div>
               </div>
-            </div>
 
-            {/* Page content */}
-            <div style={{ padding: '8px 0' }}>
-              <div style={{ maxWidth: 960, margin: '0 auto' }}>
-                <Title order={1} style={{ lineHeight: 1.05 }}>{title || '(no title)'}</Title>
-                <Card withBorder mt="sm">
-                  <div dangerouslySetInnerHTML={{ __html: html || '<em>No content</em>' }} />
-                </Card>
+              {/* Page content */}
+              <div style={{ padding: 0 }}>
+                <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+                  <Title order={1} style={{ lineHeight: 1.05, paddingTop: 8, paddingLeft: 12 }}>{title || '(no title)'}</Title>
+                  <Card withBorder mt="sm" style={{ borderRadius: 0 }}>
+                    <div dangerouslySetInnerHTML={{ __html: html || '<em>No content</em>' }} />
+                  </Card>
+                </div>
               </div>
             </div>
-            <Group justify="flex-end">
+            <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setPreviewOpen(false)}>Close</Button>
               <Button onClick={onPublish}>Publish</Button>
             </Group>

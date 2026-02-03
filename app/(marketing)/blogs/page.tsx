@@ -3,7 +3,6 @@ import { Card, Title, Text, Stack, Group, Anchor, Badge } from '@mantine/core';
 import Link from 'next/link';
 import { useWebsiteStore } from '@/state/websiteStore';
 import { useMemo } from 'react';
-import { Newsbar } from '@/components/Newsbar';
 
 export default function PublicBlogsPage() {
   const blogs = useWebsiteStore((s) => s.blogs);
@@ -16,7 +15,6 @@ export default function PublicBlogsPage() {
 
   return (
     <main style={{ padding: '0 1.5rem 3rem 1.5rem' }}>
-      <Newsbar />
       <div style={{ maxWidth: 960, margin: '24px auto 0 auto' }}>
         <Title order={2} mb="sm">Blog</Title>
         <Text c="dimmed" mb="md">Latest updates and stories.</Text>

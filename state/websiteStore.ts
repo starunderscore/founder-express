@@ -4,8 +4,12 @@ import { persist } from 'zustand/middleware';
 
 export type Newsbar = {
   enabled: boolean;
-  headline: string;
-  link: string;
+  // New HTML-based content for the public news bar
+  primaryHtml: string;
+  secondaryHtml: string;
+  // Legacy fields kept for migration/back-compat only
+  headline?: string;
+  link?: string;
 };
 
 type WebsiteState = {
@@ -26,9 +30,11 @@ type WebsiteState = {
 };
 
 const defaultNewsbar: Newsbar = {
-  enabled: false,
-  headline: '',
-  link: '',
+  enabled: true,
+  primaryHtml:
+    '<strong>Star Underscore — fast, elegant apps.</strong> <a href="https://starunderscore.com" target="_blank" rel="noreferrer">Learn more →</a>',
+  secondaryHtml:
+    '<strong>MIT boilerplate</strong> &nbsp; <a href="https://github.com/starunderscore/founder-express" target="_blank" rel="noreferrer">Founder Express →</a>',
 };
 
 export const useWebsiteStore = create<WebsiteState>()(
@@ -47,12 +53,40 @@ export const useWebsiteStore = create<WebsiteState>()(
     }),
     {
       name: 'pattern-typing-website',
-      version: 3,
+      version: 5,
       migrate: (persisted: any, version) => {
         if (!persisted) return { newsbar: defaultNewsbar, blogs: [] } as any;
-        if (!persisted.newsbar) persisted.newsbar = defaultNewsbar;
+        if (!persisted.newsbar) persisted.newsbar = { ...defaultNewsbar };
         if (typeof persisted.newsbar.enabled !== 'boolean') {
           persisted.newsbar.enabled = false;
+        }
+        // v4: migrate legacy headline/link to primaryHtml if present
+        if (typeof persisted.newsbar.primaryHtml !== 'string') {
+          const legacyHeadline = (persisted.newsbar.headline || '').trim();
+          const legacyLink = (persisted.newsbar.link || '').trim();
+          if (legacyHeadline) {
+            const linkPart = legacyLink
+              ? ` <a href="${legacyLink}" target="_blank" rel="noreferrer">Learn more →</a>`
+              : '';
+            persisted.newsbar.primaryHtml = `${legacyHeadline}${linkPart}`;
+          } else {
+            persisted.newsbar.primaryHtml = defaultNewsbar.primaryHtml;
+          }
+        }
+        if (typeof persisted.newsbar.secondaryHtml !== 'string') {
+          persisted.newsbar.secondaryHtml = defaultNewsbar.secondaryHtml;
+        }
+        // v5: update old default secondary link "/" to GitHub repo if it matches the previous default text
+        if (typeof persisted.newsbar.secondaryHtml === 'string') {
+          const sec = persisted.newsbar.secondaryHtml;
+          const hadOldLink = /<a\s+href=["']\/["'][^>]*>\s*Founder Express →\s*<\/a>/i.test(sec);
+          const mentionsFE = /Founder Express →/i.test(sec) && /MIT boilerplate/i.test(sec);
+          if (hadOldLink || mentionsFE) {
+            persisted.newsbar.secondaryHtml = sec.replace(
+              /href=["']\/["']/i,
+              'href="https://github.com/starunderscore/founder-express"'
+            );
+          }
         }
         if (!Array.isArray(persisted.blogs)) persisted.blogs = [];
         return persisted as any;

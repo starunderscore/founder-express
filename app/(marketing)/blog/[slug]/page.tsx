@@ -4,7 +4,6 @@ import { notFound, useParams } from 'next/navigation';
 import { Card, Title, Text, Stack, Anchor, Group, Badge } from '@mantine/core';
 import Link from 'next/link';
 import { useWebsiteStore } from '@/state/websiteStore';
-import { Newsbar } from '@/components/Newsbar';
 
 export default function PublicBlogPostPage() {
   const params = useParams();
@@ -23,7 +22,6 @@ export default function PublicBlogPostPage() {
 
   return (
     <main style={{ padding: '0 1.5rem 3rem 1.5rem' }}>
-      <Newsbar />
       <div style={{ maxWidth: 960, margin: '24px auto 0 auto' }}>
         <Stack>
           <Anchor component={Link as any} href="/blogs" underline="hover">← Back to blog</Anchor>

@@ -1,12 +1,10 @@
 import { Title, Text, Card, Group, Badge, Button, Stack } from '@mantine/core';
 import Link from 'next/link';
 import pkg from '../../package.json';
-import { Newsbar } from '@/components/Newsbar';
 
 export default function LandingPage() {
   return (
     <main style={{ padding: '0 1.5rem 3rem 1.5rem' }}>
-      <Newsbar />
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         {/* Branding hero */}
         <Card withBorder radius="md" padding="xl" className="hero-block" style={{ marginTop: 24, position: 'relative' }}>

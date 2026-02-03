@@ -38,6 +38,7 @@ button { cursor: pointer; }
 .newsletter-editor p { margin: 0 0 0.5rem; }
 .newsletter-editor ul, .newsletter-editor ol { margin: 0.5rem 0 0.5rem 1.25rem; }
 .newsletter-editor a { color: var(--mantine-color-blue-6); text-decoration: underline; }
+.newsletter-editor a { pointer-events: none; }
 .newsletter-editor:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mantine-color-blue-6) 20%, transparent); }
 
 /* Web content editor styles */
@@ -60,5 +61,5 @@ button { cursor: pointer; }
 }
 .webcontent-editor p { margin: 0 0 0.5rem; }
 .webcontent-editor ul, .webcontent-editor ol { margin: 0.5rem 0 0.5rem 1.25rem; }
-.webcontent-editor a { color: var(--mantine-color-blue-6); text-decoration: underline; }
+.webcontent-editor a { color: var(--mantine-color-blue-6); text-decoration: underline; pointer-events: none; }
 .webcontent-editor:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mantine-color-blue-6) 20%, transparent); }
