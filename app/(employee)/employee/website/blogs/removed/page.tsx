@@ -2,20 +2,20 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, Table, Badge, ActionIcon, Menu } from '@mantine/core';
 import { RouteTabs } from '@/components/RouteTabs';
-import { useWebsiteStore } from '@/state/websiteStore';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { listenBlogsRemoved, restoreBlog, hardDeleteBlog, type BlogDoc } from '@/lib/firebase/blogs';
 
 export default function WebsiteBlogsRemovedPage() {
   const router = useRouter();
-  const blogs = useWebsiteStore((s) => s.blogs);
-  const restoreBlog = useWebsiteStore((s) => s.restoreBlog);
-  const hardDeleteBlog = useWebsiteStore((s) => s.hardDeleteBlog);
-
-  const removed = useMemo(() => blogs.filter((b) => !!b.deletedAt), [blogs]);
-  const total = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived).length, [blogs]);
-  const publishedCount = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived && b.published).length, [blogs]);
-  const draftsCount = total - publishedCount;
+  const [removed, setRemoved] = useState<(BlogDoc & { id: string })[]>([]);
+  useEffect(() => {
+    const unsub = listenBlogsRemoved(setRemoved);
+    return () => unsub();
+  }, []);
+  const total = removed.length;
+  const publishedCount = removed.filter((b) => b.published).length;
+  const draftsCount = removed.length - publishedCount;
 
   return (
     <EmployerAuthGate>

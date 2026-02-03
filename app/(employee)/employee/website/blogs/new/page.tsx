@@ -2,10 +2,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useWebsiteStore } from '@/state/websiteStore';
 import { Title, Text, Card, Stack, Group, Button, TextInput, ActionIcon, Modal } from '@mantine/core';
 import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { WebContentEditor } from '@/components/WebContentEditor';
+import { createBlog } from '@/lib/firebase/blogs';
 
 function slugify(input: string): string {
   return input
@@ -18,7 +18,7 @@ function slugify(input: string): string {
 
 export default function NewBlogPostPage() {
   const router = useRouter();
-  const addBlog = useWebsiteStore((s) => s.addBlog);
+  // Persist directly to Firestore; Zustand store is not used here
   const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
 
   const [title, setTitle] = useState('');
@@ -33,7 +33,7 @@ export default function NewBlogPostPage() {
     const cleanTitle = title.trim();
     if (!cleanTitle) { setError('Title is required'); return; }
     const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    addBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: false });
+    createBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: false });
     router.push('/employee/website/blogs');
   };
 
@@ -41,7 +41,7 @@ export default function NewBlogPostPage() {
     const cleanTitle = title.trim();
     if (!cleanTitle) { setError('Title is required'); return; }
     const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    addBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: true });
+    createBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: true });
     router.push('/employee/website/blogs');
   };
 
@@ -89,7 +89,7 @@ export default function NewBlogPostPage() {
         <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title="Website preview" size="90%" centered>
           <Stack gap={0}>
             {/* Fake browser chrome */}
-            <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+            <div style={{ width: '100%', margin: '0 auto' }}>
               <div style={{
                 border: '1px solid var(--mantine-color-gray-3)',
                 background: 'var(--mantine-color-gray-0)',
@@ -121,10 +121,10 @@ export default function NewBlogPostPage() {
             </div>
 
             {/* Window frame (sides + bottom outline) wrapping the site preview */}
-            <div style={{ maxWidth: 1000, margin: '0 auto', borderLeft: '1px solid var(--mantine-color-gray-3)', borderRight: '1px solid var(--mantine-color-gray-3)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+            <div style={{ width: '100%', margin: '0 auto', borderLeft: '1px solid var(--mantine-color-gray-3)', borderRight: '1px solid var(--mantine-color-gray-3)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
               {/* Fake site topbar */}
               <div style={{ width: '100%', background: 'var(--mantine-color-gray-0)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
-                <div style={{ maxWidth: 1000, margin: '0 auto', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ width: '100%', margin: '0 auto', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text fw={700}>Your Site</Text>
                   <Group gap={12}>
                     <Text c="dimmed" size="sm">Home</Text>
@@ -136,7 +136,7 @@ export default function NewBlogPostPage() {
 
               {/* Page content */}
               <div style={{ padding: 0 }}>
-                <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+                <div style={{ width: '100%', margin: '0 auto' }}>
                   <Title order={1} style={{ lineHeight: 1.05, paddingTop: 8, paddingLeft: 12 }}>{title || '(no title)'}</Title>
                   <Card withBorder mt="sm" style={{ borderRadius: 0 }}>
                     <div dangerouslySetInnerHTML={{ __html: html || '<em>No content</em>' }} />

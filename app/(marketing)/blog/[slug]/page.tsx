@@ -1,19 +1,19 @@
 "use client";
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { Card, Title, Text, Stack, Anchor, Group, Badge } from '@mantine/core';
 import Link from 'next/link';
-import { useWebsiteStore } from '@/state/websiteStore';
+import { listenBlogBySlug, type BlogDoc } from '@/lib/firebase/blogs';
 
 export default function PublicBlogPostPage() {
   const params = useParams();
   const slug = String(params?.slug || '');
-  const blogs = useWebsiteStore((s) => s.blogs);
-
-  const post = useMemo(
-    () => blogs.find((b) => !b.deletedAt && !b.isArchived && b.published && b.slug === slug),
-    [blogs, slug]
-  );
+  const [post, setPost] = useState<(BlogDoc & { id: string }) | null>(null);
+  useEffect(() => {
+    if (!slug) return;
+    const unsub = listenBlogBySlug(slug, setPost);
+    return () => unsub();
+  }, [slug]);
 
   if (!post) return notFound();
 

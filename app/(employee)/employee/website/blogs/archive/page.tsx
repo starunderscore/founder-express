@@ -2,20 +2,20 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, Table, Badge, ActionIcon, Menu } from '@mantine/core';
 import { RouteTabs } from '@/components/RouteTabs';
-import { useWebsiteStore } from '@/state/websiteStore';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { listenBlogsArchived, archiveBlog, softRemoveBlog, type BlogDoc } from '@/lib/firebase/blogs';
 import { useRouter } from 'next/navigation';
 
 export default function WebsiteBlogsArchivePage() {
   const router = useRouter();
-  const blogs = useWebsiteStore((s) => s.blogs);
-  const setBlogArchived = useWebsiteStore((s) => s.setBlogArchived);
-  const removeBlog = useWebsiteStore((s) => s.removeBlog);
-
-  const archived = useMemo(() => blogs.filter((b) => !!b.isArchived && !b.deletedAt), [blogs]);
-  const total = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived).length, [blogs]);
-  const publishedCount = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived && b.published).length, [blogs]);
-  const draftsCount = total - publishedCount;
+  const [archived, setArchived] = useState<(BlogDoc & { id: string })[]>([]);
+  useEffect(() => {
+    const unsub = listenBlogsArchived(setArchived);
+    return () => unsub();
+  }, []);
+  const total = archived.length;
+  const publishedCount = archived.filter((b) => b.published).length;
+  const draftsCount = archived.length - publishedCount;
 
   return (
     <EmployerAuthGate>
@@ -79,8 +79,8 @@ export default function WebsiteBlogsArchivePage() {
                         <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item onClick={() => setBlogArchived(b.id, false)}>Restore to Blogs</Menu.Item>
-                        <Menu.Item color="red" onClick={() => removeBlog(b.id)}>Move to Removed</Menu.Item>
+                        <Menu.Item onClick={() => archiveBlog(b.id, false)}>Restore to Blogs</Menu.Item>
+                        <Menu.Item color="red" onClick={() => softRemoveBlog(b.id)}>Move to Removed</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
                   </Table.Td>

@@ -59,6 +59,33 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isAdmin == true;
     }
 
+    // Website permissions (Blogs, News Bar)
+    function hasWebsiteBlogsRead() {
+      return isEmployee() && (
+        'perm-website-blogs-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
+      );
+    }
+    function hasWebsiteBlogsEdit() {
+      return isEmployee() && (
+        'perm-website-blogs-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
+      );
+    }
+    function hasWebsiteBlogsDelete() {
+      return isEmployee() && (
+        'perm-website-blogs-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
+      );
+    }
+    function hasWebsiteNewsbarEdit() {
+      return isEmployee() && (
+        'perm-website-newsbar-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
+      );
+    }
+    function hasWebsiteNewsbarDelete() {
+      return isEmployee() && (
+        'perm-website-newsbar-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
+      );
+    }
+
     // Tag Manager permissions
     function hasTagPermission() {
       return isEmployee() && (
@@ -131,6 +158,28 @@ service cloud.firestore {
       allow create, update: if isOwner() || isAdmin() || hasCrmEdit();
       // Deletes: users with CRM delete permission OR owner/admin
       allow delete: if isOwner() || isAdmin() || hasCrmDelete();
+    }
+
+    // Website — Newsbar (single doc)
+    match /website/newsbar {
+      // Public read
+      allow get, list: if true;
+      // Writes allowed to owner/admin or employees with News Bar edit/delete
+      allow create, update: if isOwner() || isAdmin() || hasWebsiteNewsbarEdit();
+      allow delete: if isOwner() || isAdmin() || hasWebsiteNewsbarDelete();
+    }
+
+    // Website — Blogs
+    match /blogs/{id} {
+      // Public read: published and not archived/removed
+      allow get, list: if (
+        (resource.data.published == true && !(resource.data.isArchived == true) && !(resource.data.deletedAt != null))
+        || isOwner() || isAdmin() || hasWebsiteBlogsRead()
+      );
+      // Employee/owner/admin creates and edits
+      allow create, update: if isOwner() || isAdmin() || hasWebsiteBlogsEdit();
+      // Delete (hard) restricted
+      allow delete: if isOwner() || isAdmin() || hasWebsiteBlogsDelete();
     }
 
     // Deny everything else by default

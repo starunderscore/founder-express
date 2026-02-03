@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { WebContentEditor } from '@/components/WebContentEditor';
 import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { Newsbar } from '@/components/Newsbar';
+import { listenNewsbar, saveNewsbar } from '@/lib/firebase/website';
+import { useAuth } from '@/lib/firebase/auth';
 
 export default function NewsbarSettingsPage() {
   const router = useRouter();
@@ -20,6 +22,7 @@ export default function NewsbarSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
+  const { user } = useAuth();
 
   useEffect(() => {
     setEnabled(!!newsbar.enabled);
@@ -27,11 +30,24 @@ export default function NewsbarSettingsPage() {
     setSecondaryHtml(newsbar.secondaryHtml || '');
   }, [newsbar.enabled, newsbar.primaryHtml, newsbar.secondaryHtml]);
 
+  // Live sync from Firestore (starter integration)
+  useEffect(() => {
+    const unsub = listenNewsbar((doc) => {
+      if (!doc) return;
+      setEnabled(!!doc.enabled);
+      setPrimaryHtml(doc.primaryHtml || '');
+      setSecondaryHtml(doc.secondaryHtml || '');
+    });
+    return () => unsub();
+  }, []);
+
   const onSave = () => {
     setError(null);
     setStatus('saving');
     try {
       updateNewsbar({ enabled, primaryHtml: (primaryHtml || '').trim(), secondaryHtml: (secondaryHtml || '').trim() });
+      // Persist to Firestore
+      saveNewsbar({ enabled, primaryHtml, secondaryHtml, updatedBy: user?.uid }).catch(() => {/* ignore */});
       setStatus('saved');
       setTimeout(() => setStatus('idle'), 1200);
     } catch (e: any) {
@@ -104,7 +120,7 @@ export default function NewsbarSettingsPage() {
         <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title="News bar preview" size="90%" centered>
           <Stack gap={0}>
             {/* Fake browser chrome */}
-            <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+            <div style={{ width: '100%', margin: '0 auto' }}>
               <div style={{
                 border: '1px solid var(--mantine-color-gray-3)',
                 background: 'var(--mantine-color-gray-0)',
@@ -136,7 +152,7 @@ export default function NewsbarSettingsPage() {
             </div>
 
             {/* Window frame (sides + bottom outline) wrapping the site preview */}
-            <div style={{ maxWidth: 1000, margin: '0 auto', borderLeft: '1px solid var(--mantine-color-gray-3)', borderRight: '1px solid var(--mantine-color-gray-3)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+            <div style={{ width: '100%', margin: '0 auto', borderLeft: '1px solid var(--mantine-color-gray-3)', borderRight: '1px solid var(--mantine-color-gray-3)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
               {/* Preview area with current Newsbar layout */}
               <div style={{ width: '100%', background: 'var(--mantine-color-gray-0)', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
                 <div style={{ width: '100%' }}>

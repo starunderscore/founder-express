@@ -2,9 +2,9 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, Table, Modal, TextInput, Textarea, Switch, ActionIcon, Menu } from '@mantine/core';
 import { RouteTabs } from '@/components/RouteTabs';
-import { useWebsiteStore } from '@/state/websiteStore';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { listenBlogsActive, createBlog, updateBlog as fbUpdateBlog, archiveBlog, softRemoveBlog, type BlogDoc } from '@/lib/firebase/blogs';
 
 function slugify(input: string): string {
   return input
@@ -17,11 +17,11 @@ function slugify(input: string): string {
 
 export default function WebsiteBlogsPage() {
   const router = useRouter();
-  const blogs = useWebsiteStore((s) => s.blogs);
-  const addBlog = useWebsiteStore((s) => s.addBlog);
-  const updateBlog = useWebsiteStore((s) => s.updateBlog);
-  const removeBlog = useWebsiteStore((s) => s.removeBlog);
-  const setBlogArchived = useWebsiteStore((s) => s.setBlogArchived);
+  const [blogs, setBlogs] = useState<(BlogDoc & { id: string })[]>([]);
+  useEffect(() => {
+    const unsub = listenBlogsActive(setBlogs);
+    return () => unsub();
+  }, []);
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');
@@ -67,9 +67,9 @@ export default function WebsiteBlogsPage() {
     if (!cleanTitle) return;
     const s = (slug || slugify(cleanTitle)).slice(0, 80);
     if (mode === 'create') {
-      addBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published });
+      createBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published });
     } else {
-      updateBlog(editId, { title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published });
+      fbUpdateBlog(editId, { title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published });
     }
     setOpen(false);
   };
@@ -126,7 +126,7 @@ export default function WebsiteBlogsPage() {
                   </Table.Td>
                   <Table.Td><Text size="sm">/{b.slug}</Text></Table.Td>
                   <Table.Td>
-                    <Switch checked={b.published} onChange={(e) => updateBlog(b.id, { published: e.currentTarget.checked })} />
+                    <Switch checked={b.published} onChange={(e) => fbUpdateBlog(b.id, { published: e.currentTarget.checked })} />
                   </Table.Td>
                   <Table.Td><Text size="sm" c="dimmed">{new Date(b.updatedAt).toLocaleString()}</Text></Table.Td>
                   <Table.Td>
@@ -136,8 +136,8 @@ export default function WebsiteBlogsPage() {
                       </Menu.Target>
                       <Menu.Dropdown>
                         <Menu.Item onClick={() => openEdit(b.id)}>Edit</Menu.Item>
-                        <Menu.Item onClick={() => setBlogArchived(b.id, true)}>Archive</Menu.Item>
-                        <Menu.Item color="red" onClick={() => removeBlog(b.id)}>Remove</Menu.Item>
+                        <Menu.Item onClick={() => archiveBlog(b.id, true)}>Archive</Menu.Item>
+                        <Menu.Item color="red" onClick={() => softRemoveBlog(b.id)}>Remove</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
                   </Table.Td>

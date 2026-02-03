@@ -1,17 +1,15 @@
 "use client";
 import { Card, Title, Text, Stack, Group, Anchor, Badge } from '@mantine/core';
 import Link from 'next/link';
-import { useWebsiteStore } from '@/state/websiteStore';
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
+import { listenBlogsPublished, type BlogDoc } from '@/lib/firebase/blogs';
 
 export default function PublicBlogsPage() {
-  const blogs = useWebsiteStore((s) => s.blogs);
-  const published = useMemo(
-    () => blogs
-      .filter((b) => !b.deletedAt && !b.isArchived && b.published)
-      .sort((a, b) => b.updatedAt - a.updatedAt),
-    [blogs]
-  );
+  const [published, setPublished] = useState<(BlogDoc & { id: string })[]>([]);
+  useEffect(() => {
+    const unsub = listenBlogsPublished(setPublished);
+    return () => unsub();
+  }, []);
 
   return (
     <main style={{ padding: '0 1.5rem 3rem 1.5rem' }}>
