@@ -14,63 +14,23 @@ export default function AdminSettingsPage() {
         </div>
         <Divider />
 
-        <div style={{ marginTop: 'var(--mantine-spacing-sm)' }}>
-          <Title order={4}>Data Operations</Title>
-          <Text c="dimmed" size="sm">Exports and related tools</Text>
-        </div>
-
         <Card withBorder>
           <Group justify="space-between" align="center">
             <div>
-              <Text fw={600}>Email subscriptions exports</Text>
-              <Text c="dimmed" size="sm">Export lists and manage waiting lists</Text>
+              <Text fw={600}>Data Operations</Text>
+              <Text c="dimmed" size="sm">Exports and related tools</Text>
             </div>
-            <Button component={Link as any} href="/employee/admin-settings/email-subscriptions" variant="light">Open</Button>
+            <Button component={Link as any} href="/employee/admin-settings/data-operations" variant="light">Open</Button>
           </Group>
         </Card>
 
         <Card withBorder>
           <Group justify="space-between" align="center">
             <div>
-              <Text fw={600}>Finance exports</Text>
-              <Text c="dimmed" size="sm">Export finance data and QuickBooks sync</Text>
+              <Text fw={600}>Third‑party Configuration</Text>
+              <Text c="dimmed" size="sm">APIs and external services</Text>
             </div>
-            <Button component={Link as any} href="/employee/admin-settings/finance/exports" variant="light">Open</Button>
-          </Group>
-        </Card>
-
-        <div style={{ marginTop: 'var(--mantine-spacing-xl)' }}>
-          <Title order={4}>Third‑party Configuration</Title>
-          <Text c="dimmed" size="sm">APIs and external services</Text>
-        </div>
-
-        <Card withBorder>
-          <Group justify="space-between" align="center">
-            <div>
-              <Text fw={600}>Finance API</Text>
-              <Text c="dimmed" size="sm">Configure QuickBooks connection</Text>
-            </div>
-            <Button component={Link as any} href="/employee/admin-settings/finance/configuration" variant="light">Open</Button>
-          </Group>
-        </Card>
-
-        <Card withBorder>
-          <Group justify="space-between" align="center">
-            <div>
-              <Text fw={600}>Email Providers</Text>
-              <Text c="dimmed" size="sm">Third‑party email integrations (admin)</Text>
-            </div>
-            <Button component={Link as any} href="/employee/admin-settings/email/configuration" variant="light">Open</Button>
-          </Group>
-        </Card>
-
-        <Card withBorder>
-          <Group justify="space-between" align="center">
-            <div>
-              <Text fw={600}>Payment Providers</Text>
-              <Text c="dimmed" size="sm">Stripe and PayPal integrations</Text>
-            </div>
-            <Button component={Link as any} href="/employee/admin-settings/finance/providers" variant="light">Open</Button>
+            <Button component={Link as any} href="/employee/admin-settings/third-party-configuration" variant="light">Open</Button>
           </Group>
         </Card>
       </Stack>

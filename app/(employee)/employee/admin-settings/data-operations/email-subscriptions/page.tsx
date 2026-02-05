@@ -4,12 +4,14 @@ import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { Title, Text, Card, Stack, Group, Button, Badge, Tabs } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Badge, Tabs, ActionIcon } from '@mantine/core';
+import { useRouter } from 'next/navigation';
 
 type EmailRow = { id: string; email: string; name?: string; createdAt: number; source?: string };
 type Waitlist = { id: string; name: string; entriesCount?: number; draftsCount?: number; sentCount?: number };
 
 export default function AdminEmailSubscriptionsPage() {
+  const router = useRouter();
   const [emailList, setEmailList] = useState<EmailRow[]>([]);
   const [waitlists, setWaitlists] = useState<Waitlist[]>([]);
   useEffect(() => {
@@ -49,10 +51,17 @@ export default function AdminEmailSubscriptionsPage() {
   return (
     <EmployerAdminGate>
       <Stack>
-        <div>
-          <Title order={2} mb={4}>Email subscriptions</Title>
-          <Text c="dimmed">Admin exports and quick navigation.</Text>
-        </div>
+        <Group>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/admin-settings/data-operations')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
+            </svg>
+          </ActionIcon>
+          <div>
+            <Title order={2} mb={4}>Email subscriptions</Title>
+            <Text c="dimmed">Admin exports and quick navigation.</Text>
+          </div>
+        </Group>
 
         <Card withBorder>
           <Tabs defaultValue="newsletters">

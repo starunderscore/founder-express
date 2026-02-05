@@ -82,7 +82,7 @@ export default function AdminFinanceExportsPage() {
       <Stack>
         <Group justify="space-between" align="flex-start" mb="xs">
           <Group>
-            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/admin-settings')}>
+            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/admin-settings/data-operations')}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
@@ -97,12 +97,12 @@ export default function AdminFinanceExportsPage() {
         <Tabs
           defaultValue="csv"
           onChange={(v) => {
-            if (v === 'quickbooks') router.push('/employee/admin-settings/finance/exports/quickbooks');
+            if (v === 'quickbooks') router.push('/employee/admin-settings/data-operations/finance/exports/quickbooks');
           }}
         >
           <Tabs.List>
             <Tabs.Tab value="csv">CSV</Tabs.Tab>
-            <Tabs.Tab value="quickbooks" onClick={() => router.push('/employee/admin-settings/finance/exports/quickbooks')}>QuickBooks</Tabs.Tab>
+            <Tabs.Tab value="quickbooks" onClick={() => router.push('/employee/admin-settings/data-operations/finance/exports/quickbooks')}>QuickBooks</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="csv" pt="md">
