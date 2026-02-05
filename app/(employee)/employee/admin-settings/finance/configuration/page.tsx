@@ -59,22 +59,14 @@ export default function AdminFinanceConfigurationPage() {
           <Text size="sm">Environment variables required: <code>QB_API_KEY</code>, <code>QB_REALM_ID</code>. Restart server after editing <code>.env.local</code>.</Text>
         </AdminDisconnectedCard>
 
-        {/* Connected state card (preview; shown below for scaffolding) */}
-        <Card withBorder style={{ borderColor: 'var(--mantine-color-green-5)', background: 'var(--mantine-color-green-0)' }}>
+        {/* Business content card (mirrors Email Providers style) */}
+        <Card withBorder>
           <Stack>
             <Group justify="space-between" align="center">
               <div>
-                <Title order={3} style={{ marginBottom: 2 }}>QuickBooks connected</Title>
-                <Text c="dimmed" size="sm">Environment keys detected. Manage policy below.</Text>
+                <Text fw={600}>QuickBooks</Text>
+                <Text c="dimmed" size="sm">Enable exports when configuration is present.</Text>
               </div>
-            </Group>
-            <Group>
-              <Badge color="green" variant="light">
-                {`Key detected ${status?.suffix ? `…${status.suffix}` : '…1234'}`}
-              </Badge>
-              <Badge color="green" variant="light">
-                {`Realm detected ${status?.realmSuffix ? `…${status.realmSuffix}` : '…5678'}`}
-              </Badge>
             </Group>
             <Stack gap={8}>
               <Checkbox label="Enable QuickBooks exports" checked={(settings as any).quickbooks?.enabled ?? false} onChange={(e) => setQuickBooksEnabled(e.currentTarget.checked)} style={{ marginBottom: 6 }} />

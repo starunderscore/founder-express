@@ -22,7 +22,7 @@ export default function AdminSettingsPage() {
         <Card withBorder>
           <Group justify="space-between" align="center">
             <div>
-              <Text fw={600}>Email subscriptions</Text>
+              <Text fw={600}>Email subscriptions exports</Text>
               <Text c="dimmed" size="sm">Export lists and manage waiting lists</Text>
             </div>
             <Button component={Link as any} href="/employee/admin-settings/email-subscriptions" variant="light">Open</Button>
@@ -51,6 +51,26 @@ export default function AdminSettingsPage() {
               <Text c="dimmed" size="sm">Configure QuickBooks connection</Text>
             </div>
             <Button component={Link as any} href="/employee/admin-settings/finance/configuration" variant="light">Open</Button>
+          </Group>
+        </Card>
+
+        <Card withBorder>
+          <Group justify="space-between" align="center">
+            <div>
+              <Text fw={600}>Email Providers</Text>
+              <Text c="dimmed" size="sm">Third‑party email integrations (admin)</Text>
+            </div>
+            <Button component={Link as any} href="/employee/admin-settings/email/configuration" variant="light">Open</Button>
+          </Group>
+        </Card>
+
+        <Card withBorder>
+          <Group justify="space-between" align="center">
+            <div>
+              <Text fw={600}>Payment Providers</Text>
+              <Text c="dimmed" size="sm">Stripe and PayPal integrations</Text>
+            </div>
+            <Button component={Link as any} href="/employee/admin-settings/finance/providers" variant="light">Open</Button>
           </Group>
         </Card>
       </Stack>
