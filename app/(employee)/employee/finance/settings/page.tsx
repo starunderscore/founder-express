@@ -2,9 +2,11 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Button, Card, Group, Modal, NumberInput, Select, Stack, Table, Text, TextInput, Title, Checkbox, MultiSelect, Tabs, Badge, SegmentedControl, Menu } from '@mantine/core';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 export default function FinanceSettingsPage() {
+  const router = useRouter();
   const settings = useFinanceStore((s) => s.settings);
   const setCurrency = useFinanceStore((s) => s.setCurrency);
   const setGracePeriodDays = useFinanceStore((s) => s.setGracePeriodDays);
@@ -78,12 +80,20 @@ export default function FinanceSettingsPage() {
       <Title order={2} mb="sm">Financial settings</Title>
       <Text c="dimmed" mb="md">Configure currency, taxes, templates, and products.</Text>
 
-      <Tabs defaultValue="general">
+      <Tabs
+        defaultValue="general"
+        onChange={(v) => {
+          if (v === 'general') router.push('/employee/finance/general');
+          if (v === 'templates') router.push('/employee/finance/invoice-templates');
+          if (v === 'taxes') router.push('/employee/finance/taxes');
+          if (v === 'products') router.push('/employee/finance/products');
+        }}
+      >
         <Tabs.List>
-          <Tabs.Tab value="general">General</Tabs.Tab>
-          <Tabs.Tab value="products">Products</Tabs.Tab>
-          <Tabs.Tab value="taxes">Taxes</Tabs.Tab>
-          <Tabs.Tab value="templates">Invoice templates</Tabs.Tab>
+          <Tabs.Tab value="general" onClick={() => router.push('/employee/finance/general')}>General</Tabs.Tab>
+          <Tabs.Tab value="products" onClick={() => router.push('/employee/finance/products')}>Products</Tabs.Tab>
+          <Tabs.Tab value="taxes" onClick={() => router.push('/employee/finance/taxes')}>Taxes</Tabs.Tab>
+          <Tabs.Tab value="templates" onClick={() => router.push('/employee/finance/invoice-templates')}>Invoice templates</Tabs.Tab>
           <Tabs.Tab value="export">Export</Tabs.Tab>
           <Tabs.Tab value="archive">Archive</Tabs.Tab>
           <Tabs.Tab value="removed">Removed</Tabs.Tab>
@@ -145,168 +155,11 @@ export default function FinanceSettingsPage() {
           </Card>
         </Tabs.Panel>
 
-        <Tabs.Panel value="taxes" pt="md">
-          <Card withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text fw={600}>Tax rates</Text>
-              <Button onClick={() => { setTaxName(''); setTaxRate(''); setTaxOpen(true); }}>Add tax</Button>
-            </Group>
-            <Table verticalSpacing="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Rate</Table.Th>
-                  <Table.Th>Enabled</Table.Th>
-                  <Table.Th></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {settings.taxes.filter((t) => !t.isArchived && !t.deletedAt).map((t) => (
-                  <Table.Tr key={t.id}>
-                    <Table.Td>{t.name}</Table.Td>
-                    <Table.Td>{t.rate}%</Table.Td>
-                    <Table.Td>
-                      <Checkbox checked={t.enabled} onChange={(e) => updateTax(t.id, { enabled: e.currentTarget.checked })} />
-                    </Table.Td>
-                    <Table.Td>
-                      <Group justify="flex-end" gap={6}>
-                      <Button size="xs" variant="light" onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxOpen(true); }}>Edit</Button>
-                        <Button size="xs" variant="light" color="orange" onClick={() => archiveTax(t.id)}>Archive</Button>
-                        <Button size="xs" variant="subtle" color="red" onClick={() => removeTax(t.id)}>Remove</Button>
-                      </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-                {settings.taxes.length === 0 && (
-                  <Table.Tr>
-                    <Table.Td colSpan={4}><Text c="dimmed">No tax rates</Text></Table.Td>
-                  </Table.Tr>
-                )}
-              </Table.Tbody>
-            </Table>
-          </Card>
-        </Tabs.Panel>
+        {/* Taxes panel moved to standalone page; clicking tab routes away */}
 
-        <Tabs.Panel value="templates" pt="md">
-          <Card withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text fw={600}>Templates</Text>
-              <Button component={require('next/link').default as any} href="/employee/finance/templates/new" variant="light">New template</Button>
-            </Group>
-            <Stack>
-              {settings.templates.filter((tpl) => !tpl.isArchived && !tpl.deletedAt).map((tpl) => (
-                <Card withBorder key={tpl.id}>
-                  <Group justify="space-between" align="flex-start">
-                    <div>
-                      <Text fw={600}>{tpl.name}</Text>
-                      <Text size="sm" c="dimmed">Items: {tpl.items.length} · Taxes: {tpl.taxIds.length}</Text>
-                    </div>
-                    <Group gap={6}>
-                      <Button size="xs" variant="light" onClick={() => {
-                        setTplName(tpl.name);
-                        setTplItems(tpl.items.map((it) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice) })));
-                        setTplTaxIds(tpl.taxIds);
-                        setEditingTplId(tpl.id);
-                        setTplOpen(true);
-                      }}>Edit</Button>
-                      <Button size="xs" variant="light" color="orange" onClick={() => archiveTemplate(tpl.id)}>Archive</Button>
-                      <Button size="xs" variant="subtle" color="red" onClick={() => removeTemplate(tpl.id)}>Remove</Button>
-                    </Group>
-                  </Group>
-                </Card>
-              ))}
-              {settings.templates.length === 0 && <Card withBorder><Text c="dimmed">No templates</Text></Card>}
-            </Stack>
-          </Card>
-        </Tabs.Panel>
+        {/* Templates panel moved to standalone page; clicking tab routes away */}
 
-        <Tabs.Panel value="products" pt="md">
-          <Card withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text fw={600}>Products (Stripe model)</Text>
-              <Button component={require('next/link').default as any} href="/employee/finance/products/new" variant="light">New product</Button>
-            </Group>
-            <Group mb="sm">
-              <SegmentedControl
-                value={prodView}
-                onChange={(v: any) => setProdView(v)}
-                data={[
-                  { label: 'All', value: 'all' },
-                  { label: 'One-time', value: 'one_time' },
-                  { label: 'Recurring', value: 'recurring' },
-                  { label: 'Mixed', value: 'mixed' },
-                ]}
-              />
-            </Group>
-            <Card withBorder>
-              <Table verticalSpacing="xs">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Name</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Type</Table.Th>
-                    <Table.Th>Prices</Table.Th>
-                    <Table.Th>Description</Table.Th>
-                    <Table.Th></Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {filteredProducts.map((p) => {
-                    const hasOne = Array.isArray(p.prices) && p.prices.some((pr: any) => pr.type === 'one_time');
-                    const hasRec = Array.isArray(p.prices) && p.prices.some((pr: any) => pr.type === 'recurring');
-                    const kind = hasOne && hasRec ? 'Mixed' : hasRec ? 'Recurring' : hasOne ? 'One-time' : '—';
-                    const onePrices = (p.prices || []).filter((pr: any) => pr.type === 'one_time');
-                    const recPrices = (p.prices || []).filter((pr: any) => pr.type === 'recurring');
-                    const fmtMoney = (pr: any) => `${pr.currency} ${Number(pr.unitAmount).toFixed(2)}`;
-                    const fmtRec = (pr: any) => {
-                      const n = pr.recurring?.intervalCount || 1;
-                      const interval = pr.recurring?.interval || 'month';
-                      return `${pr.currency} ${Number(pr.unitAmount).toFixed(2)}/${n > 1 ? `${n} ` : ''}${interval}${n > 1 ? 's' : ''}`;
-                    };
-                    if (p.deletedAt) return null;
-                    return (
-                      <Table.Tr key={p.id}>
-                        <Table.Td>{p.name}</Table.Td>
-                        <Table.Td><Badge variant="light" color={p.active ? 'green' : 'gray'}>{p.active ? 'Active' : 'Inactive'}</Badge></Table.Td>
-                        <Table.Td>
-                          <Text>{kind}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          {onePrices.length > 0 && (
-                            <Text size="sm">One-time: {onePrices.map(fmtMoney).join(', ')}</Text>
-                          )}
-                          {recPrices.length > 0 && (
-                            <Text size="sm">Recurring: {recPrices.map(fmtRec).join(', ')}</Text>
-                          )}
-                          {onePrices.length === 0 && recPrices.length === 0 && <Text c="dimmed" size="sm">—</Text>}
-                        </Table.Td>
-                        <Table.Td><Text c="dimmed" size="sm">{p.description || '—'}</Text></Table.Td>
-                        <Table.Td style={{ width: 1 }}>
-                          <Menu shadow="md" width={180}>
-                            <Menu.Target>
-                              <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                            </Menu.Target>
-                            <Menu.Dropdown>
-                              <Menu.Item onClick={() => { setProdIdEditing(p.id); setProdName(p.name); setProdDesc(p.description || ''); setProdOpen(true); }}>Edit</Menu.Item>
-                              <Menu.Item onClick={() => { setPriceProdId(p.id); setPriceIdEditing(null); setPriceCurrency(settings.currency); setPriceAmount(''); setPriceType((p.defaultType || 'one_time') as any); setPriceInterval('month'); setPriceIntervalCount('1'); setPriceOpen(true); }}>Add price</Menu.Item>
-                              <Menu.Item color="orange" onClick={() => archiveProduct(p.id)}>Archive</Menu.Item>
-                              <Menu.Item color="red" onClick={() => removeProduct(p.id)}>Remove</Menu.Item>
-                            </Menu.Dropdown>
-                          </Menu>
-                        </Table.Td>
-                      </Table.Tr>
-                    );
-                  })}
-                  {filteredProducts.length === 0 && (
-                    <Table.Tr>
-                      <Table.Td colSpan={6}><Text c="dimmed">No products</Text></Table.Td>
-                    </Table.Tr>
-                  )}
-                </Table.Tbody>
-              </Table>
-            </Card>
-          </Card>
-        </Tabs.Panel>
+        {/* Products panel moved to standalone page; clicking tab routes away */}
 
         <Tabs.Panel value="archive" pt="md">
           <Card withBorder>

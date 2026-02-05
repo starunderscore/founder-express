@@ -28,7 +28,7 @@ export default function NewInvoiceTemplatePage() {
     if (items.length === 0) { setError('Add at least one item'); return; }
     const payload = { name: name.trim(), items: items.map((r) => ({ description: r.description, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 })), taxIds };
     addTemplate(payload);
-    router.push('/employee/finance/settings');
+    router.push('/employee/finance/invoice-templates');
   };
 
   return (
@@ -94,7 +94,7 @@ export default function NewInvoiceTemplatePage() {
               <MultiSelect label="Taxes" data={taxOptions} value={taxIds} onChange={setTaxIds} searchable placeholder="Select taxes to apply" />
               {error && <Text c="red" size="sm">{error}</Text>}
               <Group justify="flex-end">
-                <Button variant="default" type="button" onClick={() => router.push('/employee/finance/settings')}>Cancel</Button>
+                <Button variant="default" type="button" onClick={() => router.push('/employee/finance/invoice-templates')}>Cancel</Button>
                 <Button type="submit">Create template</Button>
               </Group>
             </Stack>
