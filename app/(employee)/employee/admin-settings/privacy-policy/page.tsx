@@ -1,15 +1,18 @@
 "use client";
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, ActionIcon, Table, Button, Modal, Select, Badge } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, ActionIcon, Table, Button, Modal, Select, Badge, Switch } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useAppSettingsStore } from '@/state/appSettingsStore';
 
 type Policy = { id: string; title: string; type: 'client' | string; bodyHtml?: string; createdAt?: number; updatedAt?: number; deletedAt?: number; isActive?: boolean };
 
 export default function PrivacyPolicyPage() {
   const router = useRouter();
+  const enabled = useAppSettingsStore((s) => s.settings.privacyPolicyEnabled ?? true);
+  const setEnabled = useAppSettingsStore((s) => s.setPrivacyPolicyEnabled);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [selectOpen, setSelectOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -63,12 +66,26 @@ export default function PrivacyPolicyPage() {
             </div>
           </Group>
           <Group gap="xs">
-            <Button variant="light" onClick={() => router.push('/employee/admin-settings/privacy-policy/new')}>New policy</Button>
-            <Button variant="light" onClick={openSelectModal}>Select active</Button>
+            <Button variant="light" onClick={() => router.push('/employee/admin-settings/privacy-policy/new')} disabled={!enabled}>New policy</Button>
+            <Button variant="light" onClick={openSelectModal} disabled={!enabled}>Select active</Button>
           </Group>
         </Group>
 
         <Card withBorder>
+          <Group justify="space-between" align="center">
+            <div>
+              <Text fw={600}>Website privacy policy</Text>
+              <Text c="dimmed" size="sm">Toggle to enable/disable the built-in privacy policy.</Text>
+            </div>
+            <Switch
+              checked={enabled}
+              onChange={(e) => setEnabled(e.currentTarget.checked)}
+              label={enabled ? 'Enabled' : 'Disabled'}
+            />
+          </Group>
+        </Card>
+
+        {enabled && (
           <Table verticalSpacing="xs">
             <Table.Thead>
               <Table.Tr>
@@ -94,7 +111,7 @@ export default function PrivacyPolicyPage() {
               )}
             </Table.Tbody>
           </Table>
-        </Card>
+        )}
 
         <Modal opened={selectOpen} onClose={() => setSelectOpen(false)} title="Select active client policy" centered>
           <Stack>

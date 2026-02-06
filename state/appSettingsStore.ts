@@ -46,6 +46,7 @@ export type EmailTemplate = {
 export type AppSettings = {
   websiteUrl: string;
   websiteName: string;
+  cookiePolicyEnabled?: boolean;
   email: EmailAdapterSettings;
   env: EnvVar[];
 };
@@ -54,6 +55,8 @@ type AppSettingsState = {
   settings: AppSettings;
   setWebsiteUrl: (url: string) => void;
   setWebsiteName: (name: string) => void;
+  setCookiePolicyEnabled: (enabled: boolean) => void;
+  setPrivacyPolicyEnabled: (enabled: boolean) => void;
   setEmailAdapterUrl: (url: string) => void;
   setEmailApiKey: (key: string) => void;
   addEnvVar: (v: Omit<EnvVar, 'id'>) => { ok: boolean; id?: string; reason?: string };
@@ -74,6 +77,7 @@ const nowSeed = Date.now();
 const defaults: AppSettings = {
   websiteUrl: '',
   websiteName: '',
+  cookiePolicyEnabled: true,
   email: {
     adapterUrl: '',
     apiKey: '',
@@ -109,6 +113,8 @@ export const useAppSettingsStore = create<AppSettingsState>()(
       settings: defaults,
       setWebsiteUrl: (url) => set((s) => ({ settings: { ...s.settings, websiteUrl: url.trim() } })),
       setWebsiteName: (name) => set((s) => ({ settings: { ...s.settings, websiteName: name.trim() } })),
+      setCookiePolicyEnabled: (enabled) => set((s) => ({ settings: { ...s.settings, cookiePolicyEnabled: !!enabled } })),
+      setPrivacyPolicyEnabled: (enabled) => set((s) => ({ settings: { ...s.settings, privacyPolicyEnabled: !!enabled } })),
       setEmailAdapterUrl: (url) => set((s) => ({ settings: { ...s.settings, email: { ...s.settings.email, adapterUrl: url.trim() } } })),
       setEmailApiKey: (key) => set((s) => ({ settings: { ...s.settings, email: { ...s.settings.email, apiKey: key } } })),
       addEmailIntegration: (p) => {
@@ -154,7 +160,7 @@ export const useAppSettingsStore = create<AppSettingsState>()(
     }),
     {
       name: 'app-settings',
-      version: 9,
+      version: 11,
       migrate: (persisted: any, version) => {
         if (!persisted) return undefined as any;
         if (!persisted.settings) persisted.settings = defaults;
@@ -197,6 +203,12 @@ export const useAppSettingsStore = create<AppSettingsState>()(
         }
         if (version < 9) {
           if (typeof persisted.settings.websiteName !== 'string') persisted.settings.websiteName = '';
+        }
+        if (version < 10) {
+          if (typeof persisted.settings.cookiePolicyEnabled !== 'boolean') persisted.settings.cookiePolicyEnabled = true;
+        }
+        if (version < 11) {
+          if (typeof persisted.settings.privacyPolicyEnabled !== 'boolean') persisted.settings.privacyPolicyEnabled = true;
         }
         return persisted as any;
       },

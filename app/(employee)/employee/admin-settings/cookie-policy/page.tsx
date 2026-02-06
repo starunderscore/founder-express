@@ -1,15 +1,18 @@
 "use client";
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, ActionIcon, Table, Button, Modal, Select, Badge } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, ActionIcon, Table, Button, Modal, Select, Badge, Switch } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useAppSettingsStore } from '@/state/appSettingsStore';
 
 type CookiePolicy = { id: string; title: string; bodyHtml?: string; createdAt?: number; updatedAt?: number; deletedAt?: number; isActive?: boolean };
 
 export default function CookiePolicyPage() {
   const router = useRouter();
+  const enabled = useAppSettingsStore((s) => s.settings.cookiePolicyEnabled ?? false);
+  const setEnabled = useAppSettingsStore((s) => s.setCookiePolicyEnabled);
   const [policies, setPolicies] = useState<CookiePolicy[]>([]);
   const [selectOpen, setSelectOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -61,36 +64,52 @@ export default function CookiePolicyPage() {
             </div>
           </Group>
           <Group gap="xs">
-            <Button variant="light" onClick={() => router.push('/employee/admin-settings/cookie-policy/new')}>New policy</Button>
-            <Button variant="light" onClick={openSelectModal}>Select active</Button>
+            <Button variant="light" onClick={() => router.push('/employee/admin-settings/cookie-policy/new')} disabled={!enabled}>New policy</Button>
+            <Button variant="light" onClick={openSelectModal} disabled={!enabled}>Select active</Button>
           </Group>
         </Group>
 
         <Card withBorder>
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Title</Table.Th>
-                <Table.Th>Active</Table.Th>
-                <Table.Th>Updated</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {policies.map((p) => (
-                <Table.Tr key={p.id}>
-                  <Table.Td>{p.title}</Table.Td>
-                  <Table.Td>{p.isActive ? <Badge variant="light" color="green">Active</Badge> : '—'}</Table.Td>
-                  <Table.Td>{new Date(p.updatedAt || p.createdAt || 0).toLocaleString() || '—'}</Table.Td>
-                </Table.Tr>
-              ))}
-              {policies.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={3}><Text c="dimmed">No cookie policies yet</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+          <Group justify="space-between" align="center">
+            <div>
+              <Text fw={600}>Website cookie policy</Text>
+              <Text c="dimmed" size="sm">Toggle to enable/disable cookie policy on the public site.</Text>
+            </div>
+            <Switch
+              checked={enabled}
+              onChange={(e) => setEnabled(e.currentTarget.checked)}
+              label={enabled ? 'Enabled' : 'Disabled'}
+            />
+          </Group>
         </Card>
+
+        {enabled && (
+          <Card withBorder>
+            <Table verticalSpacing="xs">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Title</Table.Th>
+                  <Table.Th>Active</Table.Th>
+                  <Table.Th>Updated</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {policies.map((p) => (
+                  <Table.Tr key={p.id}>
+                    <Table.Td>{p.title}</Table.Td>
+                    <Table.Td>{p.isActive ? <Badge variant="light" color="green">Active</Badge> : '—'}</Table.Td>
+                    <Table.Td>{new Date(p.updatedAt || p.createdAt || 0).toLocaleString() || '—'}</Table.Td>
+                  </Table.Tr>
+                ))}
+                {policies.length === 0 && (
+                  <Table.Tr>
+                    <Table.Td colSpan={3}><Text c="dimmed">No cookie policies yet</Text></Table.Td>
+                  </Table.Tr>
+                )}
+              </Table.Tbody>
+            </Table>
+          </Card>
+        )}
 
         <Modal opened={selectOpen} onClose={() => setSelectOpen(false)} title="Select active cookie policy" centered>
           <Stack>
