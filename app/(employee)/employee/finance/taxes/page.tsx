@@ -1,9 +1,10 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { ActionIcon, Button, Card, Checkbox, Group, Modal, NumberInput, Stack, Table, Text, TextInput, Title, Menu } from '@mantine/core';
+import { ActionIcon, Button, Card, Checkbox, Group, Modal, NumberInput, Stack, Table, Text, TextInput, Title, Menu, Tabs } from '@mantine/core';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function FinanceTaxesPage() {
   const router = useRouter();
@@ -39,7 +40,15 @@ export default function FinanceTaxesPage() {
           </Group>
         </Group>
 
-        <Card withBorder>
+        <Tabs value={'active'}>
+          <Tabs.List>
+            <Tabs.Tab value="active"><Link href="/employee/finance/taxes">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/taxes/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/taxes/removed">Remove</Link></Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+
+        <Card withBorder mt="sm">
           <Group justify="space-between" mb="xs">
             <Text fw={600}>Tax rates</Text>
           </Group>
@@ -78,44 +87,7 @@ export default function FinanceTaxesPage() {
           </Table>
         </Card>
 
-        <Card withBorder>
-          <Stack>
-            <Text fw={600}>Archived taxes</Text>
-            <Table verticalSpacing="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Rate</Table.Th>
-                  <Table.Th></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {settings.taxes.filter((t) => t.isArchived && !t.deletedAt).map((t) => (
-                  <Table.Tr key={t.id}>
-                    <Table.Td>{t.name}</Table.Td>
-                    <Table.Td>{t.rate}%</Table.Td>
-                    <Table.Td style={{ width: 1 }}>
-                      <Menu shadow="md" width={180}>
-                        <Menu.Target>
-                          <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item onClick={() => restoreTax(t.id)}>Restore</Menu.Item>
-                          <Menu.Item color="red" onClick={() => removeTax(t.id)}>Remove</Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-                {settings.taxes.filter((t) => t.isArchived && !t.deletedAt).length === 0 && (
-                  <Table.Tr>
-                    <Table.Td colSpan={3}><Text c="dimmed">No archived taxes</Text></Table.Td>
-                  </Table.Tr>
-                )}
-              </Table.Tbody>
-            </Table>
-          </Stack>
-        </Card>
+        {/* Archived taxes moved to /archive tab */}
 
         <Modal opened={taxOpen} onClose={() => { setTaxOpen(false); setEditingTaxId(null); }} title={editingTaxId ? 'Edit tax' : 'Add tax'} centered>
           <Stack>
@@ -136,4 +108,3 @@ export default function FinanceTaxesPage() {
     </EmployerAuthGate>
   );
 }
-

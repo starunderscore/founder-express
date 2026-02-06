@@ -1,9 +1,10 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { ActionIcon, Button, Card, Group, Stack, Table, Text, TextInput, Title, NumberInput, MultiSelect, Menu, Modal } from '@mantine/core';
+import { ActionIcon, Button, Card, Group, Stack, Table, Text, TextInput, Title, NumberInput, MultiSelect, Menu, Modal, Tabs } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function InvoiceTemplatesPage() {
   const router = useRouter();
@@ -12,7 +13,6 @@ export default function InvoiceTemplatesPage() {
   const updateTemplate = useFinanceStore((s) => s.updateTemplate);
   const removeTemplate = useFinanceStore((s) => s.removeTemplate);
   const archiveTemplate = useFinanceStore((s) => s.archiveTemplate);
-  const restoreTemplate = useFinanceStore((s) => s.restoreTemplate);
 
   const taxOptions = useMemo(() => settings.taxes.map((t) => ({ value: t.id, label: `${t.name} (${t.rate}%)` })), [settings.taxes]);
 
@@ -21,10 +21,6 @@ export default function InvoiceTemplatesPage() {
   const [tplName, setTplName] = useState('');
   const [tplItems, setTplItems] = useState<{ id: string; description: string; quantity: string; unitPrice: string }[]>([]);
   const [tplTaxIds, setTplTaxIds] = useState<string[]>([]);
-
-  const addTplRow = () => setTplItems((rows) => [...rows, { id: `row-${Date.now()}-${Math.random()}`, description: '', quantity: '1', unitPrice: '0' }]);
-  const removeTplRow = (id: string) => setTplItems((rows) => rows.filter((r) => r.id !== id));
-  const updateTplRow = (id: string, patch: Partial<{ description: string; quantity: string; unitPrice: string }>) => setTplItems((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
   return (
     <EmployerAuthGate>
@@ -46,7 +42,15 @@ export default function InvoiceTemplatesPage() {
           </Group>
         </Group>
 
-        <Card withBorder>
+        <Tabs value={'active'}>
+          <Tabs.List>
+            <Tabs.Tab value="active"><Link href="/employee/finance/invoice-templates">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/invoice-templates/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/invoice-templates/removed">Remove</Link></Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+
+        <Card withBorder mt="sm">
           <Stack>
             <Text fw={600}>Active templates</Text>
             <Stack>
@@ -78,45 +82,6 @@ export default function InvoiceTemplatesPage() {
           </Stack>
         </Card>
 
-        <Card withBorder>
-          <Stack>
-            <Text fw={600}>Archived templates</Text>
-            <Table verticalSpacing="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Items</Table.Th>
-                  <Table.Th></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {settings.templates.filter((t) => t.isArchived && !t.deletedAt).map((t) => (
-                  <Table.Tr key={t.id}>
-                    <Table.Td>{t.name}</Table.Td>
-                    <Table.Td>{t.items.length}</Table.Td>
-                    <Table.Td style={{ width: 1 }}>
-                      <Menu shadow="md" width={180}>
-                        <Menu.Target>
-                          <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item onClick={() => restoreTemplate(t.id)}>Restore</Menu.Item>
-                          <Menu.Item color="red" onClick={() => removeTemplate(t.id)}>Remove</Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-                {settings.templates.filter((t) => t.isArchived && !t.deletedAt).length === 0 && (
-                  <Table.Tr>
-                    <Table.Td colSpan={3}><Text c="dimmed">No archived templates</Text></Table.Td>
-                  </Table.Tr>
-                )}
-              </Table.Tbody>
-            </Table>
-          </Stack>
-        </Card>
-
         <ModalEditTemplate
           opened={tplOpen}
           onClose={() => { setTplOpen(false); setEditingTplId(null); }}
@@ -124,7 +89,7 @@ export default function InvoiceTemplatesPage() {
           tplName={tplName}
           setTplName={setTplName}
           tplItems={tplItems}
-          setTplItems={setTplItems}
+          setTplItems={setTplItems as any}
           tplTaxIds={tplTaxIds}
           setTplTaxIds={setTplTaxIds}
           taxOptions={taxOptions}
@@ -207,3 +172,4 @@ function ModalEditTemplate(props: {
     </Modal>
   );
 }
+

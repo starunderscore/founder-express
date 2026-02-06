@@ -1,9 +1,10 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Title, Tabs } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function FinanceProductsPage() {
   const router = useRouter();
@@ -27,8 +28,9 @@ export default function FinanceProductsPage() {
       if (hasOne) return 'one_time';
       return 'none';
     };
-    if (prodView === 'all') return products;
-    return products.filter((p) => classify(p) === prodView);
+    const base = products.filter((p: any) => !p.isArchived && !p.deletedAt);
+    if (prodView === 'all') return base;
+    return base.filter((p) => classify(p) === prodView);
   }, [products, prodView]);
 
   const [prodOpen, setProdOpen] = useState(false);
@@ -65,7 +67,15 @@ export default function FinanceProductsPage() {
           </Group>
         </Group>
 
-        <Card withBorder>
+        <Tabs value={'active'}>
+          <Tabs.List>
+            <Tabs.Tab value="active"><Link href="/employee/finance/products">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/products/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/products/removed">Remove</Link></Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+
+        <Card withBorder mt="sm">
           <Group mb="sm">
             <SegmentedControl
               value={prodView}
@@ -147,45 +157,6 @@ export default function FinanceProductsPage() {
           </Card>
         </Card>
 
-        <Card withBorder>
-          <Stack>
-            <Text fw={600}>Archived products</Text>
-            <Table verticalSpacing="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Description</Table.Th>
-                  <Table.Th></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {products.filter((p: any) => p.isArchived && !p.deletedAt).map((p: any) => (
-                  <Table.Tr key={p.id}>
-                    <Table.Td>{p.name}</Table.Td>
-                    <Table.Td><Text c="dimmed" size="sm">{p.description || '—'}</Text></Table.Td>
-                    <Table.Td style={{ width: 1 }}>
-                      <Menu shadow="md" width={180}>
-                        <Menu.Target>
-                          <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item onClick={() => restoreProduct(p.id)}>Restore</Menu.Item>
-                          <Menu.Item color="red" onClick={() => removeProduct(p.id)}>Remove</Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-                {products.filter((p: any) => p.isArchived && !p.deletedAt).length === 0 && (
-                  <Table.Tr>
-                    <Table.Td colSpan={3}><Text c="dimmed">No archived products</Text></Table.Td>
-                  </Table.Tr>
-                )}
-              </Table.Tbody>
-            </Table>
-          </Stack>
-        </Card>
-
         <Modal opened={prodOpen} onClose={() => { setProdOpen(false); setProdIdEditing(null); }} title={prodIdEditing ? 'Edit product' : 'New product'} centered>
           <Stack>
             <TextInput label="Name" value={prodName} onChange={(e) => setProdName(e.currentTarget.value)} />
@@ -231,4 +202,3 @@ export default function FinanceProductsPage() {
     </EmployerAuthGate>
   );
 }
-
