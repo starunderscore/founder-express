@@ -104,7 +104,7 @@ export default function EmailSettingsPage() {
           <Tabs.List>
             <Tabs.Tab value="variables"><Link href="/employee/company-settings/email">Email variables</Link></Tabs.Tab>
             <Tabs.Tab value="templates"><Link href="/employee/company-settings/email/templates">Email templates</Link></Tabs.Tab>
-            <Tabs.Tab value="configure"><Link href="/employee/company-settings/email/configure">Configure</Link></Tabs.Tab>
+            <Tabs.Tab value="system-emails"><Link href="/employee/company-settings/email/system-emails">System emails</Link></Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="variables" pt="md">

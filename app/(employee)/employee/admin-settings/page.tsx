@@ -27,6 +27,16 @@ export default function AdminSettingsPage() {
         <Card withBorder>
           <Group justify="space-between" align="center">
             <div>
+              <Text fw={600}>System values</Text>
+              <Text c="dimmed" size="sm">Branding and app values</Text>
+            </div>
+            <Button component={Link as any} href="/employee/admin-settings/system-values" variant="light">Open</Button>
+          </Group>
+        </Card>
+
+        <Card withBorder>
+          <Group justify="space-between" align="center">
+            <div>
               <Text fw={600}>Third‑party Configuration</Text>
               <Text c="dimmed" size="sm">APIs and external services</Text>
             </div>

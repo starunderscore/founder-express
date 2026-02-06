@@ -27,18 +27,7 @@ export default function AppSettingsPage() {
           </Group>
         </Card>
 
-        {/* Admin Settings card removed per request */}
-
-        <Card withBorder>
-          <Group justify="space-between" align="center">
-            <div>
-              <Title order={4}>Configuration</Title>
-              <Text c="dimmed" size="sm">Persisted app variables like Website URL.</Text>
-              {websiteUrl && <Text size="sm">Website URL: {websiteUrl}</Text>}
-            </div>
-            <Button component={Link as any} href="/employee/company-settings/configuration" variant="light">Open</Button>
-          </Group>
-        </Card>
+        {/* Configuration card intentionally removed to centralize under Admin Settings */}
       </Stack>
     </EmployerAuthGate>
   );

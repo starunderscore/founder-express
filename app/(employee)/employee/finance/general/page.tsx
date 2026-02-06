@@ -1,7 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { Button, Card, Checkbox, Group, NumberInput, Select, Stack, Text, TextInput, Title, ActionIcon } from '@mantine/core';
+import { Button, Card, Checkbox, Group, NumberInput, Select, Stack, Text, Title, ActionIcon } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 
 export default function FinanceGeneralPage() {
@@ -10,8 +10,7 @@ export default function FinanceGeneralPage() {
   const setCurrency = useFinanceStore((s) => s.setCurrency);
   const setGracePeriodDays = useFinanceStore((s) => s.setGracePeriodDays);
   const setEnforceTax = useFinanceStore((s) => (s as any).setEnforceTax || (() => {}));
-  const setQuickBooksEnabled = useFinanceStore((s) => (s as any).setQuickBooksEnabled || (() => {}));
-  const setQuickBooksCompanyId = useFinanceStore((s) => (s as any).setQuickBooksCompanyId || (() => {}));
+  // Third‑party settings moved to Admin Settings → Third‑party Configuration
 
   return (
     <EmployerAuthGate>
@@ -25,7 +24,7 @@ export default function FinanceGeneralPage() {
             </ActionIcon>
             <div>
               <Title order={2}>General</Title>
-              <Text c="dimmed">Financial configurations and third parties.</Text>
+              <Text c="dimmed">Financial configurations.</Text>
             </div>
           </Group>
         </Group>
@@ -65,16 +64,8 @@ export default function FinanceGeneralPage() {
           </Stack>
         </Card>
 
-        <Card withBorder>
-          <Stack>
-            <Text fw={600}>Third parties</Text>
-            <Text size="sm" c="dimmed">QuickBooks connection (for exports)</Text>
-            <TextInput label="QuickBooks Company ID (Realm ID)" placeholder="e.g., 123145678901234" value={(settings as any).quickbooks?.companyId || ''} onChange={(e) => setQuickBooksCompanyId(e.currentTarget.value)} />
-            <Checkbox label="Enable QuickBooks exports" checked={(settings as any).quickbooks?.enabled ?? false} onChange={(e) => setQuickBooksEnabled(e.currentTarget.checked)} />
-          </Stack>
-        </Card>
+        {null}
       </Stack>
     </EmployerAuthGate>
   );
 }
-

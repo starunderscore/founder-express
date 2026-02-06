@@ -180,7 +180,7 @@ export default function EmployerEmailNewslettersPage() {
                       <TextInput label="Website URL (WEBSITE_URL)" placeholder="https://www.example.com" value={urlInput} onChange={(e) => setUrlInput(e.currentTarget.value)} error={urlError || undefined} />
                     </div>
                     <Button onClick={onSaveUrl}>Save</Button>
-                    <Button variant="light" component={Link as any} href="/employee/company-settings/configuration">Open settings</Button>
+                  <Button variant="light" component={Link as any} href="/employee/admin-settings">Open settings</Button>
                   </Group>
                   {websiteUrl && validUrl(websiteUrl) && <CodeSnippet />}
                 </Stack>

@@ -45,6 +45,7 @@ export type EmailTemplate = {
 
 export type AppSettings = {
   websiteUrl: string;
+  websiteName: string;
   email: EmailAdapterSettings;
   env: EnvVar[];
 };
@@ -52,6 +53,7 @@ export type AppSettings = {
 type AppSettingsState = {
   settings: AppSettings;
   setWebsiteUrl: (url: string) => void;
+  setWebsiteName: (name: string) => void;
   setEmailAdapterUrl: (url: string) => void;
   setEmailApiKey: (key: string) => void;
   addEnvVar: (v: Omit<EnvVar, 'id'>) => { ok: boolean; id?: string; reason?: string };
@@ -71,6 +73,7 @@ type AppSettingsState = {
 const nowSeed = Date.now();
 const defaults: AppSettings = {
   websiteUrl: '',
+  websiteName: '',
   email: {
     adapterUrl: '',
     apiKey: '',
@@ -105,6 +108,7 @@ export const useAppSettingsStore = create<AppSettingsState>()(
     (set) => ({
       settings: defaults,
       setWebsiteUrl: (url) => set((s) => ({ settings: { ...s.settings, websiteUrl: url.trim() } })),
+      setWebsiteName: (name) => set((s) => ({ settings: { ...s.settings, websiteName: name.trim() } })),
       setEmailAdapterUrl: (url) => set((s) => ({ settings: { ...s.settings, email: { ...s.settings.email, adapterUrl: url.trim() } } })),
       setEmailApiKey: (key) => set((s) => ({ settings: { ...s.settings, email: { ...s.settings.email, apiKey: key } } })),
       addEmailIntegration: (p) => {
@@ -150,11 +154,12 @@ export const useAppSettingsStore = create<AppSettingsState>()(
     }),
     {
       name: 'app-settings',
-      version: 8,
+      version: 9,
       migrate: (persisted: any, version) => {
         if (!persisted) return undefined as any;
         if (!persisted.settings) persisted.settings = defaults;
         if (typeof persisted.settings.websiteUrl !== 'string') persisted.settings.websiteUrl = '';
+        if (typeof persisted.settings.websiteName !== 'string') persisted.settings.websiteName = '';
         if (version < 2) {
           const email: EmailAdapterSettings = { adapterUrl: '', apiKey: '' };
           persisted.settings.email = persisted.settings.email || email;
@@ -189,6 +194,9 @@ export const useAppSettingsStore = create<AppSettingsState>()(
           if (persisted.settings?.email && 'activeProvider' in persisted.settings.email) {
             delete persisted.settings.email.activeProvider;
           }
+        }
+        if (version < 9) {
+          if (typeof persisted.settings.websiteName !== 'string') persisted.settings.websiteName = '';
         }
         return persisted as any;
       },

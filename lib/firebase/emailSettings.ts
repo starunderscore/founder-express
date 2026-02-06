@@ -132,3 +132,47 @@ export async function getEmailTemplate(id: string): Promise<EmailTemplateItem | 
   const data = snap.data() as any;
   return { id: snap.id, name: data.name, subject: data.subject, body: data.body || '', createdAt: data.createdAt, updatedAt: data.updatedAt };
 }
+
+// System emails (password reset, verify email) — stored separately from templates
+export type SystemEmailId = 'password_reset' | 'verify_email';
+export type SystemEmail = {
+  id: SystemEmailId;
+  subject: string;
+  body: string;
+  updatedAt?: number;
+};
+
+const SYS_COL = 'admin_settings/global/system_emails';
+
+export async function getSystemEmail(id: SystemEmailId): Promise<SystemEmail | null> {
+  const ref = doc(db(), SYS_COL, id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = snap.data() as any;
+  return { id, subject: data.subject || '', body: data.body || '', updatedAt: data.updatedAt };
+}
+
+export async function saveSystemEmail(id: SystemEmailId, data: { subject: string; body: string }) {
+  const ref = doc(db(), SYS_COL, id);
+  await setDoc(ref, { subject: data.subject, body: data.body, updatedAt: Date.now() }, { merge: true });
+}
+
+export async function ensureDefaultSystemEmails() {
+  const defaults: Record<SystemEmailId, { subject: string; body: string }> = {
+    password_reset: {
+      subject: 'Reset your password for {{COMPANY_NAME}}',
+      body: '<p>Hi {{USERNAME}},</p><p>Click the link below to reset your password:</p><p><a href="{{ACTION_URL}}" target="_blank" rel="noopener">Reset password</a></p><p>If you did not request this, you can ignore this email.</p><p>— {{COMPANY_NAME}}</p>',
+    },
+    verify_email: {
+      subject: 'Verify your email for {{COMPANY_NAME}}',
+      body: '<p>Hi {{USERNAME}},</p><p>Please confirm your email address by clicking the link below:</p><p><a href="{{ACTION_URL}}" target="_blank" rel="noopener">Verify email</a></p><p>Thanks!<br/>— {{COMPANY_NAME}}</p>',
+    },
+  };
+  for (const id of Object.keys(defaults) as SystemEmailId[]) {
+    const ref = doc(db(), SYS_COL, id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, { ...defaults[id], updatedAt: Date.now() });
+    }
+  }
+}

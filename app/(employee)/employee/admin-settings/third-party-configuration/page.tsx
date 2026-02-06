@@ -51,6 +51,8 @@ export default function AdminThirdPartyConfigurationPage() {
             <Button component={Link as any} href="/employee/admin-settings/third-party-configuration/finance/providers" variant="light">Open</Button>
           </Group>
         </Card>
+
+        {null}
       </Stack>
     </EmployerAdminGate>
   );
