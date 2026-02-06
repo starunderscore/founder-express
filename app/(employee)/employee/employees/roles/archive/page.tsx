@@ -9,7 +9,7 @@ import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 
 type RoleDoc = { id: string; name: string; description?: string; permissionIds: string[]; isArchived?: boolean; deletedAt?: number };
 
-export default function EmployerRolesPage() {
+export default function EmployerRolesArchivePage() {
   const router = useRouter();
   const [roles, setRoles] = useState<RoleDoc[]>([]);
   useEffect(() => {
@@ -20,17 +20,13 @@ export default function EmployerRolesPage() {
         const data = d.data() as any;
         list.push({ id: d.id, name: data.name || '', description: data.description || undefined, permissionIds: Array.isArray(data.permissionIds) ? data.permissionIds : [], isArchived: !!data.isArchived, deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined });
       });
-      setRoles(list.filter((r) => !r.deletedAt));
+      setRoles(list.filter((r) => r.isArchived && !r.deletedAt));
     });
     return () => unsub();
   }, []);
 
-  const softRemove = async (id: string) => {
-    await updateDoc(doc(db(), 'employee_roles', id), { deletedAt: Date.now() });
-  };
-  const archive = async (id: string) => {
-    await updateDoc(doc(db(), 'employee_roles', id), { isArchived: true });
-  };
+  const restore = async (id: string) => { await updateDoc(doc(db(), 'employee_roles', id), { isArchived: false }); };
+  const softRemove = async (id: string) => { await updateDoc(doc(db(), 'employee_roles', id), { deletedAt: Date.now() }); };
 
   return (
     <EmployerAdminGate>
@@ -47,10 +43,9 @@ export default function EmployerRolesPage() {
             <Text c="dimmed">Bundle permissions into reusable roles.</Text>
           </div>
         </Group>
-        <Button component={Link as any} href="/employee/employees/roles/new">Add role</Button>
       </Group>
 
-      <Tabs value={'active'}>
+      <Tabs value={'archive'}>
         <Tabs.List>
           <Tabs.Tab value="active"><Link href="/employee/employees/roles">Active</Link></Tabs.Tab>
           <Tabs.Tab value="archive"><Link href="/employee/employees/roles/archive">Archive</Link></Tabs.Tab>
@@ -69,13 +64,9 @@ export default function EmployerRolesPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-              {roles.filter((r) => !r.isArchived && !r.deletedAt).map((r) => (
+              {roles.map((r) => (
               <Table.Tr key={r.id}>
-                <Table.Td>
-                  <Link href={`/employee/employees/roles/${r.id}/edit`} style={{ textDecoration: 'none' }}>
-                    {r.name}
-                  </Link>
-                </Table.Td>
+                <Table.Td>{r.name}</Table.Td>
                 <Table.Td><Text c="dimmed" lineClamp={2}>{r.description || '—'}</Text></Table.Td>
                 <Table.Td>{r.permissionIds.length}</Table.Td>
                 <Table.Td>
@@ -85,8 +76,7 @@ export default function EmployerRolesPage() {
                         <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item component={Link as any} href={`/employee/employees/roles/${r.id}/edit`}>Edit</Menu.Item>
-                        <Menu.Item onClick={() => archive(r.id)}>Archive</Menu.Item>
+                        <Menu.Item onClick={() => restore(r.id)}>Restore</Menu.Item>
                         <Menu.Item color="red" onClick={() => softRemove(r.id)}>Remove</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
@@ -96,7 +86,7 @@ export default function EmployerRolesPage() {
             ))}
             {roles.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={4}><Text c="dimmed">No roles yet. Create a role above.</Text></Table.Td>
+                <Table.Td colSpan={4}><Text c="dimmed">No archived roles.</Text></Table.Td>
               </Table.Tr>
             )}
           </Table.Tbody>

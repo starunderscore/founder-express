@@ -2,33 +2,18 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Button, Card, Group, Stack, Table, Text, Title, Badge, Menu, ActionIcon, Center, Loader, Tabs } from '@mantine/core';
-import { useRouter } from 'next/navigation';
 import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
+import { useRouter } from 'next/navigation';
 
 type EmployeeDoc = { id: string; name: string; email: string; roleIds: string[]; permissionIds: string[]; isAdmin?: boolean; isArchived?: boolean; deletedAt?: number };
 
-export default function EmployerEmployeesManagePage() {
+export default function EmployerEmployeesRemovedPage() {
   const router = useRouter();
-  const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
-  useEffect(() => {
-    const qRoles = query(collection(db(), 'employee_roles'));
-    const unsub = onSnapshot(qRoles, (snap) => {
-      const list: Array<{ id: string; name: string }> = [];
-      snap.forEach((d) => {
-        const data = d.data() as any;
-        if (!data.deletedAt) list.push({ id: d.id, name: data.name || '' });
-      });
-      setRoles(list);
-    });
-    return () => unsub();
-  }, []);
   const [employees, setEmployees] = useState<EmployeeDoc[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setError(null);
     const q = query(collection(db(), 'employees'));
     const unsub = onSnapshot(q, (snap) => {
       const list: EmployeeDoc[] = [];
@@ -42,25 +27,13 @@ export default function EmployerEmployeesManagePage() {
           permissionIds: Array.isArray(data.permissionIds) ? data.permissionIds : [],
           isAdmin: !!data.isAdmin,
           isArchived: !!data.isArchived,
+          deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined,
         });
       });
-      setEmployees(list);
-    }, (e) => {
-      setError(e?.message || 'Failed to load employees');
-      setEmployees([]);
+      setEmployees(list.filter((e) => !!e.deletedAt));
     });
     return () => unsub();
   }, []);
-
-  const onRemove = async (id: string) => {
-    try {
-      await updateDoc(doc(db(), 'employees', id), { deletedAt: Date.now() });
-    } catch (e: any) {
-      setError(e?.message || 'Failed to remove employee');
-    }
-  };
-
-  const roleName = (rid: string) => roles.find((r) => r.id === rid)?.name || null;
 
   if (employees === null) {
     return (
@@ -85,10 +58,9 @@ export default function EmployerEmployeesManagePage() {
             <Text c="dimmed">Assign roles and permissions to employees.</Text>
           </div>
         </Group>
-        <Button component={Link as any} href="/employee/employees/manage/new">Add employee</Button>
       </Group>
 
-      <Tabs value={'active'}>
+      <Tabs value={'removed'}>
         <Tabs.List>
           <Tabs.Tab value="active"><Link href="/employee/employees/manage">Active</Link></Tabs.Tab>
           <Tabs.Tab value="archive"><Link href="/employee/employees/manage/archive">Archive</Link></Tabs.Tab>
@@ -97,7 +69,6 @@ export default function EmployerEmployeesManagePage() {
       </Tabs>
 
       <Card withBorder>
-        {error && <Text c="red" size="sm" mb="sm">{error}</Text>}
         <Table verticalSpacing="sm">
           <Table.Thead>
               <Table.Tr>
@@ -105,28 +76,16 @@ export default function EmployerEmployeesManagePage() {
                 <Table.Th>Email</Table.Th>
                 <Table.Th>Admin</Table.Th>
                 <Table.Th>Roles</Table.Th>
-                <Table.Th>Additional permissions</Table.Th>
                 <Table.Th></Table.Th>
               </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {employees.filter((e)=>!e.isArchived && !e.deletedAt).map((e) => (
+            {employees.map((e) => (
               <Table.Tr key={e.id}>
-                <Table.Td>
-                  <Link href={`/employee/employees/manage/${e.id}/edit`} style={{ textDecoration: 'none' }}>{e.name}</Link>
-                </Table.Td>
+                <Table.Td>{e.name}</Table.Td>
                 <Table.Td>{e.email}</Table.Td>
                 <Table.Td>{e.isAdmin ? <Badge size="xs" variant="light" color="indigo">admin</Badge> : '—'}</Table.Td>
-                <Table.Td>
-                  <Group gap={6}>
-                    {e.roleIds.map((rid) => {
-                      const rn = roleName(rid);
-                      return rn ? <Badge key={rid} variant="light">{rn}</Badge> : null;
-                    })}
-                    {e.roleIds.length === 0 && <Text c="dimmed">—</Text>}
-                  </Group>
-                </Table.Td>
-                <Table.Td>{e.permissionIds.length}</Table.Td>
+                <Table.Td>{Array.isArray(e.roleIds) ? e.roleIds.length : 0}</Table.Td>
                 <Table.Td>
                   <Group justify="flex-end">
                     <Menu shadow="md" width={180}>
@@ -134,9 +93,7 @@ export default function EmployerEmployeesManagePage() {
                         <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item component={Link as any} href={`/employee/employees/manage/${e.id}/edit`}>Edit</Menu.Item>
-                        <Menu.Item onClick={async () => { await updateDoc(doc(db(), 'employees', e.id), { isArchived: true }); }}>Archive</Menu.Item>
-                        <Menu.Item color="red" onClick={() => onRemove(e.id)}>Remove</Menu.Item>
+                        <Menu.Item onClick={async () => { await updateDoc(doc(db(), 'employees', e.id), { deletedAt: undefined, isArchived: false }); }}>Restore</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
                   </Group>
@@ -145,8 +102,8 @@ export default function EmployerEmployeesManagePage() {
             ))}
             {employees.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={6}>
-                  <Text c="dimmed">No employees yet</Text>
+                <Table.Td colSpan={5}>
+                  <Text c="dimmed">No removed employees</Text>
                 </Table.Td>
               </Table.Tr>
             )}
@@ -157,3 +114,4 @@ export default function EmployerEmployeesManagePage() {
     </EmployerAdminGate>
   );
 }
+
