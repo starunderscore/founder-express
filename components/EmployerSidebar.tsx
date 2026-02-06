@@ -17,7 +17,7 @@ export function EmployerSidebar() {
       <Divider my={6} />
       <Text size="xs" c="dimmed" px="xs">Users</Text>
       <NavLink component={Link} href="/employee/crm" label="Customers" active={isActive('/employee/crm')} />
-      <NavLink component={Link} href="/employee/email-subscriptions/newsletters" label="Email subscriptions" active={isActive('/employee/email-subscriptions')} />
+      <NavLink component={Link} href="/employee/email-subscriptions" label="Email subscriptions" active={isActive('/employee/email-subscriptions')} />
       <NavLink component={Link} href="/employee/employees" label="Employees" active={isActive('/employee/employees')} />
       <Divider my={6} />
       <Text size="xs" c="dimmed" px="xs">Content</Text>

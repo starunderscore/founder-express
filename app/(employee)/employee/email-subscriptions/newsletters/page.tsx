@@ -1,17 +1,19 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, Table, Badge, Tabs, Anchor, TextInput, Alert } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Table, Badge, Tabs, Anchor, TextInput, Alert, ActionIcon } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import Link from 'next/link';
-import { RouteTabs } from '@/components/RouteTabs';
+// RouteTabs removed per new design
 import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { useToast } from '@/components/ToastProvider';
+import { useRouter } from 'next/navigation';
 
 type Newsletter = { id: string; subject: string; status: 'Draft'|'Scheduled'|'Sent'; recipients: number; sentAt?: number; body?: string };
 
 export default function EmployerEmailNewslettersPage() {
+  const router = useRouter();
   const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
   const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
   const setWebsiteUrl = useAppSettingsStore((s) => s.setWebsiteUrl);
@@ -74,120 +76,113 @@ export default function EmployerEmailNewslettersPage() {
   return (
     <EmployerAuthGate>
       <Stack>
-        <div>
-          <Title order={2} mb={4}>Email subscriptions</Title>
-          <Text c="dimmed">Manage waiting lists and newsletter subscribers.</Text>
-        </div>
-
-        <RouteTabs
-          value={"newsletters"}
-          tabs={[
-            { value: 'newsletters', label: 'Newsletters', href: '/employee/email-subscriptions/newsletters' },
-            { value: 'waiting', label: 'Waiting Lists', href: '/employee/email-subscriptions/waiting' },
-            { value: 'archive', label: 'Archive', href: '/employee/email-subscriptions/archive' },
-            { value: 'removed', label: 'Removed', href: '/employee/email-subscriptions/removed' },
-          ]}
-        />
-
-        <Card withBorder>
-          <Group justify="space-between" mb="sm">
-            <Text fw={600}>Newsletters</Text>
+        <Group justify="space-between" align="flex-start" mb="xs">
+          <Group>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/email-subscriptions')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
+            </svg>
+          </ActionIcon>
+          <div>
+            <Title order={2} mb={4}>Newsletters</Title>
+            <Text c="dimmed">Manage newsletters and subscribers.</Text>
+          </div>
+          </Group>
+          <Group gap="xs">
             <Button variant="light" component={Link as any} href="/employee/email-subscriptions/newsletters/new">New newsletter</Button>
           </Group>
+        </Group>
 
-          <Tabs defaultValue="sent">
-            <Tabs.List>
-              <Tabs.Tab value="sent">Emails sent <Badge ml={6} size="xs" variant="light">{sent.length}</Badge></Tabs.Tab>
-              <Tabs.Tab value="drafts">Email drafts <Badge ml={6} size="xs" variant="light">{drafts.length}</Badge></Tabs.Tab>
-              <Tabs.Tab value="form">Copy & paste form</Tabs.Tab>
-            </Tabs.List>
+        <Tabs defaultValue="sent">
+          <Tabs.List>
+            <Tabs.Tab value="sent">Emails sent <Badge ml={6} size="xs" variant="light">{sent.length}</Badge></Tabs.Tab>
+            <Tabs.Tab value="drafts">Email drafts <Badge ml={6} size="xs" variant="light">{drafts.length}</Badge></Tabs.Tab>
+            <Tabs.Tab value="form">Copy & paste form</Tabs.Tab>
+          </Tabs.List>
 
-            <Tabs.Panel value="sent" pt="md">
-              <Card withBorder>
-                <Table verticalSpacing="xs">
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Subject</Table.Th>
-                      <Table.Th>Status</Table.Th>
-                      <Table.Th>Recipients</Table.Th>
-                      <Table.Th>Sent</Table.Th>
+          <Tabs.Panel value="sent" pt="md">
+            <Card withBorder>
+              <Table verticalSpacing="xs">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Subject</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Recipients</Table.Th>
+                    <Table.Th>Sent</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {sent.map((n) => (
+                    <Table.Tr key={n.id}>
+                      <Table.Td>
+                        <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/${n.id}`} underline="hover">{n.subject}</Anchor>
+                      </Table.Td>
+                      <Table.Td><Badge variant="light" color={n.status === 'Sent' ? 'green' : n.status === 'Scheduled' ? 'indigo' : 'gray'}>{n.status}</Badge></Table.Td>
+                      <Table.Td>{n.recipients}</Table.Td>
+                      <Table.Td>{n.sentAt ? dateStr(n.sentAt) : '—'}</Table.Td>
                     </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {sent.map((n) => (
-                      <Table.Tr key={n.id}>
-                        <Table.Td>
-                          <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/${n.id}`} underline="hover">{n.subject}</Anchor>
-                        </Table.Td>
-                        <Table.Td><Badge variant="light" color={n.status === 'Sent' ? 'green' : n.status === 'Scheduled' ? 'indigo' : 'gray'}>{n.status}</Badge></Table.Td>
-                        <Table.Td>{n.recipients}</Table.Td>
-                        <Table.Td>{n.sentAt ? dateStr(n.sentAt) : '—'}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                    {sent.length === 0 && (
-                      <Table.Tr>
-                        <Table.Td colSpan={4}><Text c="dimmed">No sent newsletters yet</Text></Table.Td>
-                      </Table.Tr>
-                    )}
-                  </Table.Tbody>
-                </Table>
-              </Card>
-            </Tabs.Panel>
-
-            <Tabs.Panel value="drafts" pt="md">
-              <Card withBorder>
-                <Table verticalSpacing="xs">
-                  <Table.Thead>
+                  ))}
+                  {sent.length === 0 && (
                     <Table.Tr>
-                      <Table.Th>Subject</Table.Th>
-                      <Table.Th>Status</Table.Th>
-                      <Table.Th>Recipients</Table.Th>
+                      <Table.Td colSpan={4}><Text c="dimmed">No sent newsletters yet</Text></Table.Td>
                     </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {drafts.map((n) => (
-                      <Table.Tr key={n.id}>
-                        <Table.Td>
-                          <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/${n.id}`} underline="hover">{n.subject || '(Untitled draft)'}</Anchor>
-                        </Table.Td>
-                        <Table.Td><Badge variant="light" color="gray">{n.status}</Badge></Table.Td>
-                        <Table.Td>{n.recipients}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                    {drafts.length === 0 && (
-                      <Table.Tr>
-                        <Table.Td colSpan={3}><Text c="dimmed">No drafts yet</Text></Table.Td>
-                      </Table.Tr>
-                    )}
-                  </Table.Tbody>
-                </Table>
-              </Card>
-            </Tabs.Panel>
-
-            
-
-            <Tabs.Panel value="form" pt="md">
-              <Card withBorder>
-                <Stack>
-                  <Text c="dimmed">Copy and paste this HTML form into your website. Submissions post to this app's API and can be wired to Firebase.</Text>
-                  {(!websiteUrl || !validUrl(websiteUrl)) && (
-                    <Alert color="yellow" title="Set WEBSITE_URL">
-                      Update Company settings → Configuration → WEBSITE_URL to replace localhost in the form action.
-                    </Alert>
                   )}
-                  <Group align="end" gap="sm">
-                    <div style={{ flex: 1 }}>
-                      <TextInput label="Website URL (WEBSITE_URL)" placeholder="https://www.example.com" value={urlInput} onChange={(e) => setUrlInput(e.currentTarget.value)} error={urlError || undefined} />
-                    </div>
-                    <Button onClick={onSaveUrl}>Save</Button>
+                </Table.Tbody>
+              </Table>
+            </Card>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="drafts" pt="md">
+            <Card withBorder>
+              <Table verticalSpacing="xs">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Subject</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Recipients</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {drafts.map((n) => (
+                    <Table.Tr key={n.id}>
+                      <Table.Td>
+                        <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/${n.id}`} underline="hover">{n.subject || '(Untitled draft)'}</Anchor>
+                      </Table.Td>
+                      <Table.Td><Badge variant="light" color="gray">{n.status}</Badge></Table.Td>
+                      <Table.Td>{n.recipients}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                  {drafts.length === 0 && (
+                    <Table.Tr>
+                      <Table.Td colSpan={3}><Text c="dimmed">No drafts yet</Text></Table.Td>
+                    </Table.Tr>
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Card>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="form" pt="md">
+            <Card withBorder>
+              <Stack>
+                <Text c="dimmed">Copy and paste this HTML form into your website. Submissions post to this app's API and can be wired to Firebase.</Text>
+                {(!websiteUrl || !validUrl(websiteUrl)) && (
+                  <Alert color="yellow" title="Set WEBSITE_URL">
+                    Update Company settings → Configuration → WEBSITE_URL to replace localhost in the form action.
+                  </Alert>
+                )}
+                <Group align="end" gap="sm">
+                  <div style={{ flex: 1 }}>
+                    <TextInput label="Website URL (WEBSITE_URL)" placeholder="https://www.example.com" value={urlInput} onChange={(e) => setUrlInput(e.currentTarget.value)} error={urlError || undefined} />
+                  </div>
+                  <Button onClick={onSaveUrl}>Save</Button>
                   <Button variant="light" component={Link as any} href="/employee/admin-settings">Open settings</Button>
-                  </Group>
-                  {websiteUrl && validUrl(websiteUrl) && <CodeSnippet />}
-                </Stack>
-              </Card>
-            </Tabs.Panel>
-          </Tabs>
-        </Card>
+                </Group>
+                {websiteUrl && validUrl(websiteUrl) && <CodeSnippet />}
+              </Stack>
+            </Card>
+          </Tabs.Panel>
+        </Tabs>
       </Stack>
     </EmployerAuthGate>
   );
