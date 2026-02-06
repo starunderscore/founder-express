@@ -11,6 +11,9 @@ import type { Contact } from '@/state/crmStore';
 
 export default function VendorContactActionsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const isVendorsSection = typeof window !== 'undefined' && window.location.pathname.startsWith('/employee/customers/vendors');
+  const baseVendor = isVendorsSection ? '/employee/customers/vendors' : '/employee/crm/vendor';
+  const baseContact = isVendorsSection ? '/employee/customers/vendors/contact' : '/employee/crm/vendor/contact';
   const toast = useToast();
   const [customers, setCustomers] = useState<any[]>([]);
   useEffect(() => {
@@ -54,7 +57,7 @@ export default function VendorContactActionsPage({ params }: { params: { id: str
       {/* Vendor header row */}
       <Group justify="space-between" mb="xs">
         <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`/employee/crm/vendor/${vendor.id}/contacts`)}>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`${baseVendor}/${vendor.id}/contacts`)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
@@ -86,9 +89,9 @@ export default function VendorContactActionsPage({ params }: { params: { id: str
         value={"actions"}
         mb="md"
         tabs={[
-          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/contact/${contact.id}` },
-          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/contact/${contact.id}/notes` },
-          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/contact/${contact.id}/actions` },
+          { value: 'overview', label: 'Overview', href: `${baseContact}/${contact.id}` },
+          { value: 'notes', label: 'Notes', href: `${baseContact}/${contact.id}/notes` },
+          { value: 'actions', label: 'Actions', href: `${baseContact}/${contact.id}/actions` },
         ]}
       />
 

@@ -1,41 +1,33 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Title, Text, Group, Badge, Button, Stack, Tabs, ActionIcon, Avatar, Textarea, Modal, Center, Loader } from '@mantine/core';
-import { RouteTabs } from '@/components/RouteTabs';
+import { Card, Title, Text, Group, Badge, Button, Stack, Modal, Textarea, ActionIcon, Menu, Avatar, Tabs, Center, Loader } from '@mantine/core';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
-import { collection, doc, onSnapshot, query, updateDoc } from 'firebase/firestore';
-import type { Note, Contact } from '@/state/crmStore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 
-export default function VendorContactNotesPage({ params }: { params: { id: string } }) {
+export default function CustomerNotesPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const isVendorsSection = typeof window !== 'undefined' && window.location.pathname.startsWith('/employee/customers/vendors');
-  const baseVendor = isVendorsSection ? '/employee/customers/vendors' : '/employee/crm/vendor';
-  const baseContact = isVendorsSection ? '/employee/customers/vendors/contact' : '/employee/crm/vendor/contact';
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customer, setCustomer] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const q = query(collection(db(), 'crm_customers'));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows: any[] = [];
-      snap.forEach((d) => rows.push({ id: d.id, ...(d.data() as any) }));
-      setCustomers(rows);
-    });
+    const ref = doc(db(), 'crm_customers', params.id);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        setCustomer(snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null);
+        setLoading(false);
+      },
+      () => {
+        setCustomer(null);
+        setLoading(false);
+      }
+    );
     return () => unsub();
-  }, []);
-
-  const { vendor, contact } = useMemo(() => {
-    for (const v of customers) {
-      if (v.type !== 'vendor') continue;
-      const c = (v.contacts || []).find((x: Contact) => x.id === params.id);
-      if (c) return { vendor: v, contact: c };
-    }
-    return { vendor: null as any, contact: null as any };
-  }, [customers, params.id]);
-
+  }, [params.id]);
   const authUser = useAuthUser();
   const toast = useToast();
 
@@ -62,19 +54,11 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
     return val === undefined ? undefined : val;
   };
 
-  const deriveTitleFromMarkdown = (body: string): string => {
-    const text = (body || '').trim();
-    if (!text) return 'Note';
-    const firstNonEmpty = text.split('\n').find((l) => l.trim().length > 0) || '';
-    const cleaned = firstNonEmpty.replace(/^#+\s*/, '').trim();
-    return cleaned.slice(0, 60) || 'Note';
-  };
-
   const addNote = async () => {
-    if (!vendor || !contact) return;
+    if (!customer) return;
     const body = noteBody.trim();
     if (!body) return;
-    const newNote: Note = {
+    const newNote = {
       id: `note-${Date.now()}`,
       title: deriveTitleFromMarkdown(body),
       body,
@@ -83,14 +67,14 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
       createdByEmail: authUser?.email || undefined,
       createdByPhotoURL: authUser?.photoURL || undefined,
     };
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, notes: [newNote, ...(c.notes || [])] } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: prune(contacts) } as any);
+    const notes = Array.isArray(customer.notes) ? [newNote, ...customer.notes] : [newNote];
+    await updateDoc(doc(db(), 'crm_customers', customer.id), { notes: prune(notes) });
     setNoteBody('');
     setNoteOpen(false);
   };
 
   const openEditNote = (id: string) => {
-    const note = (contact?.notes || []).find((n: Note) => n.id === id);
+    const note = (customer?.notes || []).find((n: any) => n.id === id);
     if (!note) return;
     setEditNoteId(id);
     setEditNoteBody(note.body || '');
@@ -98,17 +82,17 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
   };
 
   const saveEditNote = async () => {
-    if (!vendor || !contact || !editNoteId) return;
+    if (!customer || !editNoteId) return;
     const body = editNoteBody.trim();
     const title = deriveTitleFromMarkdown(body);
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, notes: (contact.notes || []).map((n: Note) => (n.id === editNoteId ? { ...n, body, title } : n)) } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: prune(contacts) } as any);
+    const notes = (customer.notes || []).map((n: any) => (n.id === editNoteId ? { ...n, body, title } : n));
+    await updateDoc(doc(db(), 'crm_customers', customer.id), { notes: prune(notes) });
     setEditNoteOpen(false);
   };
 
   const openDeleteNote = (id: string) => {
-    if (!contact) return;
-    const note = (contact.notes || []).find((n: Note) => n.id === id);
+    if (!customer) return;
+    const note = (customer.notes || []).find((n: any) => n.id === id);
     if (!note) return;
     const snippet = (note.body || '').trim().slice(0, 10);
     setDeleteNoteId(id);
@@ -118,52 +102,47 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
   };
 
   const confirmDeleteNote = async () => {
-    if (!vendor || !contact || !deleteNoteId) return;
+    if (!customer || !deleteNoteId) return;
     const required = deleteNoteSnippet;
     if (required.length > 0 && deleteNoteInput !== required) return;
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, notes: (contact.notes || []).filter((n: Note) => n.id !== deleteNoteId) } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: prune(contacts) } as any);
+    const notes = (customer.notes || []).filter((n: any) => n.id !== deleteNoteId);
+    await updateDoc(doc(db(), 'crm_customers', customer.id), { notes: prune(notes) });
     setDeleteNoteOpen(false);
   };
 
-  if (!vendor || !contact) {
+  if (loading) {
     return (
       <EmployerAuthGate>
-        <Center mih={240}><Loader size="sm" /></Center>
+        <Center mih={200}>
+          <Loader size="sm" />
+        </Center>
+      </EmployerAuthGate>
+    );
+  }
+
+  if (!customer) {
+    return (
+      <EmployerAuthGate>
+        <Center mih={200}>
+          <Text>Customer not found</Text>
+        </Center>
       </EmployerAuthGate>
     );
   }
 
   return (
     <EmployerAuthGate>
-      {/* Vendor header row */}
-      <Group justify="space-between" mb="xs">
+      <Group justify="space-between" mb="md">
         <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`${baseVendor}/${vendor.id}/contacts`)}>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/customers/crm')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
           <Group>
-            <Title order={4}>{vendor.name}</Title>
-            <Badge color="orange" variant="filled">Vendor</Badge>
+            <Title order={2}>{customer.name}</Title>
+            <Badge color="blue" variant="filled">Customer</Badge>
           </Group>
-        </Group>
-      </Group>
-
-      {/* Contact header row */}
-      <Group justify="space-between" mb="md" align="flex-end">
-        <div>
-          <Group gap="xs" align="center">
-            <Title order={2} style={{ lineHeight: 1 }}>{contact.name}</Title>
-            <Badge color="grape" variant="filled">Contact</Badge>
-            {contact.doNotContact && <Badge color="yellow" variant="filled">Do Not Contact</Badge>}
-          </Group>
-        </div>
-        <Group gap="xs">
-          {(contact.emails?.length || 0) > 0 && <Badge variant="light">{contact.emails!.length} email{contact.emails!.length === 1 ? '' : 's'}</Badge>}
-          {(contact.phones?.length || 0) > 0 && <Badge variant="light">{contact.phones!.length} phone{contact.phones!.length === 1 ? '' : 's'}</Badge>}
-          {(contact.addresses?.length || 0) > 0 && <Badge variant="light">{contact.addresses!.length} address{contact.addresses!.length === 1 ? '' : 'es'}</Badge>}
         </Group>
       </Group>
 
@@ -171,9 +150,9 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
         value={"notes"}
         mb="md"
         tabs={[
-          { value: 'overview', label: 'Overview', href: `${baseContact}/${contact.id}` },
-          { value: 'notes', label: 'Notes', href: `${baseContact}/${contact.id}/notes` },
-          { value: 'actions', label: 'Actions', href: `${baseContact}/${contact.id}/actions` },
+          { value: 'overview', label: 'Overview', href: `/employee/customers/crm/customer/${customer.id}` },
+          { value: 'notes', label: 'Notes', href: `/employee/customers/crm/customer/${customer.id}/notes` },
+          { value: 'actions', label: 'Actions', href: `/employee/customers/crm/customer/${customer.id}/actions` },
         ]}
       />
 
@@ -183,14 +162,14 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
           <Button variant="default" onClick={() => setNoteOpen(true)}>Add note</Button>
         </div>
         <div style={{ padding: '12px 16px' }}>
-          {Array.isArray(contact.notes) && contact.notes.length > 0 ? (
+          {Array.isArray(customer.notes) && customer.notes.length > 0 ? (
             <Stack>
-              {contact.notes.map((n: Note) => (
+              {customer.notes.map((n: any) => (
                 <Card key={n.id} withBorder radius="md" padding="sm">
                   <Group justify="space-between" align="flex-start">
                     <div>
                       <Group gap={8} align="center">
-                        <Avatar size="sm" radius="xl" src={n.createdByPhotoURL} color="grape">
+                        <Avatar size="sm" radius="xl" src={n.createdByPhotoURL} color="indigo">
                           {(n.createdByName || 'U').slice(0,1).toUpperCase()}
                         </Avatar>
                         <Text size="sm" fw={600}>{n.createdByName || 'Unknown'}</Text>
@@ -198,10 +177,23 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
                       </Group>
                       <Text size="sm" style={{ whiteSpace: 'pre-wrap', marginTop: 4 }}>{n.body || '—'}</Text>
                     </div>
-                    <Group gap={8}>
-                      <Button variant="subtle" size="xs" onClick={() => openEditNote(n.id)}>Edit</Button>
-                      <Button variant="subtle" size="xs" color="red" onClick={() => openDeleteNote(n.id)}>Delete</Button>
-                    </Group>
+                    {n.createdByEmail && authUser?.email === n.createdByEmail && (
+                      <Menu withinPortal position="bottom-end" shadow="md" width={160}>
+                        <Menu.Target>
+                          <ActionIcon variant="subtle" aria-label="Note actions">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="12" cy="5" r="2" fill="currentColor"/>
+                              <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                              <circle cx="12" cy="19" r="2" fill="currentColor"/>
+                            </svg>
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item onClick={() => openEditNote(n.id)}>Edit</Menu.Item>
+                          <Menu.Item color="red" onClick={() => openDeleteNote(n.id)}>Delete</Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    )}
                   </Group>
                 </Card>
               ))}
@@ -247,3 +239,12 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
     </EmployerAuthGate>
   );
 }
+
+const deriveTitleFromMarkdown = (body: string): string => {
+  const text = (body || '').trim();
+  if (!text) return 'Note';
+  const firstNonEmpty = text.split('\n').find((l) => l.trim().length > 0) || '';
+  const cleaned = firstNonEmpty.replace(/^#+\s*/, '').trim();
+  return cleaned.slice(0, 60) || 'Note';
+};
+import { RouteTabs } from '@/components/RouteTabs';

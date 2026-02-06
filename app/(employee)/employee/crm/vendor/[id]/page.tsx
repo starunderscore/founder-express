@@ -21,6 +21,9 @@ import { doc, onSnapshot, updateDoc, deleteDoc, collection } from 'firebase/fire
 
 export default function VendorDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const isVendorsSection = typeof window !== 'undefined' && window.location.pathname.startsWith('/employee/customers/vendors');
+  const baseVendor = isVendorsSection ? '/employee/customers/vendors' : '/employee/crm/vendor';
+  const baseList = isVendorsSection ? '/employee/customers/vendors' : '/employee/crm';
   const [vendor, setVendor] = useState<any | null>(null);
   useEffect(() => {
     const ref = doc(db(), 'crm_customers', params.id);
@@ -204,7 +207,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
       <EmployerAuthGate>
         <Stack>
           <Title order={3}>Vendor not found</Title>
-          <Button variant="light" onClick={() => router.push('/employee/crm')}>Back to CRM</Button>
+          <Button variant="light" onClick={() => router.push(baseList)}>Back to CRM</Button>
         </Stack>
       </EmployerAuthGate>
     );
@@ -214,7 +217,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     <EmployerAuthGate>
       <Group justify="space-between" mb="md">
         <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/crm')}>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(baseList)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
@@ -232,10 +235,10 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
       <RouteTabs
         value={"overview"}
         tabs={[
-          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/${vendor.id}` },
-          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/${vendor.id}/notes` },
-          { value: 'contacts', label: 'Contacts', href: `/employee/crm/vendor/${vendor.id}/contacts` },
-          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/${vendor.id}/actions` },
+          { value: 'overview', label: 'Overview', href: `${baseVendor}/${vendor.id}` },
+          { value: 'notes', label: 'Notes', href: `${baseVendor}/${vendor.id}/notes` },
+          { value: 'contacts', label: 'Contacts', href: `${baseVendor}/${vendor.id}/contacts` },
+          { value: 'actions', label: 'Actions', href: `${baseVendor}/${vendor.id}/actions` },
         ]}
       />
 

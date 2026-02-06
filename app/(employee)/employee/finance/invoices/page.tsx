@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { useCRMStore } from '@/state/crmStore';
-import { Button, Card, Group, Select, Table, Text, TextInput, Title } from '@mantine/core';
+import { Button, Card, Group, Select, Table, Text, TextInput, Title, Stack } from '@mantine/core';
 
 export default function FinanceInvoicesPage() {
   const invoices = useFinanceStore((s) => s.invoices);
@@ -46,14 +46,18 @@ export default function FinanceInvoicesPage() {
 
   return (
     <EmployerAuthGate>
-      <Title order={2} mb="sm">Invoices</Title>
-      <Text c="dimmed" mb="md">Track payments and late bills.</Text>
+      <Stack>
+        <Group justify="space-between" align="flex-start" mb="xs">
+          <div>
+            <Title order={2} mb={4}>Invoices</Title>
+            <Text c="dimmed">Track payments and late bills.</Text>
+          </div>
+          <Group gap="xs">
+            <Button component={require('next/link').default as any} href="/employee/finance/invoices/new" variant="light">Add invoice</Button>
+          </Group>
+        </Group>
 
-      <Group justify="flex-end" mb="md">
-        <Button component={require('next/link').default as any} href="/employee/finance/invoices/new" variant="light">Add invoice</Button>
-      </Group>
-
-      <Card withBorder>
+        <Card withBorder>
         <Group mb="sm" grow>
           <TextInput placeholder="Search customer" value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
           <Select data={[ 'All', 'Paid', 'Unpaid' ]} value={statusFilter} onChange={(v) => setStatusFilter((v as any) || 'All')} allowDeselect={false} />
@@ -106,7 +110,8 @@ export default function FinanceInvoicesPage() {
             )}
           </Table.Tbody>
         </Table>
-      </Card>
+        </Card>
+      </Stack>
     </EmployerAuthGate>
   );
 }

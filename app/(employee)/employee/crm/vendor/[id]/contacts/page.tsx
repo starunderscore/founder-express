@@ -25,6 +25,9 @@ type Contact = {
 
 export default function VendorContactsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const isVendorsSection = typeof window !== 'undefined' && window.location.pathname.startsWith('/employee/customers/vendors');
+  const baseVendor = isVendorsSection ? '/employee/customers/vendors' : '/employee/crm/vendor';
+  const baseContact = isVendorsSection ? '/employee/customers/vendors/contact' : '/employee/crm/vendor/contact';
   const [vendor, setVendor] = useState<any | null>(null);
   useEffect(() => {
     const ref = doc(db(), 'crm_customers', params.id);
@@ -62,7 +65,7 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
     const next = Array.isArray(vendor.contacts) ? [c, ...vendor.contacts] : [c];
     await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: next } as any);
     setName(''); setTitleText(''); setAddOpen(false);
-    router.push(`/employee/crm/vendor/contact/${id}` as any);
+    router.push(`${baseContact}/${id}` as any);
   };
 
   const deleteContact = async (id: string) => {
@@ -83,7 +86,7 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
     <EmployerAuthGate>
       <Group justify="space-between" mb="md">
         <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/crm')}>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(isVendorsSection ? '/employee/customers/vendors' : '/employee/crm')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
@@ -99,10 +102,10 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
         value={"contacts"}
         mb="md"
         tabs={[
-          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/${vendor.id}` },
-          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/${vendor.id}/notes` },
-          { value: 'contacts', label: 'Contacts', href: `/employee/crm/vendor/${vendor.id}/contacts` },
-          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/${vendor.id}/actions` },
+          { value: 'overview', label: 'Overview', href: `${baseVendor}/${vendor.id}` },
+          { value: 'notes', label: 'Notes', href: `${baseVendor}/${vendor.id}/notes` },
+          { value: 'contacts', label: 'Contacts', href: `${baseVendor}/${vendor.id}/contacts` },
+          { value: 'actions', label: 'Actions', href: `${baseVendor}/${vendor.id}/actions` },
         ]}
       />
 
@@ -126,12 +129,12 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
             {contacts.map((c) => (
               <Table.Tr key={c.id}>
                 <Table.Td>
-                  <Anchor component={Link as any} href={`/employee/crm/vendor/contact/${c.id}`} underline="hover">{c.name}</Anchor>
+                  <Anchor component={Link as any} href={`${baseContact}/${c.id}`} underline="hover">{c.name}</Anchor>
                 </Table.Td>
                 <Table.Td>{c.title || '—'}</Table.Td>
                 <Table.Td style={{ width: 1, whiteSpace: 'nowrap' }}>
                   <Group gap="xs" justify="flex-end" wrap="nowrap">
-                    <ActionIcon variant="subtle" aria-label="View" component={Link as any} href={`/employee/crm/vendor/contact/${c.id}` as any}>
+                    <ActionIcon variant="subtle" aria-label="View" component={Link as any} href={`${baseContact}/${c.id}` as any}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" fill="currentColor"/>
                       </svg>
@@ -147,7 +150,7 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
                         </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item component={Link as any} href={`/employee/crm/vendor/contact/${c.id}` as any}>View</Menu.Item>
+                        <Menu.Item component={Link as any} href={`${baseContact}/${c.id}` as any}>View</Menu.Item>
                         <Menu.Item color="red" onClick={() => deleteContact(c.id)}>Delete</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>

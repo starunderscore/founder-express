@@ -12,6 +12,8 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 export default function VendorNotesPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const isVendorsSection = typeof window !== 'undefined' && window.location.pathname.startsWith('/employee/customers/vendors');
+  const baseVendor = isVendorsSection ? '/employee/customers/vendors' : '/employee/crm/vendor';
   const [vendor, setVendor] = useState<any | null>(null);
   useEffect(() => {
     const ref = doc(db(), 'crm_customers', params.id);
@@ -120,7 +122,7 @@ export default function VendorNotesPage({ params }: { params: { id: string } }) 
     <EmployerAuthGate>
       <Group justify="space-between" mb="md">
         <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/crm')}>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(isVendorsSection ? '/employee/customers/vendors' : '/employee/crm')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
@@ -136,10 +138,10 @@ export default function VendorNotesPage({ params }: { params: { id: string } }) 
         value={"notes"}
         mb="md"
         tabs={[
-          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/${vendor.id}` },
-          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/${vendor.id}/notes` },
-          { value: 'contacts', label: 'Contacts', href: `/employee/crm/vendor/${vendor.id}/contacts` },
-          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/${vendor.id}/actions` },
+          { value: 'overview', label: 'Overview', href: `${baseVendor}/${vendor.id}` },
+          { value: 'notes', label: 'Notes', href: `${baseVendor}/${vendor.id}/notes` },
+          { value: 'contacts', label: 'Contacts', href: `${baseVendor}/${vendor.id}/contacts` },
+          { value: 'actions', label: 'Actions', href: `${baseVendor}/${vendor.id}/actions` },
         ]}
       />
 

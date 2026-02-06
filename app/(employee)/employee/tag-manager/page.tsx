@@ -103,33 +103,37 @@ export default function TagManagerPage() {
 
   return (
     <EmployerAuthGate>
-      <Title order={2} mb="sm">Tag Manager</Title>
-      <Text c="dimmed" mb="md">Create and manage organization-wide tags used across CRM.</Text>
-
-      <Tabs value="active">
-        <Tabs.List>
-          <Tabs.Tab value="active"><Link href="/employee/tag-manager">Active</Link></Tabs.Tab>
-          <Tabs.Tab value="archive"><Link href="/employee/tag-manager/archive">Archive</Link></Tabs.Tab>
-          <Tabs.Tab value="removed"><Link href="/employee/tag-manager/removed">Removed</Link></Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="active" pt="md">
-          <Group mb="sm">
-            <Button variant="default" onClick={() => setCreateOpen(true)}>Add tag</Button>
+      <Stack>
+        <Group justify="space-between" align="flex-start" mb="xs">
+          <div>
+            <Title order={2} mb={4}>Tag Manager</Title>
+            <Text c="dimmed">Create and manage organization-wide tags used across CRM.</Text>
+          </div>
+          <Group gap="xs">
+            <Button variant="light" onClick={() => setCreateOpen(true)}>Add tag</Button>
           </Group>
+        </Group>
 
-          <Card withBorder>
-            <Table verticalSpacing="sm" highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Tag</Table.Th>
-                  <Table.Th>Description</Table.Th>
-                  <Table.Th></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {activeTags.map((t) => (
-                  <Table.Tr key={t.id}>
+        <Tabs value="active">
+          <Tabs.List>
+            <Tabs.Tab value="active"><Link href="/employee/tag-manager">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/tag-manager/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/tag-manager/removed">Removed</Link></Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="active" pt="md">
+            <Card withBorder>
+              <Table verticalSpacing="sm" highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Tag</Table.Th>
+                    <Table.Th>Description</Table.Th>
+                    <Table.Th></Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {activeTags.map((t) => (
+                    <Table.Tr key={t.id}>
                     <Table.Td>
                       <Badge
                         variant="filled"
@@ -175,6 +179,7 @@ export default function TagManagerPage() {
           </Card>
         </Tabs.Panel>
       </Tabs>
+      </Stack>
 
       <Modal opened={createOpen} onClose={() => setCreateOpen(false)} title="Add tag" closeOnEscape={false} closeOnClickOutside={false} centered>
         <Stack>

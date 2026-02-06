@@ -13,6 +13,9 @@ import { collection, doc, onSnapshot, updateDoc, query } from 'firebase/firestor
 
 export default function VendorContactDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const isVendorsSection = typeof window !== 'undefined' && window.location.pathname.startsWith('/employee/customers/vendors');
+  const baseVendor = isVendorsSection ? '/employee/customers/vendors' : '/employee/crm/vendor';
+  const baseContact = isVendorsSection ? '/employee/customers/vendors/contact' : '/employee/crm/vendor/contact';
   const [customers, setCustomers] = useState<any[]>([]);
   useEffect(() => {
     const q = query(collection(db(), 'crm_customers'));
@@ -190,7 +193,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
     <EmployerAuthGate>
       <Group justify="space-between" mb="md">
         <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`/employee/crm/vendor/${vendor.id}/contacts`)}>
+          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`${baseVendor}/${vendor.id}/contacts`)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
@@ -225,9 +228,9 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
       <RouteTabs
         value={"overview"}
         tabs={[
-          { value: 'overview', label: 'Overview', href: `/employee/crm/vendor/contact/${contact.id}` },
-          { value: 'notes', label: 'Notes', href: `/employee/crm/vendor/contact/${contact.id}/notes` },
-          { value: 'actions', label: 'Actions', href: `/employee/crm/vendor/contact/${contact.id}/actions` },
+          { value: 'overview', label: 'Overview', href: `${baseContact}/${contact.id}` },
+          { value: 'notes', label: 'Notes', href: `${baseContact}/${contact.id}/notes` },
+          { value: 'actions', label: 'Actions', href: `${baseContact}/${contact.id}/actions` },
         ]}
       />
 
@@ -239,7 +242,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
                 <Group gap="xs">
                   <Button variant="light" onClick={async () => {
                     const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, deletedAt: undefined } : c));
-                    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
                     toast.show({ title: 'Contact restored', message: 'Contact is back in Database.' });
                   }}>Restore</Button>
                   <Button variant="subtle" color="red" onClick={() => { setPermDeleteInput(''); setPermDeleteOpen(true); }}>Permanently delete</Button>
