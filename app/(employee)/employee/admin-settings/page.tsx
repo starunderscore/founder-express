@@ -43,6 +43,26 @@ export default function AdminSettingsPage() {
             <Button component={Link as any} href="/employee/admin-settings/third-party-configuration" variant="light">Open</Button>
           </Group>
         </Card>
+
+        <Card withBorder>
+          <Group justify="space-between" align="center">
+            <div>
+              <Text fw={600}>Privacy Policy</Text>
+              <Text c="dimmed" size="sm">Customer and employee privacy policies</Text>
+            </div>
+            <Button component={Link as any} href="/employee/admin-settings/privacy-policy" variant="light">Open</Button>
+          </Group>
+        </Card>
+
+        <Card withBorder>
+          <Group justify="space-between" align="center">
+            <div>
+              <Text fw={600}>Cookie Policy</Text>
+              <Text c="dimmed" size="sm">Cookie disclosures and consent</Text>
+            </div>
+            <Button component={Link as any} href="/employee/admin-settings/cookie-policy" variant="light">Open</Button>
+          </Group>
+        </Card>
       </Stack>
     </EmployerAdminGate>
   );
