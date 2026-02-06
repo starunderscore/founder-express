@@ -23,12 +23,12 @@ export function AccountBar({ accountHref = '/portal/profile' }: { accountHref?: 
       </Group>
       <Group gap="xs">
         {accountHref === '/employee/profile' && (
-          <Tooltip label="Appearance settings">
+          <Tooltip label="User settings">
             <ActionIcon
               variant="default"
               size="sm"
-              aria-label="Appearance settings"
-              onClick={() => router.push('/employee/user-settings/appearance')}
+              aria-label="User settings"
+              onClick={() => router.push('/employee/user-settings')}
             >
               <IconSettings size={16} />
             </ActionIcon>
