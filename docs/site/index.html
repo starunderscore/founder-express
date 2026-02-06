@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SVG2Icon Docs</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .landing { display:flex; gap: 1rem; padding: 2rem; }
+      .card { flex:1; background:#0f172a; border:1px solid var(--border); border-radius:10px; padding:1.25rem; display:flex; flex-direction:column; }
+      .card h2 { margin:0 0 0.5rem 0; }
+      .card p { color: var(--muted); flex:1; }
+      .card .actions { margin-top: 1rem; }
+      .card-link { text-decoration:none; color: inherit; }
+      .card-link:hover { border-color: var(--accent); }
+      .btn { display:inline-block; background:#1d4ed8; color:#fff; padding:0.5rem 0.9rem; border-radius:8px; text-decoration:none; border:1px solid #1e40af; }
+      .btn:hover { background:#2563eb; }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="brand">SVG2Icon Docs</div>
+    </header>
+    <main class="site-content">
+      <div class="landing">
+        <a class="card card-link" href="viewers/user-manual.html">
+          <h2>User Manual</h2>
+          <p>Friendly, user-first guide to creating projects and downloading icon packages.</p>
+          <div class="actions">
+            <span class="btn" style="pointer-events:none;">Open v1.1.0</span>
+          </div>
+        </a>
+        <a class="card card-link" href="viewers/tech-guide.html?v=tech-1.1.0">
+          <h2>Tech Guide</h2>
+          <p>Build and package from source: setup, dev, and dist.</p>
+          <div class="actions">
+            <span class="btn" style="pointer-events:none;">Open v1.1.0</span>
+          </div>
+        </a>
+      </div>
+    </main>
+  </body>
+  </html>

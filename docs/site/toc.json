@@ -1,0 +1,32 @@
+{
+  "default": "1.0.0",
+  "versions": {
+    "1.0.0": {
+      "root": "docs/manuals/user-manual/v1.0.0",
+      "pages": [
+        { "title": "Introduction", "path": "README.md" },
+        { "title": "Getting Started", "path": "01-getting-started.md" },
+        { "title": "Navigation", "path": "02-navigation.md" },
+        { "title": "Account & Profile", "path": "03-account-and-profile.md" },
+        { "title": "User Settings", "path": "04-user-settings.md" },
+        { "title": "Customers (CRM)", "path": "10-customers-crm.md" },
+        { "title": "Vendors", "path": "11-vendors.md" },
+        { "title": "Tag Manager", "path": "12-tag-manager.md" },
+        { "title": "Email Subscriptions", "path": "20-email-subscriptions.md" },
+        { "title": "Finance", "path": "30-finance.md" },
+        { "title": "Website", "path": "40-website.md" },
+        { "title": "Admin Settings", "path": "50-admin-settings.md" },
+        { "title": "Company Settings", "path": "60-company-settings.md" },
+        { "title": "Security & Privacy", "path": "90-security-and-privacy.md" },
+        { "title": "Troubleshooting", "path": "95-troubleshooting.md" },
+        { "title": "Glossary", "path": "99-glossary.md" }
+      ]
+    },
+    "tech-1.0.0": {
+      "root": "docs/manuals/tech-guide/v1.0.0",
+      "pages": [
+        { "title": "Tech Guide", "path": "README.md" }
+      ]
+    }
+  }
+}
