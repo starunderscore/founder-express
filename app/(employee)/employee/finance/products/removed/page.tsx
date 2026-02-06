@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
 import { ActionIcon, Card, Group, Menu, Stack, Table, Tabs, Text, Title } from '@mantine/core';
+import { IconPackage } from '@tabler/icons-react';
 import { useFinanceStore } from '@/state/financeStore';
 
 export default function FinanceProductsRemovedPage() {
@@ -21,10 +22,13 @@ export default function FinanceProductsRemovedPage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2}>Products</Title>
-            <Text c="dimmed">Stripe-like products and prices.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconPackage size={20} />
+            <div>
+              <Title order={2}>Products</Title>
+              <Text c="dimmed">Stripe-like products and prices.</Text>
+            </div>
+          </Group>
         </Group>
 
         <Tabs value={'removed'}>
@@ -73,4 +77,3 @@ export default function FinanceProductsRemovedPage() {
     </EmployerAuthGate>
   );
 }
-

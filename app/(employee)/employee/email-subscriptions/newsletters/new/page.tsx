@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, TextInput, Badge, ActionIcon, Modal } from '@mantine/core';
+import { IconMail } from '@tabler/icons-react';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
 import { useEffect } from 'react';
 import { collection, addDoc, onSnapshot, query } from 'firebase/firestore';
@@ -58,9 +59,12 @@ export default function NewsletterComposePage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>Compose newsletter</Title>
-            </div>
+            <Group gap="xs" align="center">
+              <IconMail size={20} />
+              <div>
+                <Title order={2}>Compose newsletter</Title>
+              </div>
+            </Group>
           </Group>
           <Group gap="xs">
             <Button variant="light" onClick={onPreview}>Preview</Button>

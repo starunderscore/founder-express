@@ -4,6 +4,7 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { useCRMStore } from '@/state/crmStore';
 import { Button, Card, Group, Select, Table, Text, TextInput, Title, Stack } from '@mantine/core';
+import { IconFileInvoice } from '@tabler/icons-react';
 
 export default function FinanceInvoicesPage() {
   const invoices = useFinanceStore((s) => s.invoices);
@@ -48,10 +49,13 @@ export default function FinanceInvoicesPage() {
     <EmployerAuthGate>
       <Stack>
         <Group justify="space-between" align="flex-start" mb="xs">
-          <div>
-            <Title order={2} mb={4}>Invoices</Title>
-            <Text c="dimmed">Track payments and late bills.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconFileInvoice size={20} />
+            <div>
+              <Title order={2} mb={4}>Invoices</Title>
+              <Text c="dimmed">Track payments and late bills.</Text>
+            </div>
+          </Group>
           <Group gap="xs">
             <Button component={require('next/link').default as any} href="/employee/finance/invoices/new" variant="light">Add invoice</Button>
           </Group>

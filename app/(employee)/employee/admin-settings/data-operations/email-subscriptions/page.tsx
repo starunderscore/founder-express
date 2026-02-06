@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { Title, Text, Card, Stack, Group, Button, Badge, Tabs, ActionIcon } from '@mantine/core';
+import { IconMail } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 
 type EmailRow = { id: string; email: string; name?: string; createdAt: number; source?: string };
@@ -57,10 +58,13 @@ export default function AdminEmailSubscriptionsPage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>Email subscriptions</Title>
-            <Text c="dimmed">Admin exports and quick navigation.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconMail size={20} />
+            <div>
+              <Title order={2} mb={4}>Email subscriptions</Title>
+              <Text c="dimmed">Admin exports and quick navigation.</Text>
+            </div>
+          </Group>
         </Group>
 
         <Card withBorder>

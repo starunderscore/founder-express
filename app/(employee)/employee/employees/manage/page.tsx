@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Button, Card, Group, Stack, Table, Text, Title, Badge, Menu, ActionIcon, Center, Loader, Tabs } from '@mantine/core';
+import { IconUsers } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -80,10 +81,13 @@ export default function EmployerEmployeesManagePage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>Employee management</Title>
-            <Text c="dimmed">Assign roles and permissions to employees.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconUsers size={20} />
+            <div>
+              <Title order={2} mb={4}>Employee management</Title>
+              <Text c="dimmed">Assign roles and permissions to employees.</Text>
+            </div>
+          </Group>
         </Group>
         <Button component={Link as any} href="/employee/employees/manage/new">Add employee</Button>
       </Group>

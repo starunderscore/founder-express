@@ -2,6 +2,7 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useState } from 'react';
 import { Title, Text, Card, SimpleGrid, Group, TextInput, Button, Stack } from '@mantine/core';
+import { IconTrophy } from '@tabler/icons-react';
 
 type Achievement = { id: string; name: string; icon: string };
 
@@ -26,8 +27,13 @@ export default function EmployerAchievementsPage() {
 
   return (
     <EmployerAuthGate>
-      <Title order={2} mb="sm">Achievements</Title>
-      <Text c="dimmed" mb="md">Reward clients with sticker-like achievements.</Text>
+      <Group gap="xs" align="center" mb="md">
+        <IconTrophy size={20} />
+        <div>
+          <Title order={2} mb={4}>Achievements</Title>
+          <Text c="dimmed">Reward clients with sticker-like achievements.</Text>
+        </div>
+      </Group>
 
       <Card withBorder mb="md">
         <form onSubmit={onAdd}>
@@ -54,4 +60,3 @@ export default function EmployerAchievementsPage() {
     </EmployerAuthGate>
   );
 }
-

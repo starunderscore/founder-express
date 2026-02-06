@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
 import { ActionIcon, Card, Group, Menu, Stack, Table, Tabs, Text, Title } from '@mantine/core';
+import { IconPercentage } from '@tabler/icons-react';
 import { useFinanceStore } from '@/state/financeStore';
 
 export default function FinanceTaxesRemovedPage() {
@@ -22,10 +23,13 @@ export default function FinanceTaxesRemovedPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>Taxes</Title>
-              <Text c="dimmed">Manage tax rates and enablement.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconPercentage size={20} />
+              <div>
+                <Title order={2}>Taxes</Title>
+                <Text c="dimmed">Manage tax rates and enablement.</Text>
+              </div>
+            </Group>
           </Group>
         </Group>
 
@@ -75,4 +79,3 @@ export default function FinanceTaxesRemovedPage() {
     </EmployerAuthGate>
   );
 }
-

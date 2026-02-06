@@ -2,6 +2,7 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Button, Card, Group, Stack, Table, Text, TextInput, Title, NumberInput, MultiSelect, Menu, Modal, Tabs } from '@mantine/core';
+import { IconFileInvoice } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -32,10 +33,13 @@ export default function InvoiceTemplatesPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>Invoice Templates</Title>
-              <Text c="dimmed">Reusable invoice line items and taxes.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconFileInvoice size={20} />
+              <div>
+                <Title order={2}>Invoice Templates</Title>
+                <Text c="dimmed">Reusable invoice line items and taxes.</Text>
+              </div>
+            </Group>
           </Group>
           <Group gap="xs">
             <Button component={require('next/link').default as any} href="/employee/finance/invoice-templates/new" variant="light">New template</Button>
@@ -172,4 +176,3 @@ function ModalEditTemplate(props: {
     </Modal>
   );
 }
-

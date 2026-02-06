@@ -1,6 +1,7 @@
 "use client";
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, ActionIcon, Table, Button, Modal, Select, Badge, Switch } from '@mantine/core';
+import { IconCookie } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
@@ -58,10 +59,13 @@ export default function CookiePolicyPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2} mb={4}>Cookie Policy</Title>
-              <Text c="dimmed">Define your cookie disclosures and consent.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconCookie size={20} />
+              <div>
+                <Title order={2} mb={4}>Cookie Policy</Title>
+                <Text c="dimmed">Define your cookie disclosures and consent.</Text>
+              </div>
+            </Group>
           </Group>
           <Group gap="xs">
             <Button variant="light" onClick={() => router.push('/employee/admin-settings/cookie-policy/new')} disabled={!enabled}>New policy</Button>

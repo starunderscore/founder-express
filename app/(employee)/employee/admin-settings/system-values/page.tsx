@@ -1,6 +1,7 @@
 "use client";
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, TextInput, Button, ActionIcon, Table, Menu, Modal, Select, Badge } from '@mantine/core';
+import { IconAdjustments } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { useMemo, useState } from 'react';
@@ -80,10 +81,13 @@ export default function SystemValuesPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2} mb={4}>System values</Title>
-              <Text c="dimmed">Branding and app values (e.g., Website URL) stored in your system.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconAdjustments size={20} />
+              <div>
+                <Title order={2} mb={4}>System values</Title>
+                <Text c="dimmed">Branding and app values (e.g., Website URL) stored in your system.</Text>
+              </div>
+            </Group>
           </Group>
         </Group>
 

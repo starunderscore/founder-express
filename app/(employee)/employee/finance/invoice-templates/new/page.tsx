@@ -2,6 +2,7 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Button, Card, Group, MultiSelect, Stack, Table, Text, TextInput, Title, NumberInput } from '@mantine/core';
+import { IconFileInvoice } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
@@ -40,10 +41,13 @@ export default function NewInvoiceTemplatePage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>New invoice template</Title>
-            <Text c="dimmed">Define reusable line items with taxes.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconFileInvoice size={20} />
+            <div>
+              <Title order={2} mb={4}>New invoice template</Title>
+              <Text c="dimmed">Define reusable line items with taxes.</Text>
+            </div>
+          </Group>
         </Group>
 
         <Card withBorder>

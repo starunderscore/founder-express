@@ -3,6 +3,7 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, Suspense } from 'react';
 import { Card, Title, Text, Group, Button, TextInput, Badge, Table, Modal, Radio, Tabs, SegmentedControl, ActionIcon } from '@mantine/core';
+import { IconAddressBook } from '@tabler/icons-react';
 import { useToast } from '@/components/ToastProvider';
 import Link from 'next/link';
 import { db } from '@/lib/firebase/client';
@@ -149,10 +150,13 @@ function MergeWorkspacePageInner() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>CRM</Title>
-            <Text c="dimmed">New users automatically appear in CRM (Customer Relationship Management).</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconAddressBook size={20} />
+            <div>
+              <Title order={2} mb={4}>CRM</Title>
+              <Text c="dimmed">New users automatically appear in CRM (Customer Relationship Management).</Text>
+            </div>
+          </Group>
         </Group>
       </Group>
       <RouteTabs

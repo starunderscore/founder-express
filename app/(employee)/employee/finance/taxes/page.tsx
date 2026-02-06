@@ -2,6 +2,7 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Button, Card, Checkbox, Group, Modal, NumberInput, Stack, Table, Text, TextInput, Title, Menu, Tabs } from '@mantine/core';
+import { IconPercentage } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -30,10 +31,13 @@ export default function FinanceTaxesPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>Taxes</Title>
-              <Text c="dimmed">Manage tax rates and enablement.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconPercentage size={20} />
+              <div>
+                <Title order={2}>Taxes</Title>
+                <Text c="dimmed">Manage tax rates and enablement.</Text>
+              </div>
+            </Group>
           </Group>
           <Group gap="xs">
             <Button onClick={() => { setTaxName(''); setTaxRate(''); setEditingTaxId(null); setTaxOpen(true); }} variant="light">Add tax</Button>

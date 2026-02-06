@@ -2,6 +2,7 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { Button, Card, Checkbox, Group, NumberInput, Select, Stack, Text, Title, ActionIcon } from '@mantine/core';
+import { IconAdjustments } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 
 export default function FinanceGeneralPage() {
@@ -22,10 +23,13 @@ export default function FinanceGeneralPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>General</Title>
-              <Text c="dimmed">Financial configurations.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconAdjustments size={20} />
+              <div>
+                <Title order={2}>General</Title>
+                <Text c="dimmed">Financial configurations.</Text>
+              </div>
+            </Group>
           </Group>
         </Group>
 

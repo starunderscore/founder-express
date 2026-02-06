@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, TextInput, Button, Badge, Tabs, Anchor, Modal, ActionIcon } from '@mantine/core';
+import { IconClockHour4 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { collection, addDoc, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
@@ -64,10 +65,13 @@ export default function WaitingListsPage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>Waiting Lists</Title>
-            <Text c="dimmed">Manage waiting lists and subscribers.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconClockHour4 size={20} />
+            <div>
+              <Title order={2} mb={4}>Waiting Lists</Title>
+              <Text c="dimmed">Manage waiting lists and subscribers.</Text>
+            </div>
+          </Group>
           </Group>
           <Group gap="xs">
             <Button onClick={() => { setCreateOpen(true); setWError(null); }} variant="light">Create waiting list</Button>

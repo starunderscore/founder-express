@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { ActionIcon, Card, Group, Stack, Tabs, Text, Title, Table, Menu, TextInput, SegmentedControl } from '@mantine/core';
+import { IconBuilding } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
@@ -39,10 +40,13 @@ export default function VendorsArchivePage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2} mb={4}>Vendors</Title>
-              <Text c="dimmed">Vendors are your suppliers.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconBuilding size={20} />
+              <div>
+                <Title order={2} mb={4}>Vendors</Title>
+                <Text c="dimmed">Vendors are your suppliers.</Text>
+              </div>
+            </Group>
           </Group>
         </Group>
 

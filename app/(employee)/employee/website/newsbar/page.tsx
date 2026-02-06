@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useWebsiteStore } from '@/state/websiteStore';
 import { Title, Text, Card, Stack, Group, Button, Alert, Switch, ActionIcon, Divider, Modal } from '@mantine/core';
+import { IconBell } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { WebContentEditor } from '@/components/WebContentEditor';
 import { useAppSettingsStore } from '@/state/appSettingsStore';
@@ -66,12 +67,15 @@ export default function NewsbarSettingsPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>News Bar</Title>
-              <Group gap={8}>
-                <Text c="dimmed">Top Newsbar to spotlight launches, promos, and breaking updates.</Text>
-              </Group>
-            </div>
+            <Group gap="xs" align="center">
+              <IconBell size={20} />
+              <div>
+                <Title order={2}>News Bar</Title>
+                <Group gap={8}>
+                  <Text c="dimmed">Top Newsbar to spotlight launches, promos, and breaking updates.</Text>
+                </Group>
+              </div>
+            </Group>
           </Group>
           <Group gap="xs">
             <Button onClick={onSave} loading={status === 'saving'}>Save</Button>

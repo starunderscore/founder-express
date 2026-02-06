@@ -1,6 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, Table, Badge, Tabs, Anchor, TextInput, Alert, ActionIcon } from '@mantine/core';
+import { IconMail } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -83,10 +84,13 @@ export default function EmployerEmailNewslettersPage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>Newsletters</Title>
-            <Text c="dimmed">Manage newsletters and subscribers.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconMail size={20} />
+            <div>
+              <Title order={2} mb={4}>Newsletters</Title>
+              <Text c="dimmed">Manage newsletters and subscribers.</Text>
+            </div>
+          </Group>
           </Group>
           <Group gap="xs">
             <Button variant="light" component={Link as any} href="/employee/email-subscriptions/newsletters/new">New newsletter</Button>

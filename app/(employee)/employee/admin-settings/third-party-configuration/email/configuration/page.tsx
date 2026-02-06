@@ -2,6 +2,7 @@
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { AdminDisconnectedCard } from '@/components/AdminDisconnectedCard';
 import { ActionIcon, Badge, Button, Card, Group, Modal, Radio, Stack, Table, Text, Title } from '@mantine/core';
+import { IconMail } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -44,10 +45,13 @@ export default function AdminEmailProvidersConfigurationPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>Email Providers</Title>
-              <Text c="dimmed">Third‑party email configuration and selection.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconMail size={20} />
+              <div>
+                <Title order={2}>Email Providers</Title>
+                <Text c="dimmed">Third‑party email configuration and selection.</Text>
+              </div>
+            </Group>
           </Group>
           <Button variant="light" onClick={() => setHelpOpen(true)}>Setup help</Button>
         </Group>

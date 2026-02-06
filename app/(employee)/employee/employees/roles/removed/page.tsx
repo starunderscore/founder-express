@@ -1,6 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { Button, Card, Group, Stack, Text, Title, Table, Menu, ActionIcon, Tabs } from '@mantine/core';
+import { IconShieldCheck } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
@@ -37,10 +38,13 @@ export default function EmployerRolesRemovedPage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>Roles</Title>
-            <Text c="dimmed">Bundle permissions into reusable roles.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconShieldCheck size={20} />
+            <div>
+              <Title order={2} mb={4}>Roles</Title>
+              <Text c="dimmed">Bundle permissions into reusable roles.</Text>
+            </div>
+          </Group>
         </Group>
       </Group>
 

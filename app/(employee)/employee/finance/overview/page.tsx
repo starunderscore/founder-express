@@ -3,6 +3,7 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { useCRMStore } from '@/state/crmStore';
 import { Card, Group, SimpleGrid, Text, Title } from '@mantine/core';
+import { IconChartBar } from '@tabler/icons-react';
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -38,8 +39,13 @@ export default function FinanceOverviewPage() {
 
   return (
     <EmployerAuthGate>
-      <Title order={2} mb="sm">Financial overview</Title>
-      <Text c="dimmed" mb="md">Track revenue and late invoices at a glance.</Text>
+      <Group gap="xs" align="center" mb="md">
+        <IconChartBar size={20} />
+        <div>
+          <Title order={2} mb={4}>Financial overview</Title>
+          <Text c="dimmed">Track revenue and late invoices at a glance.</Text>
+        </div>
+      </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} mb="md">
         <StatCard label="Total customers" value={String(customers.length)} />

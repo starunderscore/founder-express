@@ -2,6 +2,7 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Title, Tabs } from '@mantine/core';
+import { IconPackage } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -57,10 +58,13 @@ export default function FinanceProductsPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>Products</Title>
-              <Text c="dimmed">Stripe-like products and prices.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconPackage size={20} />
+              <div>
+                <Title order={2}>Products</Title>
+                <Text c="dimmed">Stripe-like products and prices.</Text>
+              </div>
+            </Group>
           </Group>
           <Group gap="xs">
             <Button component={require('next/link').default as any} href="/employee/finance/products/new" variant="light">New product</Button>

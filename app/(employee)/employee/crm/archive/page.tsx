@@ -1,6 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Group, Button, Table, Badge, Anchor, Card, ActionIcon, Menu, TextInput, Tabs, Modal, Stack, SegmentedControl } from '@mantine/core';
+import { IconAddressBook } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
@@ -46,8 +47,13 @@ export default function CRMArchivePage() {
 
   return (
     <EmployerAuthGate>
-      <Title order={2} mb="sm">CRM</Title>
-      <Text c="dimmed" mb="md">New users automatically appear in CRM (Customer Relationship Management).</Text>
+      <Group gap="xs" align="center" mb="md">
+        <IconAddressBook size={20} />
+        <div>
+          <Title order={2} mb={4}>CRM</Title>
+          <Text c="dimmed">New users automatically appear in CRM (Customer Relationship Management).</Text>
+        </div>
+      </Group>
 
       <RouteTabs
         value={"archive"}

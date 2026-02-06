@@ -1,6 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, TextInput, Button, ActionIcon, PasswordInput, Tabs, Badge, Select, Modal, Menu, CopyButton } from '@mantine/core';
+import { IconMail } from '@tabler/icons-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -94,10 +95,13 @@ export default function EmailSettingsPage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>Email management</Title>
-            <Text c="dimmed">Manage email and configure the API adapter.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconMail size={20} />
+            <div>
+              <Title order={2} mb={4}>Email management</Title>
+              <Text c="dimmed">Manage email and configure the API adapter.</Text>
+            </div>
+          </Group>
         </Group>
 
         <Tabs value="variables">

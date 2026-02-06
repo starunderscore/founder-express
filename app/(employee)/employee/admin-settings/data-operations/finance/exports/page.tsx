@@ -2,6 +2,7 @@
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Badge, Button, Card, Group, Select, Stack, Tabs, Text, TextInput, Title } from '@mantine/core';
+import { IconReportMoney } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminDisconnectedCard } from '@/components/AdminDisconnectedCard';
@@ -87,10 +88,13 @@ export default function AdminFinanceExportsPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>Finance Exports</Title>
-              <Text c="dimmed">Export finance data and trigger QuickBooks sync.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconReportMoney size={20} />
+              <div>
+                <Title order={2}>Finance Exports</Title>
+                <Text c="dimmed">Export finance data and trigger QuickBooks sync.</Text>
+              </div>
+            </Group>
           </Group>
         </Group>
 

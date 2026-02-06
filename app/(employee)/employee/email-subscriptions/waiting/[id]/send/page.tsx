@@ -3,6 +3,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, TextInput, Badge, Modal, ActionIcon, Anchor } from '@mantine/core';
+import { IconMail } from '@tabler/icons-react';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
 import { db } from '@/lib/firebase/client';
 import { collection, doc, onSnapshot, query, updateDoc, addDoc, increment } from 'firebase/firestore';
@@ -80,13 +81,16 @@ export default function SendEmailPage({ params }: { params: { id: string } }) {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>Send email</Title>
-              <Group gap={8} mt={4}>
-                <Text c="dimmed">To: <Anchor component="button" underline="always" onClick={() => setChooseOpen(true)}>{list.name}</Anchor></Text>
-                <Badge variant="light">{recipients.length} recipients</Badge>
-              </Group>
-            </div>
+            <Group gap="xs" align="center">
+              <IconMail size={20} />
+              <div>
+                <Title order={2}>Send email</Title>
+                <Group gap={8} mt={4}>
+                  <Text c="dimmed">To: <Anchor component="button" underline="always" onClick={() => setChooseOpen(true)}>{list.name}</Anchor></Text>
+                  <Badge variant="light">{recipients.length} recipients</Badge>
+                </Group>
+              </div>
+            </Group>
           </Group>
           <Group gap="xs">
             <Button variant="light" onClick={async () => { await addDoc(collection(db(), 'waitlists', list.id, 'drafts'), { subject: subject.trim(), body: html, updatedAt: Date.now() }); await updateDoc(doc(db(), 'waitlists', list.id), { draftsCount: increment(1) }); toast.show({ title: 'Saved', message: 'Draft saved.' }); }}>Save draft</Button>

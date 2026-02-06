@@ -2,15 +2,19 @@
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, Anchor } from '@mantine/core';
+import { IconReport } from '@tabler/icons-react';
 
 export default function ReportsPage() {
   return (
     <EmployerAuthGate>
       <Stack>
-        <div>
-          <Title order={2} mb={4}>Reports</Title>
-          <Text c="dimmed">Explore analytics across users, tags, email, and employees.</Text>
-        </div>
+        <Group gap="xs" align="center">
+          <IconReport size={20} />
+          <div>
+            <Title order={2} mb={4}>Reports</Title>
+            <Text c="dimmed">Explore analytics across users, tags, email, and employees.</Text>
+          </div>
+        </Group>
 
         <Card withBorder>
           <Group justify="space-between" align="center">

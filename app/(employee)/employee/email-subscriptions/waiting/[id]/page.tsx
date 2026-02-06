@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Badge, Button, Table, TextInput, Modal, Tabs, ActionIcon } from '@mantine/core';
+import { IconClockHour4 } from '@tabler/icons-react';
 import { db } from '@/lib/firebase/client';
 import { collection, doc, onSnapshot, updateDoc, addDoc, deleteDoc, increment } from 'firebase/firestore';
 import { useToast } from '@/components/ToastProvider';
@@ -75,15 +76,18 @@ export default function WaitingDetailPage({ params }: { params: { id: string } }
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2}>{list.name}</Title>
-              <Group gap={8} mt={4} align="center">
-                <Text c="dimmed">Waiting List</Text>
-                <Badge variant="light" color="indigo">{entries.length} emails</Badge>
-                <Badge variant="light" color="gray">drafts {drafts.length}</Badge>
-                <Badge variant="light" color="green">sent {sent.length}</Badge>
-              </Group>
-            </div>
+            <Group gap="xs" align="center">
+              <IconClockHour4 size={20} />
+              <div>
+                <Title order={2}>{list.name}</Title>
+                <Group gap={8} mt={4} align="center">
+                  <Text c="dimmed">Waiting List</Text>
+                  <Badge variant="light" color="indigo">{entries.length} emails</Badge>
+                  <Badge variant="light" color="gray">drafts {drafts.length}</Badge>
+                  <Badge variant="light" color="green">sent {sent.length}</Badge>
+                </Group>
+              </div>
+            </Group>
           </Group>
           <Group gap="xs">
             <Button variant="light" onClick={() => { setError(null); setAddOpen(true); }}>Add to waiting list</Button>

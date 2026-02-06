@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Button, Card, Group, Stack, Table, Text, Title, Badge, Menu, ActionIcon, Center, Loader, Tabs } from '@mantine/core';
+import { IconUsers } from '@tabler/icons-react';
 import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
@@ -53,10 +54,13 @@ export default function EmployerEmployeesRemovedPage() {
               <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
             </svg>
           </ActionIcon>
-          <div>
-            <Title order={2} mb={4}>Employee management</Title>
-            <Text c="dimmed">Assign roles and permissions to employees.</Text>
-          </div>
+          <Group gap="xs" align="center">
+            <IconUsers size={20} />
+            <div>
+              <Title order={2} mb={4}>Employee management</Title>
+              <Text c="dimmed">Assign roles and permissions to employees.</Text>
+            </div>
+          </Group>
         </Group>
       </Group>
 
@@ -114,4 +118,3 @@ export default function EmployerEmployeesRemovedPage() {
     </EmployerAdminGate>
   );
 }
-

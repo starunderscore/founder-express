@@ -2,6 +2,7 @@
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useState, useMemo, useEffect } from 'react';
 import { Title, Text, Card, TextInput, Group, Button, Select, Table, Badge, Textarea, MultiSelect, TagsInput, Modal, Tabs, Anchor, ActionIcon, Menu, Radio, Avatar, Stack, Alert, CopyButton, SegmentedControl } from '@mantine/core';
+import { IconAddressBook } from '@tabler/icons-react';
 import { useToast } from '@/components/ToastProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -245,8 +246,13 @@ export default function EmployerCRMPage() {
 
   return (
     <EmployerAuthGate>
-      <Title order={2} mb="sm">CRM</Title>
-      <Text c="dimmed" mb="md">New users automatically appear in CRM (Customer Relationship Management).</Text>
+      <Group gap="xs" align="center" mb="md">
+        <IconAddressBook size={20} />
+        <div>
+          <Title order={2} mb={4}>CRM</Title>
+          <Text c="dimmed">New users automatically appear in CRM (Customer Relationship Management).</Text>
+        </div>
+      </Group>
 
       {/* Top-level tabs now navigate to dedicated pages */}
       <RouteTabs

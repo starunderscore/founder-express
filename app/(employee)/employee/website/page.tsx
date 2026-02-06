@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Group, Stack, Badge, Button } from '@mantine/core';
+import { IconGlobe, IconBell, IconFileText } from '@tabler/icons-react';
 import { useWebsiteStore } from '@/state/websiteStore';
 
 export default function EmployerWebsitePage() {
@@ -10,14 +11,20 @@ export default function EmployerWebsitePage() {
 
   return (
     <EmployerAuthGate>
-      <Title order={2} mb="sm">Website</Title>
-      <Text c="dimmed" mb="md">Configure key website modules.</Text>
+      <Group gap="xs" align="center" mb="md">
+        <IconGlobe size={20} />
+        <div>
+          <Title order={2} mb={4}>Website</Title>
+          <Text c="dimmed">Configure key website modules.</Text>
+        </div>
+      </Group>
 
       <Stack>
         <Card withBorder padding="md">
           <Group justify="space-between" align="center">
             <div>
               <Group gap={8} align="center">
+                <IconBell size={18} />
                 <Title order={4} style={{ lineHeight: 1 }}>News Bar</Title>
                 <Badge variant="light" color={newsbar.enabled ? 'green' : 'gray'}>{newsbar.enabled ? 'On' : 'Off'}</Badge>
               </Group>
@@ -32,7 +39,10 @@ export default function EmployerWebsitePage() {
         <Card withBorder padding="md">
           <Group justify="space-between" align="center">
             <div>
-              <Title order={4} style={{ lineHeight: 1 }}>Blogs</Title>
+              <Group gap={8} align="center">
+                <IconFileText size={18} />
+                <Title order={4} style={{ lineHeight: 1 }}>Blogs</Title>
+              </Group>
               <Text size="sm" c="dimmed" mt={4}>
                 Create and manage blog posts displayed on your website.
               </Text>

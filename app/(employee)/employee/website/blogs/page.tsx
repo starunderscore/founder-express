@@ -1,6 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, Table, Modal, TextInput, Textarea, Switch, ActionIcon, Menu } from '@mantine/core';
+import { IconFileText } from '@tabler/icons-react';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -84,10 +85,13 @@ export default function WebsiteBlogsPage() {
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
-            <div>
-              <Title order={2} mb={4}>Blogs</Title>
-              <Text c="dimmed">Create and manage blog posts displayed on your site.</Text>
-            </div>
+            <Group gap="xs" align="center">
+              <IconFileText size={20} />
+              <div>
+                <Title order={2} mb={4}>Blogs</Title>
+                <Text c="dimmed">Create and manage blog posts displayed on your site.</Text>
+              </div>
+            </Group>
           </Group>
         </Group>
 
