@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from 'react';
+import { useMemo, Fragment } from 'react';
 import { Badge, Checkbox, Group, Table, Text } from '@mantine/core';
 
 export type Action = 'read' | 'edit' | 'delete';
@@ -10,11 +10,37 @@ export type Resource = {
   mocked?: boolean;
   adminOnly?: boolean;
   children?: Resource[];
+  // Optional: multiple "read" variants under a single row (e.g., CRM: Read Own vs Read All)
+  readVariants?: Array<{ key: string; label: string }>;
 };
 
 export const RESOURCES: Resource[] = [
-  { key: 'customers', label: 'Customers', actions: ['read', 'edit', 'delete'] },
-  { key: 'email_subscriptions', label: 'Email subscriptions', actions: ['read', 'edit', 'delete'] },
+  {
+    key: 'customers',
+    label: 'Customers',
+    actions: ['read', 'edit', 'delete'],
+    children: [
+      {
+        key: 'customers-crm',
+        label: 'CRM',
+        actions: ['edit', 'delete'],
+        readVariants: [
+          { key: 'customers-crm-read-own', label: 'CRM — Read (Own)' },
+          { key: 'customers-crm-read-all', label: 'CRM — Read (All)' },
+        ],
+      },
+      { key: 'customers-vendor', label: 'Vendor', actions: ['read', 'edit', 'delete'] },
+    ],
+  },
+  {
+    key: 'email_subscriptions',
+    label: 'Email subscriptions',
+    actions: ['read', 'edit', 'delete'],
+    children: [
+      { key: 'email_newsletter', label: 'Newsletter', actions: ['read', 'edit', 'delete'] },
+      { key: 'email_waiting_list', label: 'Waiting list', actions: ['read', 'edit', 'delete'] },
+    ],
+  },
   { key: 'employees', label: 'Employees', actions: ['read', 'edit', 'delete'], adminOnly: true },
   {
     key: 'website',
@@ -26,7 +52,17 @@ export const RESOURCES: Resource[] = [
     ],
   },
   { key: 'achievements', label: 'Achievements', actions: ['read', 'edit', 'delete'], mocked: true },
-  { key: 'finance', label: 'Finance', actions: ['read', 'edit', 'delete'] },
+  {
+    key: 'finance',
+    label: 'Finance',
+    actions: ['read', 'edit', 'delete'],
+    children: [
+      { key: 'finance_overview', label: 'Overview', actions: ['read', 'edit', 'delete'] },
+      { key: 'finance_invoices', label: 'Invoices', actions: ['read', 'edit', 'delete'] },
+      { key: 'finance_reports', label: 'Financial reports', actions: ['read', 'edit', 'delete'] },
+      { key: 'finance_settings', label: 'Financial settings', actions: ['read', 'edit', 'delete'] },
+    ],
+  },
   { key: 'tag_manager', label: 'Tag Manager', actions: ['read', 'edit', 'delete'] },
   { key: 'reports', label: 'Reports', actions: ['read'] },
   { key: 'company_settings', label: 'Company settings', actions: ['read', 'edit', 'delete'] },
@@ -42,7 +78,13 @@ export function allPermissionNames(): string[] {
   RESOURCES.forEach((r) => {
     if (r.adminOnly) return;
     if (r.children && r.children.length) {
-      r.children.forEach((c) => c.actions.forEach((a) => names.push(labelFor(c, a))));
+      r.children.forEach((c) => {
+        // read variants first (if any)
+        if (c.readVariants && c.readVariants.length) {
+          c.readVariants.forEach((rv) => names.push(labelFor({ label: rv.label } as any, 'read')));
+        }
+        c.actions.forEach((a) => names.push(labelFor(c, a)));
+      });
     } else {
       r.actions.forEach((a) => names.push(labelFor(r, a)));
     }
@@ -89,6 +131,21 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
     onChange(Array.from(next));
   };
 
+  // Specialized helpers for rows with readVariants (e.g., CRM)
+  const toggleReadVariants = (variantNames: string[], checked: boolean) => {
+    const next = new Set(selected);
+    for (const nm of variantNames) toggleName(nm, checked, next);
+    onChange(Array.from(next));
+  };
+
+  const ensureReadVariantForEdit = (variantNames: string[]) => {
+    const next = new Set(selected);
+    // Prefer Read (All) if present; otherwise first
+    const all = variantNames.find((n) => n.includes('Read (All)')) || variantNames[0];
+    toggleName(all, true, next);
+    onChange(Array.from(next));
+  };
+
   return (
     <Table verticalSpacing="xs">
       <Table.Thead>
@@ -103,17 +160,48 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
         {RESOURCES.map((r) => {
           const hasChildren = !!(r.children && r.children.length);
           const children = r.children || [];
-          const groupChecked = (a: Action) => hasChildren ? children.every((c) => has(labelFor(c, a))) : has(labelFor(r, a));
+          const actionableChildren = (a: Action) => children.filter((c) => c.actions.includes(a) || (a === 'read' && c.readVariants && c.readVariants.length));
+          const groupChecked = (a: Action) => {
+            if (!hasChildren) return has(labelFor(r, a));
+            if (a === 'read') {
+              // For read, if a child has variants, all its variant checkboxes must be on
+              return children.every((c) => {
+                if (c.readVariants && c.readVariants.length) {
+                  return c.readVariants.every((rv) => has(labelFor({ label: rv.label } as any, 'read')));
+                }
+                if (c.actions.includes('read')) return has(labelFor(c, 'read'));
+                return true;
+              });
+            }
+            return actionableChildren(a).every((c) => has(labelFor(c, a)));
+          };
           const onGroupToggle = (a: Action, checked: boolean) => {
             if (!hasChildren) {
               toggleWithDeps(r, a, checked);
             } else {
-              // Apply to all children with dependency rules, skipping disabled
-              children.forEach((c) => toggleWithDeps(c, a, checked));
+              // Apply to all children that support the action, skipping disabled
+              if (a === 'read') {
+                children.forEach((c) => {
+                  if (c.readVariants && c.readVariants.length) {
+                    const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
+                    toggleReadVariants(names, checked);
+                  } else if (c.actions.includes('read')) {
+                    toggleWithDeps(c, 'read', checked);
+                  }
+                });
+              } else {
+                actionableChildren(a).forEach((c) => {
+                  if (checked && c.readVariants && c.readVariants.length) {
+                    const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
+                    ensureReadVariantForEdit(names);
+                  }
+                  toggleWithDeps(c, a, checked);
+                });
+              }
             }
           };
           return (
-            <>
+            <Fragment key={r.key}>
               <Table.Tr key={r.key}>
                 <Table.Td width="40%">
                   <Group gap={8} align="center">
@@ -158,17 +246,29 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
                     </div>
                   </Table.Td>
                   <Table.Td>
-                    <Checkbox checked={has(labelFor(c, 'read'))} onChange={(e) => toggleWithDeps(c, 'read', e.currentTarget.checked)} aria-label={`${c.label} read`} disabled={disabled.has(labelFor(c, 'read'))} />
+                    {c.readVariants && c.readVariants.length ? (
+                      <Group gap={8}>
+                        {c.readVariants.map((rv) => {
+                          const nm = labelFor({ label: rv.label } as any, 'read');
+                          const short = rv.label.replace('CRM — ', '');
+                          return (
+                            <Checkbox key={rv.key} checked={has(nm)} onChange={(e) => toggleReadVariants([nm], e.currentTarget.checked)} aria-label={`${rv.label} read`} disabled={disabled.has(nm)} label={short} />
+                          );
+                        })}
+                      </Group>
+                    ) : (
+                      <Checkbox checked={has(labelFor(c, 'read'))} onChange={(e) => toggleWithDeps(c, 'read', e.currentTarget.checked)} aria-label={`${c.label} read`} disabled={disabled.has(labelFor(c, 'read'))} />
+                    )}
                   </Table.Td>
                   <Table.Td>
-                    <Checkbox checked={has(labelFor(c, 'edit'))} onChange={(e) => toggleWithDeps(c, 'edit', e.currentTarget.checked)} aria-label={`${c.label} edit`} disabled={disabled.has(labelFor(c, 'edit'))} />
+                    <Checkbox checked={has(labelFor(c, 'edit'))} onChange={(e) => { if (c.readVariants && c.readVariants.length && e.currentTarget.checked) { const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read')); ensureReadVariantForEdit(names); } toggleWithDeps(c, 'edit', e.currentTarget.checked); }} aria-label={`${c.label} edit`} disabled={disabled.has(labelFor(c, 'edit'))} />
                   </Table.Td>
                     <Table.Td>
-                    <Checkbox checked={has(labelFor(c, 'delete'))} onChange={(e) => toggleWithDeps(c, 'delete', e.currentTarget.checked)} aria-label={`${c.label} delete`} disabled={disabled.has(labelFor(c, 'delete'))} />
+                    <Checkbox checked={has(labelFor(c, 'delete'))} onChange={(e) => { if (c.readVariants && c.readVariants.length && e.currentTarget.checked) { const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read')); ensureReadVariantForEdit(names); } toggleWithDeps(c, 'delete', e.currentTarget.checked); }} aria-label={`${c.label} delete`} disabled={disabled.has(labelFor(c, 'delete'))} />
                   </Table.Td>
                 </Table.Tr>
               ))}
-            </>
+            </Fragment>
           );
         })}
       </Table.Tbody>

@@ -1,22 +1,24 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, Textarea } from '@mantine/core';
+import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, Textarea, Center, Loader, Alert } from '@mantine/core';
 import { PermissionsMatrix } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { db } from '@/lib/firebase/client';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { deleteField, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { idsToNames, namesToIds } from '@/lib/permissions';
 
 export default function EditRolePage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [role, setRole] = useState<{ id: string; name: string; description?: string; permissionIds: string[] } | null>(null);
+  const [role, setRole] = useState<{ id: string; name: string; description?: string; permissionIds: string[]; isArchived?: boolean; deletedAt?: number } | null>(null);
+  const [loadingDoc, setLoadingDoc] = useState(true);
   useEffect(() => {
     const ref = doc(db(), 'employee_roles', params.id);
     const unsub = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) { setRole(null); return; }
+      if (!snap.exists()) { setRole(null); setLoadingDoc(false); return; }
       const d = snap.data() as any;
-      setRole({ id: snap.id, name: d.name || '', description: d.description || undefined, permissionIds: Array.isArray(d.permissionIds) ? d.permissionIds : [] });
+      setRole({ id: snap.id, name: d.name || '', description: d.description || undefined, permissionIds: Array.isArray(d.permissionIds) ? d.permissionIds : [], isArchived: !!d.isArchived, deletedAt: typeof d.deletedAt === 'number' ? d.deletedAt : undefined });
+      setLoadingDoc(false);
     });
     return () => unsub();
   }, [params.id]);
@@ -32,6 +34,14 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
     setSelectedNames(idsToNames(role.permissionIds || []));
   }, [role?.id]);
 
+  if (loadingDoc) {
+    return (
+      <Center mih={200}>
+        <Loader size="sm" />
+      </Center>
+    );
+  }
+
   if (!role) {
     return (
       <Stack>
@@ -46,7 +56,10 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
     const nm = name.trim();
     if (!nm) return;
     const ids = namesToIds(selectedNames);
-    await updateDoc(doc(db(), 'employee_roles', role.id), { name: nm, description: description.trim() || undefined, permissionIds: ids });
+    const desc = description.trim();
+    const patch: any = { name: nm, permissionIds: ids };
+    patch.description = desc ? desc : deleteField();
+    await updateDoc(doc(db(), 'employee_roles', role.id), patch);
     router.push('/employee/employees/roles');
   };
 
@@ -54,7 +67,16 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
     <EmployerAdminGate>
     <Stack>
       <Group>
-        <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/employees/roles')}>
+        <ActionIcon
+          variant="subtle"
+          size="lg"
+          aria-label="Back"
+          onClick={() => {
+            if (role?.deletedAt) router.push('/employee/employees/roles/removed');
+            else if (role?.isArchived) router.push('/employee/employees/roles/archive');
+            else router.push('/employee/employees/roles');
+          }}
+        >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
           </svg>
@@ -68,6 +90,17 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
           <Button onClick={onSave} disabled={!name.trim()}>Save changes</Button>
         </Group>
       </Group>
+
+      {role.deletedAt && (
+        <Alert color="red" variant="light" mb="md" title="Removed">
+          This role is removed and appears in the Removed tab.
+        </Alert>
+      )}
+      {!role.deletedAt && role.isArchived && (
+        <Alert color="gray" variant="light" mb="md" title="Archived">
+          This role is archived and hidden from the Active list.
+        </Alert>
+      )}
 
       <Card withBorder>
         <form onSubmit={onSave}>

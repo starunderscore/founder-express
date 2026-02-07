@@ -37,14 +37,21 @@ const actionLabel = (a: 'read' | 'edit' | 'delete') => (a === 'read' ? 'Read' : 
 const pname = (label: string, a: 'read' | 'edit' | 'delete') => `${label}: ${actionLabel(a)}`;
 
 const seedPermissions: Permission[] = [
-  // Customers
-  { id: 'perm-customers-read', name: pname('Customers', 'read') },
-  { id: 'perm-customers-edit', name: pname('Customers', 'edit') },
-  { id: 'perm-customers-delete', name: pname('Customers', 'delete') },
-  // Email subscriptions
-  { id: 'perm-email-read', name: pname('Email subscriptions', 'read') },
-  { id: 'perm-email-edit', name: pname('Email subscriptions', 'edit') },
-  { id: 'perm-email-delete', name: pname('Email subscriptions', 'delete') },
+  // Customers (granular)
+  { id: 'perm-customers-crm-read-own-read', name: pname('CRM — Read (Own)', 'read') },
+  { id: 'perm-customers-crm-read-all-read', name: pname('CRM — Read (All)', 'read') },
+  { id: 'perm-customers-crm-edit', name: pname('CRM', 'edit') },
+  { id: 'perm-customers-crm-delete', name: pname('CRM', 'delete') },
+  { id: 'perm-customers-vendor-read', name: pname('Vendor', 'read') },
+  { id: 'perm-customers-vendor-edit', name: pname('Vendor', 'edit') },
+  { id: 'perm-customers-vendor-delete', name: pname('Vendor', 'delete') },
+  // Email subscriptions → Newsletter & Waiting list
+  { id: 'perm-email_newsletter-read', name: pname('Newsletter', 'read') },
+  { id: 'perm-email_newsletter-edit', name: pname('Newsletter', 'edit') },
+  { id: 'perm-email_newsletter-delete', name: pname('Newsletter', 'delete') },
+  { id: 'perm-email_waiting_list-read', name: pname('Waiting list', 'read') },
+  { id: 'perm-email_waiting_list-edit', name: pname('Waiting list', 'edit') },
+  { id: 'perm-email_waiting_list-delete', name: pname('Waiting list', 'delete') },
   // Employees
   { id: 'perm-employees-read', name: pname('Employees', 'read') },
   { id: 'perm-employees-edit', name: pname('Employees', 'edit') },
@@ -56,10 +63,19 @@ const seedPermissions: Permission[] = [
   { id: 'perm-website-blogs-read', name: pname('Blogs', 'read') },
   { id: 'perm-website-blogs-edit', name: pname('Blogs', 'edit') },
   { id: 'perm-website-blogs-delete', name: pname('Blogs', 'delete') },
-  // Finance
-  { id: 'perm-finance-read', name: pname('Finance', 'read') },
-  { id: 'perm-finance-edit', name: pname('Finance', 'edit') },
-  { id: 'perm-finance-delete', name: pname('Finance', 'delete') },
+  // Finance → sub-sections
+  { id: 'perm-finance_overview-read', name: pname('Overview', 'read') },
+  { id: 'perm-finance_overview-edit', name: pname('Overview', 'edit') },
+  { id: 'perm-finance_overview-delete', name: pname('Overview', 'delete') },
+  { id: 'perm-finance_invoices-read', name: pname('Invoices', 'read') },
+  { id: 'perm-finance_invoices-edit', name: pname('Invoices', 'edit') },
+  { id: 'perm-finance_invoices-delete', name: pname('Invoices', 'delete') },
+  { id: 'perm-finance_reports-read', name: pname('Financial reports', 'read') },
+  { id: 'perm-finance_reports-edit', name: pname('Financial reports', 'edit') },
+  { id: 'perm-finance_reports-delete', name: pname('Financial reports', 'delete') },
+  { id: 'perm-finance_settings-read', name: pname('Financial settings', 'read') },
+  { id: 'perm-finance_settings-edit', name: pname('Financial settings', 'edit') },
+  { id: 'perm-finance_settings-delete', name: pname('Financial settings', 'delete') },
   // Tag Manager
   { id: 'perm-tagmgr-read', name: pname('Tag Manager', 'read') },
   { id: 'perm-tagmgr-edit', name: pname('Tag Manager', 'edit') },
@@ -86,12 +102,14 @@ const seedRoles: Role[] = [
     id: 'role-big-investor',
     name: 'Big investor',
     permissionIds: [
-      idByName[pname('Customers', 'read')],
-      idByName[pname('Email subscriptions', 'read')],
+      idByName[pname('CRM — Read (All)', 'read')],
+      idByName[pname('Vendor', 'read')],
+      idByName[pname('Newsletter', 'read')],
+      idByName[pname('Waiting list', 'read')],
       idByName[pname('Employees', 'read')],
       idByName[pname('News Bar', 'read')],
       idByName[pname('Blogs', 'read')],
-      idByName[pname('Finance', 'read')],
+      idByName[pname('Overview', 'read')],
       idByName[pname('Reports', 'read')],
       idByName[pname('Tag Manager', 'read')],
       idByName[pname('Company settings', 'read')],
@@ -106,8 +124,10 @@ const seedRoles: Role[] = [
       idByName[pname('News Bar', 'edit')],
       idByName[pname('Blogs', 'read')],
       idByName[pname('Blogs', 'edit')],
-      idByName[pname('Email subscriptions', 'read')],
-      idByName[pname('Email subscriptions', 'edit')],
+      idByName[pname('Newsletter', 'read')],
+      idByName[pname('Newsletter', 'edit')],
+      idByName[pname('Waiting list', 'read')],
+      idByName[pname('Waiting list', 'edit')],
       idByName[pname('Tag Manager', 'read')],
       idByName[pname('Tag Manager', 'edit')],
     ].filter(Boolean) as string[],
@@ -216,12 +236,12 @@ export const useEmployerStore = create<EmployerState>()(
         }
         if (!hasRole('Big investor')) {
           state.roles = [{ id: `role-${Math.random().toString(36).slice(2,8)}`, name: 'Big investor', permissionIds: roleEnsureIds([
-            r('Customers', 'read'), r('Email subscriptions', 'read'), r('Employees', 'read'), r('News Bar', 'read'), r('Blogs', 'read'), r('Finance', 'read'), r('Reports', 'read'), r('Tag Manager', 'read'), r('Company settings', 'read')
+            r('Customers', 'read'), r('Newsletter', 'read'), r('Waiting list', 'read'), r('Employees', 'read'), r('News Bar', 'read'), r('Blogs', 'read'), r('Finance', 'read'), r('Reports', 'read'), r('Tag Manager', 'read'), r('Company settings', 'read')
           ]) }, ...(state.roles || [])];
         }
         if (!hasRole('Editor')) {
           state.roles = [{ id: `role-${Math.random().toString(36).slice(2,8)}`, name: 'Editor', permissionIds: roleEnsureIds([
-            r('News Bar', 'read'), r('News Bar', 'edit'), r('Blogs', 'read'), r('Blogs', 'edit'), r('Email subscriptions', 'read'), r('Email subscriptions', 'edit'), r('Tag Manager', 'read'), r('Tag Manager', 'edit')
+            r('News Bar', 'read'), r('News Bar', 'edit'), r('Blogs', 'read'), r('Blogs', 'edit'), r('Newsletter', 'read'), r('Newsletter', 'edit'), r('Waiting list', 'read'), r('Waiting list', 'edit'), r('Tag Manager', 'read'), r('Tag Manager', 'edit')
           ]) }, ...(state.roles || [])];
         }
         if (!hasRole('Management')) {

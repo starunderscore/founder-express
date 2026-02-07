@@ -21,7 +21,10 @@ export default function NewRolePage() {
     if (e) e.preventDefault();
     if (!name.trim()) return;
     const ids = namesToIds(selectedNames);
-    await addDoc(collection(db(), 'employee_roles'), { name: name.trim(), description: description.trim() || undefined, permissionIds: ids, isArchived: false, createdAt: Date.now() });
+    const data: any = { name: name.trim(), permissionIds: ids, isArchived: false, deletedAt: null, createdAt: Date.now() };
+    const desc = description.trim();
+    if (desc) data.description = desc;
+    await addDoc(collection(db(), 'employee_roles'), data);
     router.push('/employee/employees/roles');
   };
 

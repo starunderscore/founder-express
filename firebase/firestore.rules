@@ -115,26 +115,50 @@ service cloud.firestore {
       allow delete: if hasTagDelete() || isOwner() || isAdmin();
     }
 
-    // Helper: has any CRM permission based on employees/{auth.uid}.permissionIds
-    function hasCrmPermission() {
+    // CRM/Vendor permission helpers (new structure + legacy fallback)
+    function hasCrmReadAll() {
       return isEmployee() && (
-        isAdmin() ||
-        ('perm-customers-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds) ||
-        ('perm-customers-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds) ||
-        ('perm-customers-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+        // New granular permission
+        ('perm-customers-crm-read-all-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+        // Legacy broad read permission
+        || ('perm-customers-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
       );
     }
-
-    // Helper: has CRM edit permission
-    function hasCrmEdit() {
-      return isEmployee()
-        && ('perm-customers-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds);
+    function hasCrmReadOwn() {
+      return isEmployee() && (
+        ('perm-customers-crm-read-own-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+      );
     }
-
-    // Helper: has CRM delete permission
+    function hasCrmEdit() {
+      return isEmployee() && (
+        ('perm-customers-crm-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+        || ('perm-customers-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+      );
+    }
     function hasCrmDelete() {
-      return isEmployee()
-        && ('perm-customers-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds);
+      return isEmployee() && (
+        ('perm-customers-crm-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+        || ('perm-customers-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+      );
+    }
+    function hasVendorRead() {
+      return isEmployee() && (
+        ('perm-customers-vendor-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+        // Legacy broad read also covers vendors
+        || ('perm-customers-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+      );
+    }
+    function hasVendorEdit() {
+      return isEmployee() && (
+        ('perm-customers-vendor-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+        || ('perm-customers-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+      );
+    }
+    function hasVendorDelete() {
+      return isEmployee() && (
+        ('perm-customers-vendor-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+        || ('perm-customers-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
+      );
     }
 
     // Company delete permission helper
@@ -152,12 +176,27 @@ service cloud.firestore {
     }
 
     match /crm_customers/{id} {
-      // Reads: users with any CRM permission OR owner/admin
-      allow get, list: if isOwner() || isAdmin() || hasCrmPermission();
-      // Creates/Updates: users with CRM edit permission OR owner/admin
-      allow create, update: if isOwner() || isAdmin() || hasCrmEdit();
-      // Deletes: users with CRM delete permission OR owner/admin
-      allow delete: if isOwner() || isAdmin() || hasCrmDelete();
+      // Reads:
+      // - Owner/Admin always
+      // - CRM: read all OR read own (ownerId == auth.uid)
+      // - Vendor: vendor read
+      allow get, list: if isOwner() || isAdmin() || (
+        // Vendor documents
+        (resource.data.type == 'vendor' && hasVendorRead())
+        // Customer/other documents
+        || (resource.data.type != 'vendor' && (hasCrmReadAll() || (hasCrmReadOwn() && resource.data.ownerId == request.auth.uid)))
+      );
+      // Creates/Updates:
+      // - Owner/Admin OR CRM edit (for customers) / Vendor edit (for vendors)
+      allow create, update: if isOwner() || isAdmin() || (
+        (request.resource.data.type == 'vendor' && hasVendorEdit())
+        || (request.resource.data.type != 'vendor' && hasCrmEdit())
+      );
+      // Deletes:
+      allow delete: if isOwner() || isAdmin() || (
+        (resource.data.type == 'vendor' && hasVendorDelete())
+        || (resource.data.type != 'vendor' && hasCrmDelete())
+      );
     }
 
     // Website — Newsbar (single doc)
@@ -180,6 +219,14 @@ service cloud.firestore {
       allow create, update: if isOwner() || isAdmin() || hasWebsiteBlogsEdit();
       // Delete (hard) restricted
       allow delete: if isOwner() || isAdmin() || hasWebsiteBlogsDelete();
+    }
+
+    // Employee Roles — owner/admin manage RBAC roles
+    match /employee_roles/{id} {
+      // Only owner or admins can access roles
+      allow get, list: if isOwner() || isAdmin();
+      allow create, update: if isOwner() || isAdmin();
+      allow delete: if isOwner() || isAdmin();
     }
 
     // Deny everything else by default

@@ -11,8 +11,26 @@ type Resource = {
 };
 
 const RESOURCES: Resource[] = [
-  { key: 'customers', label: 'Customers', actions: ['read', 'edit', 'delete'] },
-  { key: 'email_subscriptions', label: 'Email subscriptions', actions: ['read', 'edit', 'delete'] },
+  {
+    key: 'customers',
+    label: 'Customers',
+    actions: ['read', 'edit', 'delete'],
+    children: [
+      { key: 'customers-crm-read-own', label: 'CRM — Read (Own)', actions: ['read'] },
+      { key: 'customers-crm-read-all', label: 'CRM — Read (All)', actions: ['read'] },
+      { key: 'customers-crm', label: 'CRM', actions: ['edit', 'delete'] },
+      { key: 'customers-vendor', label: 'Vendor', actions: ['read', 'edit', 'delete'] },
+    ],
+  },
+  {
+    key: 'email_subscriptions',
+    label: 'Email subscriptions',
+    actions: ['read', 'edit', 'delete'],
+    children: [
+      { key: 'email_newsletter', label: 'Newsletter', actions: ['read', 'edit', 'delete'] },
+      { key: 'email_waiting_list', label: 'Waiting list', actions: ['read', 'edit', 'delete'] },
+    ],
+  },
   { key: 'employees', label: 'Employees', actions: ['read', 'edit', 'delete'], adminOnly: true },
   {
     key: 'website',
@@ -23,7 +41,17 @@ const RESOURCES: Resource[] = [
       { key: 'website_blogs', label: 'Blogs', actions: ['read', 'edit', 'delete'] },
     ],
   },
-  { key: 'finance', label: 'Finance', actions: ['read', 'edit', 'delete'] },
+  {
+    key: 'finance',
+    label: 'Finance',
+    actions: ['read', 'edit', 'delete'],
+    children: [
+      { key: 'finance_overview', label: 'Overview', actions: ['read', 'edit', 'delete'] },
+      { key: 'finance_invoices', label: 'Invoices', actions: ['read', 'edit', 'delete'] },
+      { key: 'finance_reports', label: 'Financial reports', actions: ['read', 'edit', 'delete'] },
+      { key: 'finance_settings', label: 'Financial settings', actions: ['read', 'edit', 'delete'] },
+    ],
+  },
   { key: 'tag_manager', label: 'Tag Manager', actions: ['read', 'edit', 'delete'] },
   { key: 'reports', label: 'Reports', actions: ['read'] },
   { key: 'company_settings', label: 'Company settings', actions: ['read', 'edit', 'delete'] },
@@ -67,4 +95,3 @@ export function idsToNames(ids: string[]): string[] {
   const m = idToNameMap();
   return ids.map((id) => m.get(id)).filter(Boolean) as string[];
 }
-
