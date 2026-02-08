@@ -30,7 +30,7 @@ export default function AppSettingsPage() {
                 <Text c="dimmed" size="sm">Manage waitlists/newsletters and configure the API adapter.</Text>
               </div>
             </Group>
-            <Button component={Link as any} href="/employee/company-settings/email" variant="light">Open</Button>
+            <Button component={Link as any} href="/employee/company-settings/email-management" variant="light">Open</Button>
           </Group>
         </Card>
 

@@ -59,6 +59,7 @@ export default function NewEmailTemplatePage() {
   const onSave = async () => {
     const trimmed = name.trim();
     if (!trimmed) { setError('Name required'); return; }
+    if (!subject.trim()) { setError('Subject required'); return; }
     // Disallow reserved system template names
     const reserved = ['password reset', 'verify email'];
     if (reserved.includes(trimmed.toLowerCase())) {
@@ -68,7 +69,7 @@ export default function NewEmailTemplatePage() {
     const body = html || '';
     if (editId) await updateEmailTemplate(editId, { name: trimmed, subject: subject.trim(), body });
     else await addEmailTemplate({ name: trimmed, subject: subject.trim(), body });
-    router.push('/employee/company-settings/email/templates');
+    router.push('/employee/company-settings/email-management/email-templates');
   };
 
   const varMap = useMemo(() => {
@@ -92,7 +93,7 @@ export default function NewEmailTemplatePage() {
       <Stack>
         <Group justify="space-between" align="flex-start">
           <Group>
-            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/company-settings/email/templates')}>
+            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/company-settings/email-management/email-templates')}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
@@ -118,35 +119,43 @@ export default function NewEmailTemplatePage() {
               required
               readOnly={isAuthSpecial}
             />
-            <Stack gap={6} style={{ width: '100%' }}>
-              <Text size="sm" fw={500}>Subject</Text>
-              <Select
-                style={{ width: 260, alignSelf: 'flex-start' }}
-                size="xs"
-                placeholder="Insert variable"
-                value={selectedVar}
-                onChange={(val) => { if (!val) return; setSelectedVar(null); insertVarIntoSubject(val); }}
-                data={[
-                  {
-                    group: 'Built-in',
-                    items: [
-                      { value: 'USERNAME', label: 'USERNAME' },
-                      ...(isAuthSpecial ? [{ value: 'ACTION_URL', label: 'ACTION_URL' }] : []),
-                    ],
-                  },
-                  { group: 'Email variables', items: vars.map((v) => ({ value: v.key, label: v.key })) },
-                ] as any}
-                aria-label="Insert variable"
-                comboboxProps={{ withinPortal: true }}
-              />
-              <TextInput ref={subjectRef as any} placeholder="Welcome to our product" value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
-            </Stack>
+          </Stack>
+        </Card>
+
+        <Card withBorder>
+          <Stack>
+            <Group>
+              <Text size="sm" fw={500}>Subject <span style={{ color: 'var(--mantine-color-red-filled)' }}>*</span></Text>
+            </Group>
+            <Select
+              style={{ width: 260, alignSelf: 'flex-start' }}
+              size="xs"
+              placeholder="Insert variable"
+              value={selectedVar}
+              onChange={(val) => { if (!val) return; setSelectedVar(null); insertVarIntoSubject(val); }}
+              data={[
+                {
+                  group: 'Built-in',
+                  items: [
+                    { value: 'USERNAME', label: 'USERNAME' },
+                    ...(isAuthSpecial ? [{ value: 'ACTION_URL', label: 'ACTION_URL' }] : []),
+                  ],
+                },
+                { group: 'Email variables', items: vars.map((v) => ({ value: v.key, label: v.key })) },
+              ] as any}
+              aria-label="Insert variable"
+              comboboxProps={{ withinPortal: true }}
+            />
+            <TextInput ref={subjectRef as any} placeholder="Welcome to our product" value={subject} onChange={(e) => setSubject(e.currentTarget.value)} required />
             {error && <Text c="red" size="sm">{error}</Text>}
           </Stack>
         </Card>
 
         <Card withBorder>
           <Stack gap={8}>
+            <Group>
+              <Text size="sm" fw={500}>Body <span style={{ color: 'var(--mantine-color-red-filled)' }}>*</span></Text>
+            </Group>
             <RichEmailEditor placeholder="Write your message…" initialHTML={html} onChangeHTML={setHtml} />
           </Stack>
         </Card>

@@ -14,13 +14,13 @@ export function EmailPreviewWindow({ subject, html, toName = "Recipient", toEmai
   return (
     <Card withBorder radius="md" p={0} style={{ overflow: 'hidden' }}>
       {/* Window chrome */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'linear-gradient(var(--mantine-color-gray-1), var(--mantine-color-gray-0))', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 999, background: '#ff5f56', display: 'inline-block' }} />
-          <span style={{ width: 10, height: 10, borderRadius: 999, background: '#ffbd2e', display: 'inline-block' }} />
-          <span style={{ width: 10, height: 10, borderRadius: 999, background: '#27c93f', display: 'inline-block' }} />
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'linear-gradient(var(--mantine-color-gray-1), var(--mantine-color-gray-0))', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
         <Text size="sm" c="dimmed">Email Preview</Text>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 999, background: '#27c93f', display: 'inline-block' }} />
+          <span style={{ width: 10, height: 10, borderRadius: 999, background: '#ffbd2e', display: 'inline-block' }} />
+          <span style={{ width: 10, height: 10, borderRadius: 999, background: '#ff5f56', display: 'inline-block' }} />
+        </div>
       </div>
 
       <div style={{ padding: 14 }}>
@@ -50,4 +50,3 @@ export function EmailPreviewWindow({ subject, html, toName = "Recipient", toEmai
 }
 
 export default EmailPreviewWindow;
-
