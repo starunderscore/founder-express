@@ -26,15 +26,16 @@ export function roleBackLink(role: Pick<Role,'isArchived'|'deletedAt'>): string 
 export function buildRoleCreate(input: RoleCreateInput): Record<string, any> {
   const nm = String(input.name || '').trim();
   if (!nm) throw new Error('name is required');
-  const desc = (input.description || '').trim();
-  return {
+  const out: Record<string, any> = {
     name: nm,
-    description: desc ? desc : undefined,
     permissionIds: Array.isArray(input.permissionIds) ? input.permissionIds : [],
     isArchived: false,
     deletedAt: null, // so falsy checks treat as active; consistent with app
     createdAt: Date.now(),
   };
+  const desc = (input.description ?? '').trim();
+  if (desc) out.description = desc; // omit field when blank to avoid undefined
+  return out;
 }
 
 // Returns a plain object with optional fields; Firestore-specific delete handling belongs in firestore.ts
@@ -59,4 +60,3 @@ export function filterByStatus<T extends Pick<Role,'isArchived'|'deletedAt'>>(ro
   if (status === 'archived') return rows.filter((r) => !r.deletedAt && r.isArchived);
   return rows.filter((r) => !r.deletedAt && !r.isArchived);
 }
-

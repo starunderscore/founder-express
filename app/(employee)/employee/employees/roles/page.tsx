@@ -6,8 +6,7 @@ import { IconShieldCheck } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import { db } from '@/lib/firebase/client';
-import { doc, updateDoc } from 'firebase/firestore';
+import { archiveRole, removeRole } from '@/services/roles';
 import { useToast } from '@/components/ToastProvider';
 import RoleRemoveModal from '@/components/roles/RoleRemoveModal';
 
@@ -25,14 +24,14 @@ export default function EmployerRolesPage() {
 
   const onArchive = async () => {
     if (!target) return;
-    await updateDoc(doc(db(), 'employee_roles', target.id), { isArchived: true });
+    await archiveRole(target.id);
     setConfirmArchive(false); setTarget(null);
     setRefreshKey((k) => k + 1);
     toast.show({ title: 'Role archived', message: target.name, color: 'green' });
   };
   const onRemove = async () => {
     if (!target) return;
-    await updateDoc(doc(db(), 'employee_roles', target.id), { deletedAt: Date.now() });
+    await removeRole(target.id);
     setConfirmRemove(false); setTarget(null);
     setRefreshKey((k) => k + 1);
     toast.show({ title: 'Role moved to removed', message: target.name, color: 'orange' });

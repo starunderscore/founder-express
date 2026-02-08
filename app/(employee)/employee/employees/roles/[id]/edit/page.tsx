@@ -5,7 +5,8 @@ import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, 
 import { PermissionsMatrix } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { db } from '@/lib/firebase/client';
-import { deleteField, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { updateRole } from '@/services/roles';
 import { idsToNames, namesToIds } from '@/lib/permissions';
 
 export default function EditRolePage({ params }: { params: { id: string } }) {
@@ -56,10 +57,7 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
     const nm = name.trim();
     if (!nm) return;
     const ids = namesToIds(selectedNames);
-    const desc = description.trim();
-    const patch: any = { name: nm, permissionIds: ids };
-    patch.description = desc ? desc : deleteField();
-    await updateDoc(doc(db(), 'employee_roles', role.id), patch);
+    await updateRole(role.id, { name: nm, permissionIds: ids, description });
     router.push('/employee/employees/roles');
   };
 

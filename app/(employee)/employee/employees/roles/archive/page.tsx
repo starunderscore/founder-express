@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { Button, Card, Group, Stack, Text, Title, Menu, ActionIcon, Tabs, Modal } from '@mantine/core';
 import { IconShieldCheck } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { restoreRole, removeRole } from '@/services/roles';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { useToast } from '@/components/ToastProvider';
 import RoleRemoveModal from '@/components/roles/RoleRemoveModal';
@@ -21,8 +20,8 @@ export default function EmployerRolesArchivePage() {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const restore = async (id: string) => { await updateDoc(doc(db(), 'employee_roles', id), { isArchived: false }); };
-  const softRemove = async (id: string) => { await updateDoc(doc(db(), 'employee_roles', id), { deletedAt: Date.now() }); };
+  const restore = async (id: string) => { await restoreRole(id); };
+  const softRemove = async (id: string) => { await removeRole(id); };
 
   const openRestore = (row: RoleDoc) => { setTarget(row); setConfirmRestore(true); };
   const openRemove = (row: RoleDoc) => { setTarget(row); setConfirmRemove(true); };

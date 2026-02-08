@@ -116,4 +116,18 @@ Key paths
 
 Notes
 - The sign‑in page renders without the dashboard chrome.
+
+**Testing with Firebase Emulator**
+
+- Install dev deps (already in package.json): `firebase-tools`, `@firebase/rules-unit-testing`, `jest`, `ts-jest`.
+- Run all tests with Firestore emulator:
+  - `npm test` (spins up Firestore emulator, applies `firebase/firestore.rules`, runs Jest in-band)
+- Troubleshooting:
+  - If emulator ports are busy, adjust in `firebase.json` under `emulators` (hub/logging/firestore/websocketPort).
+  - To run Jest directly without wrapping (advanced), export `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` then `jest --runInBand`.
+  - First run may download emulator binaries; ensure network access and that `firebase-tools` is available.
+
+Service-layer tests
+- Business logic lives in `services/roles/*` and is covered by unit/emulator tests under `tests/services/roles/*`.
+- Rules authorization is covered under `tests/firestore/*` using the emulator.
  

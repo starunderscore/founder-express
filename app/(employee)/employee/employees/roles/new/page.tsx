@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, Textarea } from '@mantine/core';
 import { PermissionsMatrix, allPermissionNames } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { createRole } from '@/services/roles';
 import { namesToIds } from '@/lib/permissions';
 
 export default function NewRolePage() {
@@ -21,10 +20,7 @@ export default function NewRolePage() {
     if (e) e.preventDefault();
     if (!name.trim()) return;
     const ids = namesToIds(selectedNames);
-    const data: any = { name: name.trim(), permissionIds: ids, isArchived: false, deletedAt: null, createdAt: Date.now() };
-    const desc = description.trim();
-    if (desc) data.description = desc;
-    await addDoc(collection(db(), 'employee_roles'), data);
+    await createRole({ name: name.trim(), description: description, permissionIds: ids });
     router.push('/employee/employees/roles');
   };
 

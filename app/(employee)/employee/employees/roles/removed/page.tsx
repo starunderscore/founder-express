@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { Button, Card, Group, Stack, Text, Title, Tabs, Menu, ActionIcon, Modal } from '@mantine/core';
 import { IconShieldCheck } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { restoreRole, deleteRole } from '@/services/roles';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { useToast } from '@/components/ToastProvider';
@@ -21,7 +20,7 @@ export default function EmployerRolesRemovedPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const restore = async (id: string) => { await updateDoc(doc(db(), 'employee_roles', id), { deletedAt: null, isArchived: false }); };
+  const restore = async (id: string) => { await restoreRole(id); };
 
   const onConfirmRestore = async () => {
     if (!target) return;
@@ -115,7 +114,7 @@ export default function EmployerRolesRemovedPage() {
           roleName={target?.name || ''}
           onConfirm={async () => {
             if (!target) return;
-            await deleteDoc(doc(db(), 'employee_roles', target.id));
+            await deleteRole(target.id);
             setConfirmDelete(false); setTarget(null);
             setRefreshKey((k) => k + 1);
             toast.show({ title: 'Role deleted', message: 'Permanently removed', color: 'red' });
