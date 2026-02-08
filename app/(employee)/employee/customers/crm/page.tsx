@@ -209,7 +209,6 @@ export default function EmployerCRMPage() {
     setVPhones([]); setNewVPhone({ id: '', number: '', ext: '', label: '', kind: 'Work' });
     setVAddresses([]); setNewVAddress({ id: '', label: '', line1: '', line2: '', city: '', region: '', postal: '', country: '', isHQ: false });
     setVNotes([]); setNewVNoteBody('');
-    setVendorModalOpen(false);
     router.push(`/employee/customers/vendors/${ref.id}` as any);
   };
 

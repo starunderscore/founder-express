@@ -35,12 +35,13 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^3.6.0",
+    "react-is": "^18.3.1",
     "stripe": "^16.6.0",
     "zod": "^3.23.8",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^4.0.1",
+    "@firebase/rules-unit-testing": "^3.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.11.25",
     "@types/react": "^18.2.66",

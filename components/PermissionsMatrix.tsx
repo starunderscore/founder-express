@@ -156,6 +156,48 @@ export function computeChildToggle(selected: string[], parentKey: string, childK
   return Array.from(next);
 }
 
+// Module-level helpers to support pure compute* functions and component usage
+export function applyToggleWithDeps(res: { label: string }, action: Action, checked: boolean, next: Set<string>) {
+  const toggle = (name: string, on: boolean) => { if (on) next.add(name); else next.delete(name); };
+  if (checked) {
+    if (action === 'delete') {
+      toggle(labelFor(res, 'read'), true);
+      toggle(labelFor(res, 'edit'), true);
+      toggle(labelFor(res, 'delete'), true);
+    } else if (action === 'edit') {
+      toggle(labelFor(res, 'read'), true);
+      toggle(labelFor(res, 'edit'), true);
+    } else {
+      toggle(labelFor(res, 'read'), true);
+    }
+  } else {
+    if (action === 'read') {
+      toggle(labelFor(res, 'delete'), false);
+      toggle(labelFor(res, 'edit'), false);
+      toggle(labelFor(res, 'read'), false);
+    } else if (action === 'edit') {
+      toggle(labelFor(res, 'delete'), false);
+      toggle(labelFor(res, 'edit'), false);
+    } else {
+      toggle(labelFor(res, 'delete'), false);
+    }
+  }
+}
+
+export function toggleReadVariants(variantNames: string[], checked: boolean, next: Set<string>) {
+  for (const nm of variantNames) { if (checked) next.add(nm); else next.delete(nm); }
+  return next;
+}
+
+export function ensureReadVariantForEdit(variantNames: string[], next: Set<string>) {
+  const anyOn = variantNames.some((n) => next.has(n));
+  if (!anyOn) {
+    const own = variantNames.find((n) => n.includes('Read (Own)')) || variantNames[0];
+    next.add(own);
+  }
+  return next;
+}
+
 export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { value: string[]; onChange: (names: string[]) => void; disabledNames?: string[] }) {
   const selected = useMemo(() => new Set(value), [value]);
   const disabled = useMemo(() => new Set(disabledNames), [disabledNames]);
@@ -166,60 +208,15 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
     if (checked) next.add(name); else next.delete(name);
   };
 
-  // Low-level: apply dependency chain within a resource into provided Set (mutates it)
-  const applyToggleWithDeps = (res: { label: string }, action: Action, checked: boolean, next: Set<string>) => {
-    // Apply dependency chain within the same resource: delete -> edit -> read
-    if (checked) {
-      if (action === 'delete') {
-        toggleName(labelFor(res, 'read'), true, next);
-        toggleName(labelFor(res, 'edit'), true, next);
-        toggleName(labelFor(res, 'delete'), true, next);
-      } else if (action === 'edit') {
-        toggleName(labelFor(res, 'read'), true, next);
-        toggleName(labelFor(res, 'edit'), true, next);
-      } else {
-        toggleName(labelFor(res, 'read'), true, next);
-      }
-    } else {
-      if (action === 'read') {
-        toggleName(labelFor(res, 'delete'), false, next);
-        toggleName(labelFor(res, 'edit'), false, next);
-        toggleName(labelFor(res, 'read'), false, next);
-      } else if (action === 'edit') {
-        toggleName(labelFor(res, 'delete'), false, next);
-        toggleName(labelFor(res, 'edit'), false, next);
-      } else {
-        toggleName(labelFor(res, 'delete'), false, next);
-      }
-    }
-  };
-
   // Single-resource wrapper: creates a new Set and emits change
   const toggleWithDeps = (res: { label: string }, action: Action, checked: boolean) => {
     const next = new Set(selected);
+    // Use module-level helper, but route through toggleName for disabled awareness
+    // We delegate to module-level and then enforce disabled in onChange consumers
     applyToggleWithDeps(res, action, checked, next);
     onChange(Array.from(next));
   };
 
-  // Specialized helpers for rows with readVariants (e.g., CRM)
-  const toggleReadVariants = (variantNames: string[], checked: boolean, nextSet?: Set<string>) => {
-    const next = nextSet ?? new Set(selected);
-    for (const nm of variantNames) toggleName(nm, checked, next);
-    if (!nextSet) onChange(Array.from(next));
-    return next;
-  };
-
-  const ensureReadVariantForEdit = (variantNames: string[], nextSet?: Set<string>) => {
-    const next = nextSet ?? new Set(selected);
-    // Only ensure if neither variant is selected
-    const anyOn = variantNames.some((n) => next.has(n));
-    if (!anyOn) {
-      const own = variantNames.find((n) => n.includes('Read (Own)')) || variantNames[0];
-      toggleName(own, true, next);
-    }
-    if (!nextSet) onChange(Array.from(next));
-    return next;
-  };
 
   const toggleSingleReadVariant = (child: { label: string; readVariants?: Array<{ key: string; label: string }> }, variantName: string, checked: boolean) => {
     const next = new Set(selected);

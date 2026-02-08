@@ -1,6 +1,6 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Group, Table, Anchor, Card, ActionIcon, Menu, TextInput, Modal, Stack } from '@mantine/core';
+import { Title, Text, Group, Table, Anchor, Card, ActionIcon, Menu, TextInput, Modal, Stack, Button } from '@mantine/core';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';

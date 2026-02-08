@@ -1,10 +1,11 @@
 "use client";
 import { Avatar, Button, Group, Text, ActionIcon, Tooltip } from '@mantine/core';
 import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
 import { useAuthUser, signOut } from '@/lib/firebase/auth';
 import { IconSettings } from '@tabler/icons-react';
 
-export function AccountBar({ accountHref = '/portal/profile' }: { accountHref?: '/portal/profile' | '/employee/profile' } = {}) {
+export function AccountBar({ accountHref = '/portal/profile' as Route }: { accountHref?: Route } = {}) {
   const user = useAuthUser();
   const router = useRouter();
   const name = user?.displayName || user?.email?.split('@')[0] || 'You';

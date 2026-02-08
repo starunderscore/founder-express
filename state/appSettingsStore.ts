@@ -47,6 +47,7 @@ export type AppSettings = {
   websiteUrl: string;
   websiteName: string;
   cookiePolicyEnabled?: boolean;
+  privacyPolicyEnabled?: boolean;
   email: EmailAdapterSettings;
   env: EnvVar[];
 };
@@ -78,6 +79,7 @@ const defaults: AppSettings = {
   websiteUrl: '',
   websiteName: '',
   cookiePolicyEnabled: true,
+  privacyPolicyEnabled: true,
   email: {
     adapterUrl: '',
     apiKey: '',

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Stack, Tabs, Group, Button, TextInput, Select, TagsInput, Title, Card, Badge, Text } from '@mantine/core';
 import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
 import { db } from '@/lib/firebase/client';
 import { collection, addDoc, onSnapshot } from 'firebase/firestore';
 import { useAuthUser } from '@/lib/firebase/auth';
@@ -116,7 +117,7 @@ export default function VendorAddModal({ opened, onClose, basePath = '/employee/
       doNotContact: false,
     }));
     onClose();
-    onCreated ? onCreated(ref.id) : router.push(`${basePath}/${ref.id}`);
+    onCreated ? onCreated(ref.id) : router.push(`${basePath}/${ref.id}` as Route);
   };
 
   const resetAll = () => {

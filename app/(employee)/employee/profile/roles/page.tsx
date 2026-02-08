@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Title, Text, Stack, Card, Group, Badge, Alert, Tabs, Divider } from '@mantine/core';
 import Link from 'next/link';
 import { useAuth } from '@/lib/firebase/auth';

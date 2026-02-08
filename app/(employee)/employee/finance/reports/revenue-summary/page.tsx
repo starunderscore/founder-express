@@ -23,13 +23,13 @@ export default function RevenueSummaryReportPage() {
     else if (range === '12m') built = buildMonthly(now, 12, invoices, defaultCurrency);
     else if (range === 'ytd') built = buildYTD(now, invoices, defaultCurrency);
     else built = buildAllMonthly(now, invoices, defaultCurrency);
-    const hasReal = invoices && invoices.length > 0 && built.data.some((d) => d.value > 0);
+    const hasReal = invoices && invoices.length > 0 && (built.data as Array<{ value: number }>).some((d: { value: number }) => d.value > 0);
     if (hasReal) return { ...built, usedDummy: false } as any;
     const dummy = buildDummy(range, now);
     return { data: dummy.data, label: dummy.label, usedDummy: true, rangeStart: dummy.rangeStart, rangeEnd: dummy.rangeEnd } as any;
   }, [range, invoices, defaultCurrency]);
 
-  const total = useMemo(() => data.reduce((acc, d) => acc + d.value, 0), [data]);
+  const total = useMemo(() => (data as Array<{ value: number }>).reduce((acc: number, d) => acc + d.value, 0), [data]);
   const periods = data.length;
   const avg = periods > 0 ? total / periods : 0;
   const latest = periods > 0 ? data[periods - 1]?.value || 0 : 0;

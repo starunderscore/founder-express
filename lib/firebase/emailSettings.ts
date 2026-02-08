@@ -10,6 +10,7 @@ import {
   type Unsubscribe,
   doc,
   getDoc,
+  setDoc,
 } from 'firebase/firestore';
 
 export type EmailVar = {

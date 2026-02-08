@@ -179,7 +179,7 @@ function MergeWorkspacePageInner() {
                 <Table.Th></Table.Th>
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Email</Table.Th>
-                <Table.Th width={120}>Type</Table.Th>
+                <Table.Th style={{ width: 120 }}>Type</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
