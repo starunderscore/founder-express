@@ -66,6 +66,8 @@ export const RESOURCES: Resource[] = [
   { key: 'tag_manager', label: 'Tag Manager', actions: ['read', 'edit', 'delete'] },
   { key: 'reports', label: 'Reports', actions: ['read'] },
   { key: 'company_settings', label: 'Company settings', actions: ['read', 'edit', 'delete'] },
+  // Admin-only area — show as lines with an "admin only" chip
+  { key: 'admin_settings', label: 'Admin settings', actions: [], adminOnly: true },
 ];
 
 export function labelFor(resource: { label: string }, action: Action) {
@@ -92,6 +94,68 @@ export function allPermissionNames(): string[] {
   return names;
 }
 
+// Test helpers: export minimal pure functions to validate matrix logic without DOM
+export function permissionNamesForResourceKey(key: string): { resource?: Resource; children: Resource[] } {
+  const r = RESOURCES.find((x) => x.key === key);
+  return { resource: r, children: r?.children || [] };
+}
+
+export function computeGroupToggle(selected: string[], resourceKey: string, action: Action, checked: boolean): string[] {
+  const { resource: r } = permissionNamesForResourceKey(resourceKey);
+  if (!r) return selected;
+  const hasChildren = !!(r.children && r.children.length);
+  const children = r.children || [];
+  const actionableChildren = (a: Action) => children.filter((c) => c.actions.includes(a) || (a === 'read' && c.readVariants && c.readVariants.length));
+
+  const next = new Set(selected);
+  if (!hasChildren) {
+    applyToggleWithDeps(r, action, checked, next);
+  } else {
+    if (action === 'read') {
+      children.forEach((c) => {
+        if (c.readVariants && c.readVariants.length) {
+          const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
+          toggleReadVariants(names, checked, next);
+        } else if (c.actions.includes('read')) {
+          applyToggleWithDeps(c, 'read', checked, next);
+        }
+      });
+    } else {
+      actionableChildren(action).forEach((c) => {
+        if (checked && c.readVariants && c.readVariants.length) {
+          const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
+          ensureReadVariantForEdit(names, next);
+        }
+        applyToggleWithDeps(c, action, checked, next);
+      });
+    }
+  }
+  return Array.from(next);
+}
+
+export function computeChildToggle(selected: string[], parentKey: string, childKey: string, action: Action, checked: boolean): string[] {
+  const { resource: parent } = permissionNamesForResourceKey(parentKey);
+  if (!parent) return selected;
+  const child = (parent.children || []).find((c) => c.key === childKey);
+  if (!child) return selected;
+  const next = new Set(selected);
+  if (action === 'read') {
+    if (child.readVariants && child.readVariants.length) {
+      const names = child.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
+      toggleReadVariants(names, checked, next);
+    } else {
+      applyToggleWithDeps(child, 'read', checked, next);
+    }
+  } else {
+    if (checked && child.readVariants && child.readVariants.length) {
+      const names = child.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
+      ensureReadVariantForEdit(names, next);
+    }
+    applyToggleWithDeps(child, action, checked, next);
+  }
+  return Array.from(next);
+}
+
 export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { value: string[]; onChange: (names: string[]) => void; disabledNames?: string[] }) {
   const selected = useMemo(() => new Set(value), [value]);
   const disabled = useMemo(() => new Set(disabledNames), [disabledNames]);
@@ -102,8 +166,8 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
     if (checked) next.add(name); else next.delete(name);
   };
 
-  const toggleWithDeps = (res: { label: string }, action: Action, checked: boolean) => {
-    const next = new Set(selected);
+  // Low-level: apply dependency chain within a resource into provided Set (mutates it)
+  const applyToggleWithDeps = (res: { label: string }, action: Action, checked: boolean, next: Set<string>) => {
     // Apply dependency chain within the same resource: delete -> edit -> read
     if (checked) {
       if (action === 'delete') {
@@ -128,25 +192,58 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
         toggleName(labelFor(res, 'delete'), false, next);
       }
     }
+  };
+
+  // Single-resource wrapper: creates a new Set and emits change
+  const toggleWithDeps = (res: { label: string }, action: Action, checked: boolean) => {
+    const next = new Set(selected);
+    applyToggleWithDeps(res, action, checked, next);
     onChange(Array.from(next));
   };
 
   // Specialized helpers for rows with readVariants (e.g., CRM)
-  const toggleReadVariants = (variantNames: string[], checked: boolean) => {
-    const next = new Set(selected);
+  const toggleReadVariants = (variantNames: string[], checked: boolean, nextSet?: Set<string>) => {
+    const next = nextSet ?? new Set(selected);
     for (const nm of variantNames) toggleName(nm, checked, next);
-    onChange(Array.from(next));
+    if (!nextSet) onChange(Array.from(next));
+    return next;
   };
 
-  const ensureReadVariantForEdit = (variantNames: string[]) => {
+  const ensureReadVariantForEdit = (variantNames: string[], nextSet?: Set<string>) => {
+    const next = nextSet ?? new Set(selected);
+    // Only ensure if neither variant is selected
+    const anyOn = variantNames.some((n) => next.has(n));
+    if (!anyOn) {
+      const own = variantNames.find((n) => n.includes('Read (Own)')) || variantNames[0];
+      toggleName(own, true, next);
+    }
+    if (!nextSet) onChange(Array.from(next));
+    return next;
+  };
+
+  const toggleSingleReadVariant = (child: { label: string; readVariants?: Array<{ key: string; label: string }> }, variantName: string, checked: boolean) => {
     const next = new Set(selected);
-    // Prefer Read (All) if present; otherwise first
-    const all = variantNames.find((n) => n.includes('Read (All)')) || variantNames[0];
-    toggleName(all, true, next);
+    // Mutual exclusion between variants: if turning one on, turn the other off
+    const names = (child.readVariants || []).map((rv) => labelFor({ label: rv.label } as any, 'read'));
+    if (checked) {
+      // Turn on selected variant
+      toggleName(variantName, true, next);
+      // Turn off the other variants
+      names.filter((n) => n !== variantName).forEach((n) => toggleName(n, false, next));
+    } else {
+      toggleName(variantName, false, next);
+    }
+    // If none selected after this change, clear edit/delete for this child
+    const anyOn = names.some((nm) => next.has(nm));
+    if (!anyOn) {
+      toggleName(labelFor(child as any, 'edit'), false, next);
+      toggleName(labelFor(child as any, 'delete'), false, next);
+    }
     onChange(Array.from(next));
   };
 
   return (
+    <>
     <Table verticalSpacing="xs">
       <Table.Thead>
         <Table.Tr>
@@ -164,10 +261,10 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
           const groupChecked = (a: Action) => {
             if (!hasChildren) return has(labelFor(r, a));
             if (a === 'read') {
-              // For read, if a child has variants, all its variant checkboxes must be on
+              // For read: if a child has variants, treat read as on if any variant is selected
               return children.every((c) => {
                 if (c.readVariants && c.readVariants.length) {
-                  return c.readVariants.every((rv) => has(labelFor({ label: rv.label } as any, 'read')));
+                  return c.readVariants.some((rv) => has(labelFor({ label: rv.label } as any, 'read')));
                 }
                 if (c.actions.includes('read')) return has(labelFor(c, 'read'));
                 return true;
@@ -179,25 +276,41 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
             if (!hasChildren) {
               toggleWithDeps(r, a, checked);
             } else {
-              // Apply to all children that support the action, skipping disabled
+              // Apply to all children that support the action in a single batch
+              const next = new Set(selected);
               if (a === 'read') {
                 children.forEach((c) => {
                   if (c.readVariants && c.readVariants.length) {
                     const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
-                    toggleReadVariants(names, checked);
+                    if (checked) {
+                      // Ensure a read variant if none; prefer Read (Own)
+                      ensureReadVariantForEdit(names, next);
+                      // Enforce mutual exclusion: keep only the ensured variant
+                      const onName = names.find((nm) => next.has(nm));
+                      names.filter((nm) => nm !== onName).forEach((nm) => toggleName(nm, false, next));
+                    } else {
+                      toggleReadVariants(names, false, next);
+                      // Also clear edit/delete when turning off read
+                      toggleName(labelFor(c as any, 'edit'), false, next);
+                      toggleName(labelFor(c as any, 'delete'), false, next);
+                    }
                   } else if (c.actions.includes('read')) {
-                    toggleWithDeps(c, 'read', checked);
+                    applyToggleWithDeps(c, 'read', checked, next);
                   }
                 });
               } else {
                 actionableChildren(a).forEach((c) => {
                   if (checked && c.readVariants && c.readVariants.length) {
                     const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
-                    ensureReadVariantForEdit(names);
+                    ensureReadVariantForEdit(names, next);
+                    // Enforce mutual exclusion when ensuring: keep only ensured variant
+                    const onName = names.find((nm) => next.has(nm));
+                    names.filter((nm) => nm !== onName).forEach((nm) => toggleName(nm, false, next));
                   }
-                  toggleWithDeps(c, a, checked);
+                  applyToggleWithDeps(c, a, checked, next);
                 });
               }
+              onChange(Array.from(next));
             }
           };
           return (
@@ -239,7 +352,7 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
                 </Table.Td>
               </Table.Tr>
               {hasChildren && children.map((c) => (
-                <Table.Tr key={c.key}>
+                <Table.Tr key={c.key} style={{ backgroundColor: 'var(--mantine-color-gray-0)' }}>
                   <Table.Td>
                     <div style={{ marginLeft: 16, display: 'flex', alignItems: 'center' }}>
                       <Text>{c.label}</Text>
@@ -252,7 +365,7 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
                           const nm = labelFor({ label: rv.label } as any, 'read');
                           const short = rv.label.replace('CRM — ', '');
                           return (
-                            <Checkbox key={rv.key} checked={has(nm)} onChange={(e) => toggleReadVariants([nm], e.currentTarget.checked)} aria-label={`${rv.label} read`} disabled={disabled.has(nm)} label={short} />
+                            <Checkbox key={rv.key} checked={has(nm)} onChange={(e) => toggleSingleReadVariant(c, nm, e.currentTarget.checked)} aria-label={`${rv.label} read`} disabled={disabled.has(nm)} label={short} />
                           );
                         })}
                       </Group>
@@ -261,10 +374,38 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
                     )}
                   </Table.Td>
                   <Table.Td>
-                    <Checkbox checked={has(labelFor(c, 'edit'))} onChange={(e) => { if (c.readVariants && c.readVariants.length && e.currentTarget.checked) { const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read')); ensureReadVariantForEdit(names); } toggleWithDeps(c, 'edit', e.currentTarget.checked); }} aria-label={`${c.label} edit`} disabled={disabled.has(labelFor(c, 'edit'))} />
+                    <Checkbox
+                      checked={has(labelFor(c, 'edit'))}
+                      onChange={(e) => {
+                        const checked = e.currentTarget.checked;
+                        const next = new Set(selected);
+                        if (checked && c.readVariants && c.readVariants.length) {
+                          const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
+                          ensureReadVariantForEdit(names, next);
+                        }
+                        applyToggleWithDeps(c, 'edit', checked, next);
+                        onChange(Array.from(next));
+                      }}
+                      aria-label={`${c.label} edit`}
+                      disabled={disabled.has(labelFor(c, 'edit'))}
+                    />
                   </Table.Td>
-                    <Table.Td>
-                    <Checkbox checked={has(labelFor(c, 'delete'))} onChange={(e) => { if (c.readVariants && c.readVariants.length && e.currentTarget.checked) { const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read')); ensureReadVariantForEdit(names); } toggleWithDeps(c, 'delete', e.currentTarget.checked); }} aria-label={`${c.label} delete`} disabled={disabled.has(labelFor(c, 'delete'))} />
+                  <Table.Td>
+                    <Checkbox
+                      checked={has(labelFor(c, 'delete'))}
+                      onChange={(e) => {
+                        const checked = e.currentTarget.checked;
+                        const next = new Set(selected);
+                        if (checked && c.readVariants && c.readVariants.length) {
+                          const names = c.readVariants.map((rv) => labelFor({ label: rv.label } as any, 'read'));
+                          ensureReadVariantForEdit(names, next);
+                        }
+                        applyToggleWithDeps(c, 'delete', checked, next);
+                        onChange(Array.from(next));
+                      }}
+                      aria-label={`${c.label} delete`}
+                      disabled={disabled.has(labelFor(c, 'delete'))}
+                    />
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -273,5 +414,6 @@ export function PermissionsMatrix({ value, onChange, disabledNames = [] }: { val
         })}
       </Table.Tbody>
     </Table>
+    </>
   );
 }

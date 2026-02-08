@@ -1,10 +1,13 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Title, Text, Stack, Card, Group, Badge, Alert, Tabs } from '@mantine/core';
+import { Title, Text, Stack, Card, Group, Badge, Alert, Tabs, Divider } from '@mantine/core';
 import Link from 'next/link';
 import { useAuth } from '@/lib/firebase/auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { PermissionsMatrix } from '@/components/PermissionsMatrix';
+import { allPermissionNames } from '@/components/permissionsSchema';
+import { idsToNames } from '@/lib/permissions';
 
 export default function EmployeeRolesPage() {
   const { user } = useAuth();
@@ -23,19 +26,30 @@ export default function EmployeeRolesPage() {
     return () => unsub();
   }, [user?.email]);
 
-  const [roleNames, setRoleNames] = useState<Record<string, string>>({});
+  const [roleMap, setRoleMap] = useState<Record<string, { name: string; permissionIds: string[] }>>({});
   useEffect(() => {
     const qRoles = query(collection(db(), 'employee_roles'));
     const unsub = onSnapshot(qRoles, (snap) => {
-      const map: Record<string, string> = {};
+      const map: Record<string, { name: string; permissionIds: string[] }> = {};
       snap.forEach((d) => {
         const data = d.data() as any;
-        map[d.id] = data.name || d.id;
+        map[d.id] = { name: data.name || d.id, permissionIds: Array.isArray(data.permissionIds) ? data.permissionIds : [] };
       });
-      setRoleNames(map);
+      setRoleMap(map);
     });
     return () => unsub();
   }, []);
+
+  // Compute effective permission names for the current employee (roles + extra)
+  const effectivePermissionNames = useMemo(() => {
+    if (!employee) return [] as string[];
+    const roleIds = Array.isArray(employee.roleIds) ? employee.roleIds : [];
+    const extraIds = Array.isArray(employee.permissionIds) ? employee.permissionIds : [];
+    const rolePermIds = roleIds.flatMap((rid: string) => roleMap[rid]?.permissionIds || []);
+    // unique ids
+    const idSet = new Set<string>([...rolePermIds, ...extraIds]);
+    return idsToNames(Array.from(idSet));
+  }, [employee?.id, roleMap]);
 
   return (
     <Stack>
@@ -67,13 +81,25 @@ export default function EmployeeRolesPage() {
             <Text fw={600}>Your roles</Text>
             <Group gap={8} wrap="wrap">
               {(Array.isArray(employee.roleIds) ? employee.roleIds : []).map((rid: string) => (
-                <Badge key={rid} variant="light">{roleNames[rid] || rid}</Badge>
+                <Badge key={rid} variant="light">{roleMap[rid]?.name || rid}</Badge>
               ))}
               {(!Array.isArray(employee.roleIds) || employee.roleIds.length === 0) && <Text c="dimmed">No roles assigned</Text>}
             </Group>
             <Text c="dimmed" size="sm">Additional permissions: {Array.isArray(employee.permissionIds) ? employee.permissionIds.length : 0}</Text>
           </Stack>
         )}
+      </Card>
+
+      <Card withBorder>
+        <Stack>
+          <Text fw={600}>Your effective permissions</Text>
+          <PermissionsMatrix
+            value={effectivePermissionNames}
+            // Disable all interactions for read-only view
+            disabledNames={allPermissionNames()}
+            onChange={() => {}}
+          />
+        </Stack>
       </Card>
     </Stack>
   );
