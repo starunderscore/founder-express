@@ -8,13 +8,12 @@ service cloud.firestore {
     function isEmployee() {
       return authed()
         && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
-        && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isArchived != true
+        // Treat missing isArchived as not archived; avoid property access when absent
+        && !(("isArchived" in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data)
+             && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isArchived == true)
         && !("deletedAt" in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data);
     }
-    function isOwner() {
-      return authed() && exists(/databases/$(database)/documents/meta/owner)
-        && get(/databases/$(database)/documents/meta/owner).data.ownerUid == request.auth.uid;
-    }
+    // (owner check in isAdmin only)
 
     // Owner claim — one‑time create only
     match /meta/owner {
@@ -30,203 +29,72 @@ service cloud.firestore {
 
     // Employees collection — only owner creates; users can read self; limited self‑edit
     match /employees/{uid} {
-      allow get: if (isOwner() || (isEmployee() && request.auth.uid == uid));
-      allow list: if isOwner();
-
-      // Only owner can create employee docs
-      allow create: if isOwner() && request.resource.data.email is string;
-
-      // Only owner can delete
-      allow delete: if isOwner();
-
-      // Update rules:
-      // - Owner can update any employee, but cannot change isAdmin here (keep admin outside portal)
-      // - A user may update their own profile fields only (name), not roles/permissions/isAdmin
-      allow update: if (
-        // Owner path
-        (isOwner() && (
-          request.resource.data.diff(resource.data).changedKeys().hasOnly(['name','email','roleIds','permissionIds'])
-        )) ||
-        // Self‑service path
-        (isEmployee() && request.auth.uid == uid && request.resource.data.diff(resource.data).changedKeys().hasOnly(['name']))
-      );
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // CRM customers/vendors
-    // Helper: admin based on employees/{auth.uid}.isAdmin
+    // Helper: admin based on employees/{auth.uid}.isAdmin, with owner included
     function isAdmin() {
-      return isEmployee()
-        && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isAdmin == true;
-    }
-
-    // Website permissions (Blogs, News Bar)
-    function hasWebsiteBlogsRead() {
-      return isEmployee() && (
-        'perm-website-blogs-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
-      );
-    }
-    function hasWebsiteBlogsEdit() {
-      return isEmployee() && (
-        'perm-website-blogs-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
-      );
-    }
-    function hasWebsiteBlogsDelete() {
-      return isEmployee() && (
-        'perm-website-blogs-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
-      );
-    }
-    function hasWebsiteNewsbarEdit() {
-      return isEmployee() && (
-        'perm-website-newsbar-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
-      );
-    }
-    function hasWebsiteNewsbarDelete() {
-      return isEmployee() && (
-        'perm-website-newsbar-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds
+      return (
+        (
+          authed() && exists(/databases/$(database)/documents/meta/owner)
+          && get(/databases/$(database)/documents/meta/owner).data.ownerUid == request.auth.uid
+        ) || (
+          isEmployee()
+          && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isAdmin == true
+        )
       );
     }
 
-    // Tag Manager permissions
-    function hasTagPermission() {
-      return isEmployee() && (
-        isAdmin() ||
-        ('perm-tagmgr-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds) ||
-        ('perm-tagmgr-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds) ||
-        ('perm-tagmgr-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
+    // (owner is folded into isAdmin above)
 
-    function hasTagEdit() {
-      return isEmployee()
-        && ('perm-tagmgr-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds);
-    }
+    // (website granular helpers removed)
 
-    function hasTagDelete() {
-      return isEmployee()
-        && ('perm-tagmgr-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds);
-    }
+    // (tag granular helpers removed)
 
     match /crm_tags/{id} {
-      // Reads: users with any Tag Manager permission OR owner/admin
-      allow get, list: if hasTagPermission() || isOwner() || isAdmin();
-      // Creates/Updates: users with Tag Manager edit permission OR owner/admin
-      allow create, update: if hasTagEdit() || isOwner() || isAdmin();
-      // Deletes: users with Tag Manager delete permission OR owner/admin
-      allow delete: if hasTagDelete() || isOwner() || isAdmin();
+      allow get, list, create, update, delete: if isAdmin();
     }
 
-    // CRM/Vendor permission helpers (new structure + legacy fallback)
-    function hasCrmReadAll() {
-      return isEmployee() && (
-        // New granular permission
-        ('perm-customers-crm-read-all-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-        // Legacy broad read permission
-        || ('perm-customers-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
-    function hasCrmReadOwn() {
-      return isEmployee() && (
-        ('perm-customers-crm-read-own-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
-    function hasCrmEdit() {
-      return isEmployee() && (
-        ('perm-customers-crm-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-        || ('perm-customers-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
-    function hasCrmDelete() {
-      return isEmployee() && (
-        ('perm-customers-crm-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-        || ('perm-customers-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
-    function hasVendorRead() {
-      return isEmployee() && (
-        ('perm-customers-vendor-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-        // Legacy broad read also covers vendors
-        || ('perm-customers-read' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
-    function hasVendorEdit() {
-      return isEmployee() && (
-        ('perm-customers-vendor-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-        || ('perm-customers-edit' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
-    function hasVendorDelete() {
-      return isEmployee() && (
-        ('perm-customers-vendor-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-        || ('perm-customers-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
+    // (CRM/vendor granular helpers removed)
 
-    // Company delete permission helper
-    function hasCompanyDelete() {
-      return isOwner() || (
-        isEmployee() && ('perm-company-delete' in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissionIds)
-      );
-    }
+    // (company delete helper removed)
 
-    // Admin Settings — restrict deletes to company delete permission; other writes allowed to admins/owner
+    // Admin Settings — admin/owner only
     match /admin_settings/{document=**} {
-      allow get, list: if isOwner() || isAdmin();
-      allow create, update: if isOwner() || isAdmin();
-      allow delete: if hasCompanyDelete();
+      allow get, list, create, update, delete: if isAdmin();
     }
 
     match /crm_customers/{id} {
-      // Reads:
-      // - Owner/Admin always
-      // - CRM: read all OR read own (ownerId == auth.uid)
-      // - Vendor: vendor read
-      allow get, list: if isOwner() || isAdmin() || (
-        // Vendor documents
-        (resource.data.type == 'vendor' && hasVendorRead())
-        // Customer/other documents
-        || (resource.data.type != 'vendor' && (hasCrmReadAll() || (hasCrmReadOwn() && resource.data.ownerId == request.auth.uid)))
-      );
-      // Creates/Updates:
-      // - Owner/Admin OR CRM edit (for customers) / Vendor edit (for vendors)
-      allow create, update: if isOwner() || isAdmin() || (
-        (request.resource.data.type == 'vendor' && hasVendorEdit())
-        || (request.resource.data.type != 'vendor' && hasCrmEdit())
-      );
-      // Deletes:
-      allow delete: if isOwner() || isAdmin() || (
-        (resource.data.type == 'vendor' && hasVendorDelete())
-        || (resource.data.type != 'vendor' && hasCrmDelete())
-      );
+      allow get, list, create, update, delete: if isAdmin();
     }
 
     // Website — Newsbar (single doc)
     match /website/newsbar {
       // Public read
       allow get, list: if true;
-      // Writes allowed to owner/admin or employees with News Bar edit/delete
-      allow create, update: if isOwner() || isAdmin() || hasWebsiteNewsbarEdit();
-      allow delete: if isOwner() || isAdmin() || hasWebsiteNewsbarDelete();
+      // Writes: admin/owner only
+      allow create, update, delete: if isAdmin();
     }
 
     // Website — Blogs
     match /blogs/{id} {
-      // Public read: published and not archived/removed
+      // Public read: published and not archived/removed; private read for admin/owner
       allow get, list: if (
         (resource.data.published == true && !(resource.data.isArchived == true) && !(resource.data.deletedAt != null))
-        || isOwner() || isAdmin() || hasWebsiteBlogsRead()
+        || isAdmin()
       );
-      // Employee/owner/admin creates and edits
-      allow create, update: if isOwner() || isAdmin() || hasWebsiteBlogsEdit();
-      // Delete (hard) restricted
-      allow delete: if isOwner() || isAdmin() || hasWebsiteBlogsDelete();
+      // Writes: admin/owner only
+      allow create, update, delete: if isAdmin();
     }
 
-    // Employee Roles — owner/admin manage RBAC roles
+    // Employee Roles — admin/owner manage RBAC roles
     match /employee_roles/{id} {
-      // Only owner or admins can access roles
-      allow get, list: if isOwner() || isAdmin();
-      allow create, update: if isOwner() || isAdmin();
-      allow delete: if isOwner() || isAdmin();
+      allow get, list, create, update, delete: if isAdmin();
     }
 
     // Deny everything else by default

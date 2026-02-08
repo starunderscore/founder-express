@@ -4,7 +4,7 @@
  * Requires dev deps:
  *   npm i -D @firebase/rules-unit-testing firebase-admin jest ts-jest
  * Run with emulator (recommended):
- *   npx jest tests/firestore/employee_roles.test.ts
+ *   npx jest tests/firestore/employee_roles/access-control.test.ts
  */
 import { readFileSync } from 'fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
@@ -21,10 +21,24 @@ let testEnv: RulesTestEnvironment;
 const PROJECT_ID = 'pattern-typing-test';
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: PROJECT_ID,
-    firestore: { rules: readFileSync('firebase/firestore.rules', 'utf8') },
-  });
+  // Support auto-discovery within `firebase emulators:exec`, or manual host:port via env
+  const hostPort = process.env.FIRESTORE_EMULATOR_HOST; // e.g. "127.0.0.1:8080"
+  const rules = readFileSync('firebase/firestore.rules', 'utf8');
+
+  if (hostPort) {
+    const [host, portStr] = hostPort.split(':');
+    const port = Number(portStr);
+    testEnv = await initializeTestEnvironment({
+      projectId: PROJECT_ID,
+      firestore: { rules, host, port },
+    });
+  } else {
+    // Fallback to emulator auto-discovery via Emulator Hub (works when running under emulators:exec)
+    testEnv = await initializeTestEnvironment({
+      projectId: PROJECT_ID,
+      firestore: { rules },
+    });
+  }
 });
 
 afterAll(async () => {
@@ -43,10 +57,10 @@ function employeeCtx(uid = 'emp-uid') {
   return testEnv.authenticatedContext(uid).firestore();
 }
 
-describe('employee_roles rules', () => {
+describe('employee_roles rules — access control', () => {
   it('denies unauthenticated access', async () => {
     const anon = testEnv.unauthenticatedContext().firestore();
-    await expect(assertFails(addDoc(collection(anon, 'employee_roles'), { name: 'X', permissionIds: [] })));
+    await assertFails(addDoc(collection(anon, 'employee_roles'), { name: 'X', permissionIds: [] }));
   });
 
   it('allows owner to create/list/update/delete roles', async () => {
@@ -72,8 +86,8 @@ describe('employee_roles rules', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const adminDb = ctx.firestore();
       await setDoc(doc(adminDb, 'meta/owner'), { ownerUid: 'owner' });
-      await setDoc(doc(adminDb, 'employees', 'admin-1'), { name: 'Admin', email: 'a@example.com', isAdmin: true, roleIds: [], permissionIds: [] });
-      await setDoc(doc(adminDb, 'employees', 'emp-1'), { name: 'User', email: 'u@example.com', isAdmin: false, roleIds: [], permissionIds: [] });
+      await setDoc(doc(adminDb, 'employees', 'admin-1'), { name: 'Admin', email: 'a@example.com', isAdmin: true, roleIds: [], permissionIds: [], isArchived: false });
+      await setDoc(doc(adminDb, 'employees', 'emp-1'), { name: 'User', email: 'u@example.com', isAdmin: false, roleIds: [], permissionIds: [], isArchived: false });
     });
 
     const adminDb = employeeCtx('admin-1');
@@ -84,8 +98,7 @@ describe('employee_roles rules', () => {
     await assertSucceeds(getDocs(collection(adminDb, 'employee_roles')));
 
     // Normal employee denied
-    await expect(assertFails(addDoc(collection(userDb, 'employee_roles'), { name: 'Role C', permissionIds: [] })));
-    await expect(assertFails(getDocs(collection(userDb, 'employee_roles'))));
+    await assertFails(addDoc(collection(userDb, 'employee_roles'), { name: 'Role C', permissionIds: [] }));
+    await assertFails(getDocs(collection(userDb, 'employee_roles')));
   });
 });
-

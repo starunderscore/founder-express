@@ -81,7 +81,7 @@ beforeEach(async () => { await testEnv.clearFirestore(); });
 
 ## Example suite in repo
 
-- File: `tests/firestore/employee_roles.test.ts`
+- File: `tests/firestore/employee_roles/access-control.test.ts`
 - Covers unauthenticated denial, owner allow, admin employee allow, normal employee denial for `employee_roles`.
 - Loads the real rules from `firebase/firestore.rules` so tests reflect production logic.
 
@@ -100,9 +100,24 @@ beforeEach(async () => { await testEnv.clearFirestore(); });
 
 ## Running
 
+Recommended (auto‑spawns Firestore Emulator via Firebase CLI):
+
 ```
-npx jest tests/firestore/employee_roles.test.ts
+npm run test:rules:emu
 ```
+
+This wraps Jest with `firebase emulators:exec --only firestore`, which sets the proper environment variables and lifecycle for the rules engine.
+
+Direct (assumes you started the Firestore emulator yourself on default port):
+
+```
+npx jest tests/firestore/employee_roles/access-control.test.ts
+```
+or
+```
+npm run test:rules
+```
+
+If you see “The host and port of the firestore emulator must be specified”, either run the `:emu` script above or start the emulator manually and set `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080`.
 
 Add more suites under `tests/firestore/` to cover other collections (CRM, Vendors, etc.) following the same pattern.
-
