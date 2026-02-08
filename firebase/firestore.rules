@@ -2,8 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Convenience functions
+    // =====================================
+    // functions
+    // -------------------------------------
+    // client portal — empty (fresh start)
+
+    // employee portal
+
+    // Convenience helpers
     function authed() { return request.auth != null; }
+
     // Active employee: signed in, has employees/{uid} doc, not archived, not removed
     function isEmployee() {
       return authed()
@@ -13,30 +21,7 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isArchived == true)
         && !("deletedAt" in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data);
     }
-    // (owner check in isAdmin only)
 
-    // Owner claim — one‑time create only
-    match /meta/owner {
-      allow create: if authed()
-        && !exists(/databases/$(database)/documents/meta/owner)
-        && request.resource.data.ownerUid == request.auth.uid;
-      // Allow public read so sign‑in can detect the no‑owner state
-      allow get: if true;
-      // Disallow changing ownerUid after claim
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    // Employees collection — only owner creates; users can read self; limited self‑edit
-    match /employees/{uid} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    // CRM customers/vendors
     // Helper: admin based on employees/{auth.uid}.isAdmin, with owner included
     function isAdmin() {
       return (
@@ -50,25 +35,50 @@ service cloud.firestore {
       );
     }
 
-    // (owner is folded into isAdmin above)
+    // TESTED BOUNDARY — rules helpers ABOVE this line are covered by tests; helpers BELOW are not yet covered
+    // --------------------------------------------------------------------------------
 
-    // (website granular helpers removed)
+    // =====================================
+    // gateway
+    // -------------------------------------
+    // client portal — empty (fresh start)
 
-    // (tag granular helpers removed)
+    // employee portal
 
-    match /crm_tags/{id} {
+    // Employee Roles — admin/owner manage RBAC roles
+    match /employee_roles/{id} {
       allow get, list, create, update, delete: if isAdmin();
     }
 
-    // (CRM/vendor granular helpers removed)
+    // TESTED BOUNDARY — gateway rules ABOVE this line are covered by tests; rules BELOW are not yet covered
+    // --------------------------------------------------------------------------------
 
-    // (company delete helper removed)
+    // Owner claim — one‑time create only
+    match /meta/owner {
+      allow create: if authed()
+        && !exists(/databases/$(database)/documents/meta/owner)
+        && request.resource.data.ownerUid == request.auth.uid;
+      // Allow public read so sign‑in can detect the no‑owner state
+      allow get: if true;
+      // Disallow changing ownerUid after claim
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Employees — admin/owner only
+    match /employees/{uid} {
+      allow get, list, create, update, delete: if isAdmin();
+    }
 
     // Admin Settings — admin/owner only
     match /admin_settings/{document=**} {
       allow get, list, create, update, delete: if isAdmin();
     }
 
+    // CRM — tags and customers (admin-only for now)
+    match /crm_tags/{id} {
+      allow get, list, create, update, delete: if isAdmin();
+    }
     match /crm_customers/{id} {
       allow get, list, create, update, delete: if isAdmin();
     }
@@ -92,10 +102,7 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // Employee Roles — admin/owner manage RBAC roles
-    match /employee_roles/{id} {
-      allow get, list, create, update, delete: if isAdmin();
-    }
+    
 
     // Notifications — readable by active employees/admin; writable by admin only
     match /notifications/{id} {

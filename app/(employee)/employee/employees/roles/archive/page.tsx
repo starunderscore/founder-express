@@ -60,6 +60,7 @@ export default function EmployerRolesArchivePage() {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
+              <Menu.Item onClick={() => router.push(`/employee/employees/roles/${r.id}/edit`)}>Edit</Menu.Item>
               <Menu.Item onClick={() => openRestore(r)}>Restore</Menu.Item>
               <Menu.Item color="red" onClick={() => openRemove(r)}>Remove</Menu.Item>
             </Menu.Dropdown>

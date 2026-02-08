@@ -4,7 +4,8 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Group, Table, Badge, Anchor, Tabs, Menu, ActionIcon } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, query } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { restoreTag as svcRestoreTag, deleteTag as svcDeleteTag } from '@/services/tags';
 
 type TagStatus = 'active' | 'archived' | 'removed';
 type TagDef = { id: string; name: string; color?: string; description?: string; status?: TagStatus; createdAt: number };
@@ -49,10 +50,10 @@ export default function TagManagerRemovedPage() {
   }, []);
 
   const restore = async (t: TagDef) => {
-    await updateDoc(doc(db(), 'crm_tags', t.id), { status: 'active' } as any);
+    await svcRestoreTag(t.id, { getDb: db });
   };
   const deleteForever = async (id: string) => {
-    await deleteDoc(doc(db(), 'crm_tags', id));
+    await svcDeleteTag(id, { getDb: db });
   };
 
   return (

@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "firebase emulators:exec --only firestore \"jest --runInBand\"",
+    "test": "npm run test:rules:roles && firebase emulators:exec --only firestore \"jest --runInBand\"",
+    "test:rules:roles": "firebase emulators:exec --only firestore \"jest tests/firestore/employee_roles/access-control.test.ts --runInBand\"",
     "test:rules": "jest tests/firestore",
     "test:rules:emu": "firebase emulators:exec --only firestore \"jest tests/firestore\""
   },
