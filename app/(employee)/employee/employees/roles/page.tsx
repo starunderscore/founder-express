@@ -112,7 +112,7 @@ export default function EmployerRolesPage() {
 
         <Card withBorder>
           <FirestoreDataTable
-            collectionPath="employee_roles"
+            collectionPath="ep_employee_roles"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
             clientFilter={(r) => r.isArchived !== true && !r.deletedAt}

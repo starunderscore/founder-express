@@ -5,7 +5,7 @@ import { buildRoleCreate, buildRolePatchObject, filterByStatus, normalizeRole } 
 
 type Options = { getDb?: () => Firestore };
 
-const rolesCol = (store: Firestore) => collection(store, 'employee_roles');
+const rolesCol = (store: Firestore) => collection(store, 'ep_employee_roles');
 
 export async function listRoles(status: RoleStatus = 'active', opts?: Options): Promise<Role[]> {
   const getDb = opts?.getDb || defaultDb;
@@ -33,31 +33,30 @@ export async function updateRole(id: string, patch: RolePatchInput, opts?: Optio
   if ('description' in obj) {
     out.description = obj.description === null ? deleteField() : obj.description;
   }
-  await updateDoc(doc(store, 'employee_roles', id), out);
+  await updateDoc(doc(store, 'ep_employee_roles', id), out);
 }
 
 export async function archiveRole(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'employee_roles', id), { isArchived: true });
+  await updateDoc(doc(store, 'ep_employee_roles', id), { isArchived: true });
 }
 
 export async function removeRole(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'employee_roles', id), { deletedAt: Date.now() });
+  await updateDoc(doc(store, 'ep_employee_roles', id), { deletedAt: Date.now() });
 }
 
 export async function restoreRole(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
   // Clear both flags to be resilient (supports either removed or archived)
-  await updateDoc(doc(store, 'employee_roles', id), { deletedAt: null, isArchived: false });
+  await updateDoc(doc(store, 'ep_employee_roles', id), { deletedAt: null, isArchived: false });
 }
 
 export async function deleteRole(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await deleteDoc(doc(store, 'employee_roles', id));
+  await deleteDoc(doc(store, 'ep_employee_roles', id));
 }
-

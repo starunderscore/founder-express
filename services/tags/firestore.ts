@@ -5,7 +5,7 @@ import { buildTagCreate, buildTagPatchObject, filterByStatus, normalizeTag } fro
 
 type Options = { getDb?: () => Firestore };
 
-const tagsCol = (store: Firestore) => collection(store, 'crm_tags');
+const tagsCol = (store: Firestore) => collection(store, 'ep_tags');
 
 export async function listTags(status: TagStatus = 'active', opts?: Options): Promise<Tag[]> {
   const getDb = opts?.getDb || defaultDb;
@@ -32,30 +32,29 @@ export async function updateTag(id: string, patch: TagPatchInput, opts?: Options
   if ('status' in obj) out.status = obj.status;
   if ('description' in obj) out.description = obj.description === null ? deleteField() : obj.description;
   if ('color' in obj) out.color = obj.color === null ? deleteField() : obj.color;
-  await updateDoc(doc(store, 'crm_tags', id), out);
+  await updateDoc(doc(store, 'ep_tags', id), out);
 }
 
 export async function archiveTag(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'crm_tags', id), { status: 'archived' });
+  await updateDoc(doc(store, 'ep_tags', id), { status: 'archived' });
 }
 
 export async function removeTag(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'crm_tags', id), { status: 'removed' });
+  await updateDoc(doc(store, 'ep_tags', id), { status: 'removed' });
 }
 
 export async function restoreTag(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'crm_tags', id), { status: 'active' });
+  await updateDoc(doc(store, 'ep_tags', id), { status: 'active' });
 }
 
 export async function deleteTag(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await deleteDoc(doc(store, 'crm_tags', id));
+  await deleteDoc(doc(store, 'ep_tags', id));
 }
-

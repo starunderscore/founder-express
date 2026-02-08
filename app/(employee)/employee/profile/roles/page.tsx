@@ -28,7 +28,7 @@ export default function EmployeeRolesPage() {
 
   const [roleMap, setRoleMap] = useState<Record<string, { name: string; permissionIds: string[] }>>({});
   useEffect(() => {
-    const qRoles = query(collection(db(), 'employee_roles'));
+    const qRoles = query(collection(db(), 'ep_employee_roles'));
     const unsub = onSnapshot(qRoles, (snap) => {
       const map: Record<string, { name: string; permissionIds: string[] }> = {};
       snap.forEach((d) => {

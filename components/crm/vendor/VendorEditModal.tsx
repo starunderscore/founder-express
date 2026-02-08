@@ -42,7 +42,7 @@ export default function VendorEditModal({ opened, onClose, vendor, employees, on
 
   // Load tag options from Tag Manager (Firestore)
   useEffect(() => {
-    const unsub = onSnapshot(collection(db(), 'crm_tags'), (snap) => {
+    const unsub = onSnapshot(collection(db(), 'ep_tags'), (snap) => {
       const rows: { value: string; label: string; createdAt: number }[] = [];
       snap.forEach((d) => {
         const data = d.data() as any;

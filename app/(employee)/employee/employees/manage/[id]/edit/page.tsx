@@ -13,7 +13,7 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
   const [emp, setEmp] = useState<{ id: string; name: string; email: string; isAdmin?: boolean; roleIds: string[]; permissionIds: string[] } | null>(null);
   const [roles, setRoles] = useState<Array<{ id: string; name: string; permissionIds: string[] }>>([]);
   useEffect(() => {
-    const qRoles = query(collection(db(), 'employee_roles'));
+    const qRoles = query(collection(db(), 'ep_employee_roles'));
     const unsub = onSnapshot(qRoles, (snap) => {
       const list: Array<{ id: string; name: string; permissionIds: string[] }> = [];
       snap.forEach((d) => {

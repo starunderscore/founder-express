@@ -34,7 +34,7 @@ beforeEach(async () => { await testEnv.clearFirestore(); });
 function ownerDb() { return testEnv.authenticatedContext('owner').firestore(); }
 function empDb(uid: string) { return testEnv.authenticatedContext(uid).firestore(); }
 
-describe('crm_tags rules — admin-only access', () => {
+describe('ep_tags rules — admin-only access', () => {
   it('owner/admin can manage; normal employee denied', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const adminDb = ctx.firestore();
@@ -48,17 +48,35 @@ describe('crm_tags rules — admin-only access', () => {
     const emp = empDb('emp-1');
 
     // Owner
-    const ref = await assertSucceeds(addDoc(collection(owner, 'crm_tags'), { name: 'X', status: 'active', createdAt: Date.now() }));
-    await assertSucceeds(getDocs(collection(owner, 'crm_tags')));
-    await assertSucceeds(deleteDoc(doc(owner, 'crm_tags', (ref as any).id)));
+    const ref = await assertSucceeds(addDoc(collection(owner, 'ep_tags'), { name: 'X', status: 'active', createdAt: Date.now() }));
+    await assertSucceeds(getDocs(collection(owner, 'ep_tags')));
+    await assertSucceeds(deleteDoc(doc(owner, 'ep_tags', (ref as any).id)));
 
     // Admin employee
-    await assertSucceeds(addDoc(collection(admin, 'crm_tags'), { name: 'Y', status: 'active', createdAt: Date.now() }));
-    await assertSucceeds(getDocs(collection(admin, 'crm_tags')));
+    await assertSucceeds(addDoc(collection(admin, 'ep_tags'), { name: 'Y', status: 'active', createdAt: Date.now() }));
+    await assertSucceeds(getDocs(collection(admin, 'ep_tags')));
 
     // Normal employee denied
-    await assertFails(addDoc(collection(emp, 'crm_tags'), { name: 'Z', status: 'active', createdAt: Date.now() }));
-    await assertFails(getDocs(collection(emp, 'crm_tags')));
+    await assertFails(addDoc(collection(emp, 'ep_tags'), { name: 'Z', status: 'active', createdAt: Date.now() }));
+    await assertFails(getDocs(collection(emp, 'ep_tags')));
+  });
+
+  it('rejects create/update when fields exceed limits', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const adminDb = ctx.firestore();
+      await setDoc(doc(adminDb, 'meta/owner'), { ownerUid: 'owner' });
+    });
+
+    const owner = ownerDb();
+    // Too long name, description, color
+    await assertFails(addDoc(collection(owner, 'ep_tags'), { name: 'X'.repeat(41), status: 'active', createdAt: Date.now() }));
+    await assertFails(addDoc(collection(owner, 'ep_tags'), { name: 'Ok', description: 'Y'.repeat(281), status: 'active', createdAt: Date.now() }));
+    await assertFails(addDoc(collection(owner, 'ep_tags'), { name: 'Ok', color: '#12345678901234567890X', status: 'active', createdAt: Date.now() }));
+
+    // Valid create
+    const ref = await assertSucceeds(addDoc(collection(owner, 'ep_tags'), { name: 'Ok', status: 'active', createdAt: Date.now() }));
+    // Too long update
+    await assertFails(setDoc(doc(owner, 'ep_tags', (ref as any).id), { description: 'Y'.repeat(281) }, { merge: true }));
+    await assertFails(setDoc(doc(owner, 'ep_tags', (ref as any).id), { color: '#12345678901234567890X' }, { merge: true }));
   });
 });
-

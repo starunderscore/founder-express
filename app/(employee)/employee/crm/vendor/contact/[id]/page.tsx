@@ -92,7 +92,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
 
   // Load tag options from Tag Manager (Firestore)
   useEffect(() => {
-    const q = query(collection(db(), 'crm_tags'));
+    const q = query(collection(db(), 'ep_tags'));
     const unsub = onSnapshot(q, (snap) => {
       const rows: { value: string; label: string; createdAt: number }[] = [];
       snap.forEach((d) => {

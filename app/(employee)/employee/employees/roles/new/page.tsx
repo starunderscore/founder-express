@@ -5,10 +5,12 @@ import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, 
 import { PermissionsMatrix, allPermissionNames } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { createRole } from '@/services/roles';
+import { useToast } from '@/components/ToastProvider';
 import { namesToIds } from '@/lib/permissions';
 
 export default function NewRolePage() {
   const router = useRouter();
+  const toast = useToast();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -21,6 +23,7 @@ export default function NewRolePage() {
     if (!name.trim()) return;
     const ids = namesToIds(selectedNames);
     await createRole({ name: name.trim(), description: description, permissionIds: ids });
+    toast.show({ title: 'Role created', message: name.trim(), color: 'green' });
     router.push('/employee/employees/roles');
   };
 
@@ -38,7 +41,6 @@ export default function NewRolePage() {
           <Text c="dimmed">Name the role and choose its permissions.</Text>
         </div>
         <Group gap="xs" ml="auto">
-          <Button variant="light" onClick={() => router.push('/employee/employees/roles')}>Cancel</Button>
           <Button onClick={onCreate} disabled={!name.trim()}>Create role</Button>
         </Group>
       </Group>
@@ -46,8 +48,29 @@ export default function NewRolePage() {
       <Card withBorder>
         <form onSubmit={onCreate}>
           <Stack>
-            <TextInput label="Role name" placeholder="e.g. Manager" value={name} onChange={(e) => setName(e.currentTarget.value)} required autoFocus />
-            <Textarea label="Description" placeholder="Optional description" value={description} onChange={(e) => setDescription(e.currentTarget.value)} autosize minRows={2} />
+            <TextInput
+              label="Role name"
+              withAsterisk
+              placeholder="e.g. Manager"
+              value={name}
+              onChange={(e) => setName(e.currentTarget.value)}
+              required
+              autoFocus
+              maxLength={40}
+              rightSection={<Text size="xs" c="dimmed">{(name || '').length}/40</Text>}
+              rightSectionWidth={56}
+            />
+            <Textarea
+              label="Description"
+              placeholder="Optional description"
+              value={description}
+              onChange={(e) => setDescription(e.currentTarget.value)}
+              autosize
+              minRows={2}
+              maxLength={280}
+              rightSection={<Text size="xs" c="dimmed">{(description || '').length}/280</Text>}
+              rightSectionWidth={64}
+            />
             <Group justify="space-between" align="center">
               <Text fw={600}>Permissions</Text>
               <Badge variant="light">({selectedNames.length}) selected</Badge>

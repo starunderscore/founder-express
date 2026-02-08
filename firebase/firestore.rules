@@ -35,6 +35,31 @@ service cloud.firestore {
       );
     }
 
+    // Helpers to read employee and roles
+    function empDoc() { return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data; }
+    function hasOwnPermissionId(permId) {
+      return isEmployee()
+        && ("permissionIds" in empDoc())
+        && (permId in empDoc().permissionIds);
+    }
+    function roleIds() { return ("roleIds" in empDoc()) ? empDoc().roleIds : []; }
+    function roleHasPermAt(permId, idx) {
+      return roleIds().size() > idx && (permId in get(/databases/$(database)/documents/ep_employee_roles/$(roleIds()[idx])).data.permissionIds);
+    }
+    function hasRolePermissionId(permId) {
+      return roleHasPermAt(permId, 0)
+        || roleHasPermAt(permId, 1)
+        || roleHasPermAt(permId, 2)
+        || roleHasPermAt(permId, 3)
+        || roleHasPermAt(permId, 4);
+    }
+    function hasPermissionId(permId) { return hasOwnPermissionId(permId) || hasRolePermissionId(permId); }
+
+    // Tag Manager permissions (IDs from permissions schema)
+    function canReadTags() { return isAdmin() || hasPermissionId('perm-tag_manager-read'); }
+    function canEditTags() { return isAdmin() || hasPermissionId('perm-tag_manager-edit'); }
+    function canDeleteTags() { return isAdmin() || hasPermissionId('perm-tag_manager-delete'); }
+
     // TESTED BOUNDARY — rules helpers ABOVE this line are covered by tests; helpers BELOW are not yet covered
     // --------------------------------------------------------------------------------
 
@@ -45,9 +70,67 @@ service cloud.firestore {
 
     // employee portal
 
-    // Employee Roles — admin/owner manage RBAC roles
-    match /employee_roles/{id} {
-      allow get, list, create, update, delete: if isAdmin();
+    // Employee Roles — admin/owner manage RBAC roles (employee portal)
+    match /ep_employee_roles/{id} {
+      // Read/list/delete remain admin-only
+      allow get, list, delete: if isAdmin();
+      // Sanitize on create/update
+      allow create: if isAdmin()
+        && (request.resource.data.name is string)
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 40
+        && (!('description' in request.resource.data)
+            || ((request.resource.data.description is string)
+                && request.resource.data.description.size() <= 280));
+      allow update: if isAdmin()
+        && (
+          !('name' in request.resource.data)
+          || ((request.resource.data.name is string)
+              && request.resource.data.name.size() > 0
+              && request.resource.data.name.size() <= 40)
+        )
+        && (
+          !('description' in request.resource.data)
+          || ((request.resource.data.description is string)
+              && request.resource.data.description.size() <= 280)
+        );
+    }
+
+    // CRM — tags (employee portal) and customers (admin-only for now)
+    match /ep_tags/{id} {
+      // Enforce permissions and basic name constraints to prevent abuse
+      allow get, list: if canReadTags();
+      allow create: if canEditTags()
+        && (request.resource.data.name is string)
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 40
+        && (!('description' in request.resource.data)
+            || ((request.resource.data.description is string)
+                && request.resource.data.description.size() <= 280))
+        && (!('color' in request.resource.data)
+            || ((request.resource.data.color is string)
+                && request.resource.data.color.size() <= 20));
+      allow update: if canEditTags()
+        && (
+          // if name provided, enforce limit; if omitted, allow
+          !('name' in request.resource.data)
+          || ((request.resource.data.name is string)
+              && request.resource.data.name.size() > 0
+              && request.resource.data.name.size() <= 40)
+        )
+        && (
+          // if description provided, enforce limit
+          !('description' in request.resource.data)
+          || ((request.resource.data.description is string)
+              && request.resource.data.description.size() <= 280)
+        )
+        && (
+          // if color provided, enforce limit
+          !('color' in request.resource.data)
+          || ((request.resource.data.color is string)
+              && request.resource.data.color.size() <= 20)
+        );
+      allow delete: if canDeleteTags();
     }
 
     // TESTED BOUNDARY — gateway rules ABOVE this line are covered by tests; rules BELOW are not yet covered
@@ -75,10 +158,6 @@ service cloud.firestore {
       allow get, list, create, update, delete: if isAdmin();
     }
 
-    // CRM — tags and customers (admin-only for now)
-    match /crm_tags/{id} {
-      allow get, list, create, update, delete: if isAdmin();
-    }
     match /crm_customers/{id} {
       allow get, list, create, update, delete: if isAdmin();
     }

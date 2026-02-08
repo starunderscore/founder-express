@@ -1,15 +1,16 @@
 "use client";
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Group, Stack, Text, Title, Tabs, Menu, ActionIcon, Modal, TextInput, Textarea, ColorInput } from '@mantine/core';
+import { useState } from 'react';
+import { Button, Card, Group, Stack, Text, Title, Tabs, Menu, ActionIcon, Modal, TextInput, Textarea, ColorInput, Popover, ColorPicker } from '@mantine/core';
+import { IconPalette } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { archiveTag, removeTag, createTag } from '@/services/tags';
+import { DEFAULT_TAG_COLOR } from '@/services/tags/helpers';
 import { useToast } from '@/components/ToastProvider';
 import TagRemoveModal from '@/components/tags/TagRemoveModal';
-import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+ 
 
 type TagDoc = { id: string; name: string; description?: string; color?: string; status?: 'active'|'archived'|'removed'; createdAt?: number };
 
@@ -29,29 +30,10 @@ export default function TagManagerPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
-  const [color, setColor] = useState<string | undefined>(undefined);
+  const [color, setColor] = useState<string | undefined>(DEFAULT_TAG_COLOR);
   const [desc, setDesc] = useState('');
 
-  const [customers, setCustomers] = useState<any[]>([]);
-  const usageMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const c of customers) {
-      if (Array.isArray(c.tags)) {
-        for (const t of c.tags) map[t] = (map[t] || 0) + 1;
-      }
-    }
-    return map;
-  }, [customers]);
-
-  useEffect(() => {
-    const q = query(collection(db(), 'crm_customers'));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows: any[] = [];
-      snap.forEach((d) => rows.push({ id: d.id, ...(d.data() as any) }));
-      setCustomers(rows);
-    });
-    return () => unsub();
-  }, []);
+  // Removed usage metric in free version
 
   const [target, setTarget] = useState<TagDoc | null>(null);
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -78,12 +60,13 @@ export default function TagManagerPage() {
 
   const columns: Column<TagDoc>[] = [
     { key: 'name', header: 'Tag', render: (r) => (
-      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 6, background: r.color || undefined, color: r.color ? contrastText(r.color) : undefined }}>
-        {r.name || '—'}
-      </span>
+      <Link href={`/employee/tag-manager/${r.id}`} style={{ textDecoration: 'none' }}>
+        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 6, background: (r.color || DEFAULT_TAG_COLOR), color: contrastText(r.color || DEFAULT_TAG_COLOR) }}>
+          {r.name || '—'}
+        </span>
+      </Link>
     )},
     { key: 'description', header: 'Description', render: (r) => (<Text c={r.description ? undefined : 'dimmed'} lineClamp={2}>{r.description || '—'}</Text>) },
-    { key: 'usage', header: 'Used by', width: 100, accessor: (r) => usageMap[r.id] || 0 },
     {
       key: 'actions', header: '', width: 1,
       render: (r) => (
@@ -138,7 +121,7 @@ export default function TagManagerPage() {
 
         <Card withBorder>
           <FirestoreDataTable
-            collectionPath="crm_tags"
+            collectionPath="ep_tags"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
             clientFilter={(r: any) => (r.status ?? 'active') === 'active'}
@@ -162,9 +145,50 @@ export default function TagManagerPage() {
 
         <Modal opened={createOpen} onClose={() => setCreateOpen(false)} title="Add tag" closeOnEscape={false} closeOnClickOutside={false} centered>
           <Stack>
-            <TextInput label="Name" placeholder="e.g., VIP" value={name} onChange={(e) => setName(e.currentTarget.value)} required />
-            <ColorInput label="Color" placeholder="#228be6 or theme color" value={color} onChange={setColor as any} format="hex" disallowInput={false} withPicker />
-            <Textarea label="Description" placeholder="What this tag means and how to use it" minRows={3} value={desc} onChange={(e) => setDesc(e.currentTarget.value)} />
+            <TextInput
+              label="Name"
+              withAsterisk
+              placeholder="e.g., VIP"
+              value={name}
+              onChange={(e) => setName(e.currentTarget.value)}
+              required
+              maxLength={40}
+              rightSection={<Text size="xs" c="dimmed">{(name || '').length}/40</Text>}
+              rightSectionWidth={56}
+            />
+            <ColorInput
+              label="Color"
+              placeholder="#228be6 or theme color"
+              value={color}
+              onChange={setColor as any}
+              format="hex"
+              disallowInput={false}
+              withPicker
+              withEyeDropper
+              rightSectionWidth={36}
+              rightSection={
+                <Popover position="bottom-end" withArrow shadow="md">
+                  <Popover.Target>
+                    <ActionIcon variant="subtle" aria-label="Open color picker">
+                      <IconPalette size={16} />
+                    </ActionIcon>
+                  </Popover.Target>
+                  <Popover.Dropdown>
+                    <ColorPicker format="hex" value={color || '#228be6'} onChange={setColor as any} withPicker size="md" />
+                  </Popover.Dropdown>
+                </Popover>
+              }
+            />
+            <Textarea
+              label="Description"
+              placeholder="What this tag means and how to use it"
+              minRows={3}
+              value={desc}
+              onChange={(e) => setDesc(e.currentTarget.value)}
+              maxLength={280}
+              rightSection={<Text size="xs" c="dimmed">{(desc || '').length}/280</Text>}
+              rightSectionWidth={64}
+            />
             <Group justify="flex-end">
               <Button onClick={onCreate}>Create</Button>
             </Group>

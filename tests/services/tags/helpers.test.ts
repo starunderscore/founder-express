@@ -19,6 +19,24 @@ describe('services/tags helpers', () => {
     expect(typeof p.createdAt).toBe('number');
   });
 
+  it('enforces max length for tag name', () => {
+    const long = 'X'.repeat(41);
+    expect(() => buildTagCreate({ name: long })).toThrow();
+    expect(() => buildTagPatchObject({ name: long })).toThrow();
+  });
+
+  it('enforces max length for description', () => {
+    const longDesc = 'Y'.repeat(281);
+    expect(() => buildTagCreate({ name: 'Ok', description: longDesc, color: '#000' })).toThrow();
+    expect(() => buildTagPatchObject({ description: longDesc })).toThrow();
+  });
+
+  it('enforces max length for color', () => {
+    const longColor = '#12345678901234567890X'; // 21 chars
+    expect(() => buildTagCreate({ name: 'C', color: longColor })).toThrow();
+    expect(() => buildTagPatchObject({ color: longColor })).toThrow();
+  });
+
   it('buildTagPatchObject validates name and maps blank fields to null', () => {
     expect(() => buildTagPatchObject({ name: '  ' })).toThrow();
     const p = buildTagPatchObject({ name: ' X ', description: '  ', color: '  ' });
@@ -43,4 +61,3 @@ describe('services/tags helpers', () => {
     expect(tagBackLink({ status: 'removed' } as Tag)).toBe('/employee/tag-manager/removed');
   });
 });
-

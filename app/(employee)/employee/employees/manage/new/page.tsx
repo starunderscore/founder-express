@@ -12,7 +12,7 @@ export default function NewEmployeePage() {
   const router = useRouter();
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
   useEffect(() => {
-    const qRoles = query(collection(db(), 'employee_roles'));
+    const qRoles = query(collection(db(), 'ep_employee_roles'));
     const unsub = onSnapshot(qRoles, (snap) => {
       const list: Array<{ id: string; name: string }> = [];
       snap.forEach((d) => {
@@ -36,7 +36,7 @@ export default function NewEmployeePage() {
   useEffect(() => {
     // Build a map of roleId -> permissionIds from current roles subscription
     // Extend roles subscription to also capture permissionIds
-    const qRoles = query(collection(db(), 'employee_roles'));
+    const qRoles = query(collection(db(), 'ep_employee_roles'));
     const unsub = onSnapshot(qRoles, (snap) => {
       const map: Record<string, string[]> = {};
       snap.forEach((d) => {

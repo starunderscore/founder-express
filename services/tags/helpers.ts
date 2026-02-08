@@ -1,5 +1,10 @@
 import type { RawTagDoc, Tag, TagCreateInput, TagPatchInput, TagStatus } from './types';
 
+export const MAX_TAG_NAME = 40;
+export const MAX_TAG_DESCRIPTION = 280;
+export const DEFAULT_TAG_COLOR = '#845EF7'; // lively grape
+export const MAX_TAG_COLOR_LEN = 20;
+
 export function normalizeTag(id: string, raw: RawTagDoc): Tag {
   const name = String(raw?.name || '');
   const description = typeof raw?.description === 'string' && raw.description.trim().length > 0 ? raw.description : undefined;
@@ -12,15 +17,20 @@ export function normalizeTag(id: string, raw: RawTagDoc): Tag {
 export function buildTagCreate(input: TagCreateInput): Record<string, any> {
   const nm = String(input.name || '').trim();
   if (!nm) throw new Error('name is required');
+  if (nm.length > MAX_TAG_NAME) throw new Error(`name must be <= ${MAX_TAG_NAME} characters`);
   const out: Record<string, any> = {
     name: nm,
     status: 'active' as TagStatus,
     createdAt: Date.now(),
   };
   const desc = (input.description ?? '').trim();
-  if (desc) out.description = desc;
+  if (desc) {
+    if (desc.length > MAX_TAG_DESCRIPTION) throw new Error(`description must be <= ${MAX_TAG_DESCRIPTION} characters`);
+    out.description = desc;
+  }
   const color = (input.color ?? '').trim();
-  if (color) out.color = color;
+  if (color && color.length > MAX_TAG_COLOR_LEN) throw new Error(`color must be <= ${MAX_TAG_COLOR_LEN} characters`);
+  out.color = color || DEFAULT_TAG_COLOR;
   return out;
 }
 
@@ -30,14 +40,17 @@ export function buildTagPatchObject(input: TagPatchInput): Record<string, any> {
   if (typeof input.name === 'string') {
     const nm = input.name.trim();
     if (!nm) throw new Error('name cannot be blank');
+    if (nm.length > MAX_TAG_NAME) throw new Error(`name must be <= ${MAX_TAG_NAME} characters`);
     out.name = nm;
   }
   if (typeof input.description === 'string') {
     const desc = input.description.trim();
+    if (desc && desc.length > MAX_TAG_DESCRIPTION) throw new Error(`description must be <= ${MAX_TAG_DESCRIPTION} characters`);
     out.description = desc ? desc : null; // sentinel for delete
   }
   if (typeof input.color === 'string' || input.color === null) {
     const c = (input.color ?? '').trim();
+    if (c && c.length > MAX_TAG_COLOR_LEN) throw new Error(`color must be <= ${MAX_TAG_COLOR_LEN} characters`);
     out.color = c ? c : null; // sentinel for delete
   }
   if (typeof input.status === 'string') {
@@ -57,4 +70,3 @@ export function tagBackLink(tag: Pick<Tag,'status'>): string {
   if (s === 'archived') return '/employee/tag-manager/archive';
   return '/employee/tag-manager';
 }
-

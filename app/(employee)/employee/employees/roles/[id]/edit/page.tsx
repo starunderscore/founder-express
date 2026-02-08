@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, Textarea, Center, Loader, Alert } from '@mantine/core';
+import { useToast } from '@/components/ToastProvider';
+import type { Route } from 'next';
 import { PermissionsMatrix } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { db } from '@/lib/firebase/client';
@@ -11,10 +13,11 @@ import { idsToNames, namesToIds } from '@/lib/permissions';
 
 export default function EditRolePage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const toast = useToast();
   const [role, setRole] = useState<{ id: string; name: string; description?: string; permissionIds: string[]; isArchived?: boolean; deletedAt?: number } | null>(null);
   const [loadingDoc, setLoadingDoc] = useState(true);
   useEffect(() => {
-    const ref = doc(db(), 'employee_roles', params.id);
+    const ref = doc(db(), 'ep_employee_roles', params.id);
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) { setRole(null); setLoadingDoc(false); return; }
       const d = snap.data() as any;
@@ -58,7 +61,13 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
     if (!nm) return;
     const ids = namesToIds(selectedNames);
     await updateRole(role.id, { name: nm, permissionIds: ids, description });
-    router.push('/employee/employees/roles');
+    const href = (role?.deletedAt
+      ? '/employee/employees/roles/removed'
+      : role?.isArchived
+        ? '/employee/employees/roles/archive'
+        : '/employee/employees/roles') as Route;
+    toast.show({ title: 'Role saved', message: nm, color: 'green' });
+    router.push(href);
   };
 
   return (
@@ -103,8 +112,29 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
       <Card withBorder>
         <form onSubmit={onSave}>
           <Stack>
-            <TextInput label="Role name" placeholder="Role name" value={name} onChange={(e) => setName(e.currentTarget.value)} required autoFocus />
-            <Textarea label="Description" placeholder="Optional description" value={description} onChange={(e) => setDescription(e.currentTarget.value)} autosize minRows={2} />
+            <TextInput
+              label="Role name"
+              withAsterisk
+              placeholder="Role name"
+              value={name}
+              onChange={(e) => setName(e.currentTarget.value)}
+              required
+              autoFocus
+              maxLength={40}
+              rightSection={<Text size="xs" c="dimmed">{(name || '').length}/40</Text>}
+              rightSectionWidth={56}
+            />
+            <Textarea
+              label="Description"
+              placeholder="Optional description"
+              value={description}
+              onChange={(e) => setDescription(e.currentTarget.value)}
+              autosize
+              minRows={2}
+              maxLength={280}
+              rightSection={<Text size="xs" c="dimmed">{(description || '').length}/280</Text>}
+              rightSectionWidth={64}
+            />
             <Group justify="space-between" align="center">
               <Text fw={600}>Permissions</Text>
               <Badge variant="light">({selectedNames.length}) selected</Badge>

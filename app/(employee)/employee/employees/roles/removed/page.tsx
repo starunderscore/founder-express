@@ -38,7 +38,7 @@ export default function EmployerRolesRemovedPage() {
       key: 'actions', header: '', width: 1,
       render: (r) => (
         <Group justify="flex-end">
-          <Menu withinPortal position="bottom-end" shadow="md" width={160}>
+          <Menu withinPortal position="bottom-end" shadow="md" width={180}>
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label="More actions">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -49,6 +49,7 @@ export default function EmployerRolesRemovedPage() {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
+              <Menu.Item onClick={() => router.push(`/employee/employees/roles/${r.id}/edit`)}>Edit</Menu.Item>
               <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
               <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmDelete(true); }}>Delete permanently</Menu.Item>
             </Menu.Dropdown>
@@ -88,7 +89,7 @@ export default function EmployerRolesRemovedPage() {
 
         <Card withBorder>
           <FirestoreDataTable
-            collectionPath="employee_roles"
+            collectionPath="ep_employee_roles"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
             clientFilter={(r: any) => !!r.deletedAt}

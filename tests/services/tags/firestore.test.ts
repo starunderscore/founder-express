@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
-import { getDoc, doc } from 'firebase/firestore';
+import { getDoc, doc, type Firestore } from 'firebase/firestore';
 import { setupRulesTestEnv } from '../../utils/emulator';
 import type { RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { archiveTag, createTag, deleteTag, listTags, removeTag, restoreTag, updateTag } from '../../../services/tags/firestore';
@@ -21,7 +21,7 @@ beforeEach(async () => {
 describe('services/tags firestore (business logic)', () => {
   it('create and list tags', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const adminDb = ctx.firestore();
+      const adminDb = ctx.firestore() as unknown as Firestore;
       const id = await createTag({ name: 'Tag A', color: '#ff0000' }, { getDb: () => adminDb });
       const rows = await listTags('active', { getDb: () => adminDb });
       expect(rows.find(r => r.id === id)?.name).toBe('Tag A');
@@ -30,10 +30,10 @@ describe('services/tags firestore (business logic)', () => {
 
   it('update clears description and color via deleteField mapping', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const adminDb = ctx.firestore();
+      const adminDb = ctx.firestore() as unknown as Firestore;
       const id = await createTag({ name: 'Tag B', color: '#abc', description: 'desc' }, { getDb: () => adminDb });
       await updateTag(id, { description: '', color: '' }, { getDb: () => adminDb });
-      const snap = await getDoc(doc(adminDb, 'crm_tags', id));
+      const snap = await getDoc(doc(adminDb, 'ep_tags', id));
       const data = snap.data() as any;
       expect('description' in (data || {})).toBe(false);
       expect('color' in (data || {})).toBe(false);
@@ -42,7 +42,7 @@ describe('services/tags firestore (business logic)', () => {
 
   it('archive/remove/restore affect list filters', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const adminDb = ctx.firestore();
+      const adminDb = ctx.firestore() as unknown as Firestore;
       const id = await createTag({ name: 'Tag C' }, { getDb: () => adminDb });
 
       await archiveTag(id, { getDb: () => adminDb });
@@ -61,4 +61,3 @@ describe('services/tags firestore (business logic)', () => {
     });
   });
 });
-

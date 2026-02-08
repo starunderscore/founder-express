@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Button, Card, Group, Stack, Text, Title, Tabs, Menu, ActionIcon, Modal } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
@@ -8,8 +8,8 @@ import { useToast } from '@/components/ToastProvider';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import TagRemoveModal from '@/components/tags/TagRemoveModal';
 import { restoreTag, removeTag } from '@/services/tags';
-import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { DEFAULT_TAG_COLOR } from '@/services/tags/helpers';
+ 
 
 type TagDoc = { id: string; name: string; description?: string; color?: string; status?: 'active'|'archived'|'removed'; createdAt?: number };
 
@@ -27,26 +27,7 @@ export default function TagManagerArchivePage() {
   const router = useRouter();
   const toast = useToast();
 
-  const [customers, setCustomers] = useState<any[]>([]);
-  const usageMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const c of customers) {
-      if (Array.isArray(c.tags)) {
-        for (const t of c.tags) map[t] = (map[t] || 0) + 1;
-      }
-    }
-    return map;
-  }, [customers]);
-
-  useEffect(() => {
-    const q = query(collection(db(), 'crm_customers'));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows: any[] = [];
-      snap.forEach((d) => rows.push({ id: d.id, ...(d.data() as any) }));
-      setCustomers(rows);
-    });
-    return () => unsub();
-  }, []);
+  // Removed usage metric in free version
 
   const [target, setTarget] = useState<TagDoc | null>(null);
   const [confirmRestore, setConfirmRestore] = useState(false);
@@ -73,12 +54,13 @@ export default function TagManagerArchivePage() {
 
   const columns: Column<TagDoc>[] = [
     { key: 'name', header: 'Tag', render: (r) => (
-      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 6, background: r.color || undefined, color: r.color ? contrastText(r.color) : undefined }}>
-        {r.name || '—'}
-      </span>
+      <Link href={`/employee/tag-manager/${r.id}`} style={{ textDecoration: 'none' }}>
+        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 6, background: (r.color || DEFAULT_TAG_COLOR), color: contrastText(r.color || DEFAULT_TAG_COLOR) }}>
+          {r.name || '—'}
+        </span>
+      </Link>
     )},
     { key: 'description', header: 'Description', render: (r) => (<Text c={r.description ? undefined : 'dimmed'} lineClamp={2}>{r.description || '—'}</Text>) },
-    { key: 'usage', header: 'Used by', width: 100, accessor: (r) => usageMap[r.id] || 0 },
     {
       key: 'actions', header: '', width: 1,
       render: (r) => (
@@ -120,7 +102,7 @@ export default function TagManagerArchivePage() {
 
         <Card withBorder>
           <FirestoreDataTable
-            collectionPath="crm_tags"
+            collectionPath="ep_tags"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
             clientFilter={(r: any) => (r.status ?? 'active') === 'archived'}
