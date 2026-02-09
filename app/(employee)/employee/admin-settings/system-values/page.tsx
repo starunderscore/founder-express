@@ -3,25 +3,29 @@ import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, TextInput, Button, ActionIcon, Table, Menu, Modal, Select, Badge } from '@mantine/core';
 import { IconAdjustments } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { useAppSettingsStore } from '@/state/appSettingsStore';
-import { useMemo, useState } from 'react';
+import { ensureDefaultAdminSettings, listenSystemValues, updateBuiltinSystemValue, createSystemEnvVar, updateSystemEnvVar, rowsFromSettings } from '@/services/admin-settings/system-values';
+import { useEffect, useState } from 'react';
 
 type Row = { id: string; key: string; value: string; builtin?: boolean; hint?: string };
 
 export default function SystemValuesPage() {
   const router = useRouter();
-  const settings = useAppSettingsStore((s) => s.settings);
-  const setWebsiteUrl = useAppSettingsStore((s) => s.setWebsiteUrl);
-  const setWebsiteName = useAppSettingsStore((s) => (s as any).setWebsiteName);
-  const addEnvVar = useAppSettingsStore((s) => s.addEnvVar);
-  const updateEnvVar = useAppSettingsStore((s) => s.updateEnvVar);
   // Deletion disabled on System values page; only edits allowed
-
-  const rows: Row[] = useMemo(() => {
-    const urlRow: Row = { id: 'builtin-website-url', key: 'WEBSITE_URL', value: settings.websiteUrl || '', builtin: true, hint: 'Primary site URL' };
-    const nameRow: Row = { id: 'builtin-website-name', key: 'WEBSITE_NAME', value: (settings as any).websiteName || '', builtin: true, hint: 'Brand name shown in UI/emails' };
-    return [urlRow, nameRow, ...(settings.env || [])];
-  }, [settings.websiteUrl, (settings as any).websiteName, settings.env]);
+  // Seed UI with built-in rows so the page never appears empty
+  const [rows, setRows] = useState<Row[]>(() => rowsFromSettings({ websiteUrl: '', websiteName: '', env: [] } as any) as Row[]);
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    (async () => {
+      try { await ensureDefaultAdminSettings(); } catch {}
+      unsub = listenSystemValues((r) => setRows(r as Row[]), {
+        onError: () => {
+          // Show built-ins even if listener fails (e.g., permissions)
+          setRows(rowsFromSettings({ websiteUrl: '', websiteName: '', env: [] } as any) as Row[]);
+        },
+      });
+    })();
+    return () => { try { unsub && unsub(); } catch {} };
+  }, []);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');
@@ -54,19 +58,18 @@ export default function SystemValuesPage() {
     setModalOpen(true);
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (type === 'builtin') {
-      if (builtinKey === 'WEBSITE_URL') setWebsiteUrl(valueInput);
-      else if (builtinKey === 'WEBSITE_NAME') setWebsiteName(valueInput);
+      await updateBuiltinSystemValue(builtinKey, valueInput);
       setModalOpen(false);
       return;
     }
     if (mode === 'create') {
       if (!keyInput.trim()) return;
-      addEnvVar({ key: keyInput.trim(), value: valueInput, hint: hintInput || undefined });
+      await createSystemEnvVar({ key: keyInput.trim(), value: valueInput, hint: hintInput || undefined });
     } else {
-      updateEnvVar(id, { key: keyInput.trim(), value: valueInput, hint: hintInput || undefined });
+      await updateSystemEnvVar(id, { key: keyInput.trim(), value: valueInput, hint: hintInput || undefined });
     }
     setModalOpen(false);
   };

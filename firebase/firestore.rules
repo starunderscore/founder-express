@@ -153,8 +153,13 @@ service cloud.firestore {
       allow get, list, create, update, delete: if isAdmin();
     }
 
-    // Admin Settings — admin/owner only
+    // Admin Settings — admin/owner only (legacy path)
     match /admin_settings/{document=**} {
+      allow get, list, create, update, delete: if isAdmin();
+    }
+
+    // Admin Settings — Employee Portal path
+    match /ep_admin_settings/{document=**} {
       allow get, list, create, update, delete: if isAdmin();
     }
 
