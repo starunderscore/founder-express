@@ -1,34 +1,38 @@
 "use client";
+import Link from 'next/link';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, ActionIcon, Table, Button, Modal, Select, Badge, Switch } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, ActionIcon, Button, Modal, Select, Badge, Switch, Menu, Tabs } from '@mantine/core';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { IconShieldCheck } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
-import { useAppSettingsStore } from '@/state/appSettingsStore';
-
-type Policy = { id: string; title: string; type: 'client' | string; bodyHtml?: string; createdAt?: number; updatedAt?: number; deletedAt?: number; isActive?: boolean };
+import { ensureDefaultPrivacyPolicy, listenPrivacyPolicies, listenPrivacyPolicyEnabled, setActiveClientPolicy, setPrivacyPolicyEnabled, removePrivacyPolicy, archivePrivacyPolicy, type PrivacyPolicy } from '@/services/admin-settings/privacy-policy';
+import PolicyRemoveModal from '@/components/privacy/PolicyRemoveModal';
+import { useToast } from '@/components/ToastProvider';
 
 export default function PrivacyPolicyPage() {
   const router = useRouter();
-  const enabled = useAppSettingsStore((s) => s.settings.privacyPolicyEnabled ?? true);
-  const setEnabled = useAppSettingsStore((s) => s.setPrivacyPolicyEnabled);
-  const [policies, setPolicies] = useState<Policy[]>([]);
+  const toast = useToast();
+  const [enabled, setEnabled] = useState<boolean>(true);
+  const [policies, setPolicies] = useState<PrivacyPolicy[]>([]);
   const [selectOpen, setSelectOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [target, setTarget] = useState<PrivacyPolicy | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const q = query(collection(db(), 'privacy_policies'));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows: Policy[] = [];
-      snap.forEach((d) => {
-        const data = d.data() as any;
-        rows.push({ id: d.id, title: data.title || '(Untitled)', type: data.type || 'client', bodyHtml: data.bodyHtml || '', createdAt: data.createdAt, updatedAt: data.updatedAt, deletedAt: data.deletedAt, isActive: !!data.isActive });
-      });
-      setPolicies(rows.filter((p) => !p.deletedAt));
-    });
-    return () => unsub();
+    let unsubPolicies: (() => void) | null = null;
+    let unsubEnabled: (() => void) | null = null;
+    let cancelled = false;
+    (async () => {
+      try { await ensureDefaultPrivacyPolicy(); } catch {}
+      if (cancelled) return;
+      unsubPolicies = listenPrivacyPolicies((rows) => setPolicies(rows.filter((p) => !p.deletedAt)));
+      unsubEnabled = listenPrivacyPolicyEnabled((flag) => setEnabled(flag ?? true));
+    })();
+    return () => { cancelled = true; try { unsubPolicies && unsubPolicies(); } catch {} try { unsubEnabled && unsubEnabled(); } catch {} };
   }, []);
 
   const activeId = useMemo(() => policies.find((p) => (p.type || 'client') === 'client' && p.isActive)?.id || null, [policies]);
@@ -40,15 +44,13 @@ export default function PrivacyPolicyPage() {
 
   const saveActive = async () => {
     if (!selectedId) return;
-    const clientPolicies = policies.filter((p) => (p.type || 'client') === 'client');
-    // Update selected to active and others to inactive
-    for (const p of clientPolicies) {
-      const desired = p.id === selectedId;
-      if ((p.isActive ?? false) !== desired) {
-        await updateDoc(doc(db(), 'privacy_policies', p.id), { isActive: desired, updatedAt: Date.now() } as any);
-      }
+    try {
+      await setActiveClientPolicy(selectedId);
+      setSelectOpen(false);
+      toast.show({ title: 'Saved', message: 'Active policy updated.', color: 'green' });
+    } catch (e: any) {
+      toast.show({ title: 'Update failed', message: String(e?.message || e || 'Unknown error'), color: 'red' });
     }
-    setSelectOpen(false);
   };
 
   return (
@@ -70,10 +72,18 @@ export default function PrivacyPolicyPage() {
             </Group>
           </Group>
           <Group gap="xs">
-            <Button variant="light" onClick={() => router.push('/employee/admin-settings/privacy-policy/new')} disabled={!enabled}>New policy</Button>
             <Button variant="light" onClick={openSelectModal} disabled={!enabled}>Select active</Button>
+            <Button variant="light" onClick={() => router.push('/employee/admin-settings/privacy-policy/new')} disabled={!enabled}>New policy</Button>
           </Group>
         </Group>
+
+        <Tabs value={'active'}>
+          <Tabs.List>
+            <Tabs.Tab value="active"><Link href="/employee/admin-settings/privacy-policy">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/admin-settings/privacy-policy/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/admin-settings/privacy-policy/removed">Removed</Link></Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
 
         <Card withBorder>
           <Group justify="space-between" align="center">
@@ -83,38 +93,55 @@ export default function PrivacyPolicyPage() {
             </div>
             <Switch
               checked={enabled}
-              onChange={(e) => setEnabled(e.currentTarget.checked)}
+              onChange={async (e) => {
+                const v = e.currentTarget.checked;
+                try {
+                  await setPrivacyPolicyEnabled(v);
+                  toast.show({ title: 'Saved', message: `Privacy policy ${v ? 'enabled' : 'disabled'}.`, color: 'green' });
+                } catch (err: any) {
+                  toast.show({ title: 'Update failed', message: String(err?.message || err || 'Unknown error'), color: 'red' });
+                }
+              }}
               label={enabled ? 'Enabled' : 'Disabled'}
             />
           </Group>
         </Card>
 
         {enabled && (
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Title</Table.Th>
-                <Table.Th>Type</Table.Th>
-                <Table.Th>Active</Table.Th>
-                <Table.Th>Updated</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {policies.map((p) => (
-                <Table.Tr key={p.id}>
-                  <Table.Td>{p.title}</Table.Td>
-                  <Table.Td>{p.type || 'client'}</Table.Td>
-                  <Table.Td>{p.isActive ? <Badge variant="light" color="green">Active</Badge> : '—'}</Table.Td>
-                  <Table.Td>{new Date(p.updatedAt || p.createdAt || 0).toLocaleString() || '—'}</Table.Td>
-                </Table.Tr>
-              ))}
-              {policies.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={4}><Text c="dimmed">No privacy policies yet</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+          <>
+            <Card withBorder>
+              <FirestoreDataTable
+                collectionPath="privacy_policies"
+                columns={[
+                  { key: 'title', header: 'Title', render: (r: any) => (<Link href="/employee/admin-settings/privacy-policy/client" style={{ textDecoration: 'none' }}>{r.title || '(Untitled)'}</Link>) },
+                  { key: 'active', header: 'Active', width: 120, render: (r: any) => (r.isActive ? <Badge variant="light" color="green">Active</Badge> : '—') },
+                  { key: 'actions', header: '', width: 1, render: (r: any) => (
+                    <Menu withinPortal position="bottom-end" shadow="md" width={180}>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" aria-label="More actions">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                          </svg>
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item component={Link as any} href="/employee/admin-settings/privacy-policy/client">Edit</Menu.Item>
+                        <Menu.Item onClick={() => { setTarget(r); setConfirmArchive(true); }}>Archive</Menu.Item>
+                        <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmRemove(true); }}>Remove</Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  )},
+                ] as Column<any>[]}
+                initialSort={{ field: 'updatedAt', direction: 'desc' }}
+                clientFilter={(r: any) => !r.deletedAt && (r.type || 'client') === 'client' && !!r.isActive}
+                enableSelection={false}
+                defaultPageSize={25}
+                refreshKey={refreshKey}
+              />
+            </Card>
+          </>
         )}
 
         <Modal opened={selectOpen} onClose={() => setSelectOpen(false)} title="Select active client policy" centered>
@@ -134,6 +161,35 @@ export default function PrivacyPolicyPage() {
             </Group>
           </Stack>
         </Modal>
+
+        <Modal opened={confirmArchive} onClose={() => setConfirmArchive(false)} title="Archive policy" centered>
+          <Stack>
+            <Text>Archive this policy? It will no longer be active.</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmArchive(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!target) return;
+                await archivePrivacyPolicy(target.id);
+                setConfirmArchive(false); setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Saved', message: 'Policy archived.', color: 'green' });
+              }}>Archive</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <PolicyRemoveModal
+          opened={confirmRemove}
+          onClose={() => setConfirmRemove(false)}
+          policyTitle={target?.title || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await removePrivacyPolicy(target.id);
+            setConfirmRemove(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+            toast.show({ title: 'Saved', message: 'Policy moved to Removed.', color: 'green' });
+          }}
+        />
       </Stack>
     </EmployerAdminGate>
   );

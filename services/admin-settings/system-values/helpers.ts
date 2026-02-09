@@ -1,7 +1,8 @@
-import type { AppSettings } from '@/state/appSettingsStore';
 import type { SettingsAdapter, SystemValueRow } from './types';
 
-export function rowsFromSettings(settings: AppSettings): SystemValueRow[] {
+type BasicSettings = { websiteUrl: string; websiteName: string; env: any[] };
+
+export function rowsFromSettings(settings: BasicSettings): SystemValueRow[] {
   const urlRow: SystemValueRow = { id: 'builtin-website-url', key: 'WEBSITE_URL', value: settings.websiteUrl || '', builtin: true, hint: 'Primary site URL' };
   const nameRow: SystemValueRow = { id: 'builtin-website-name', key: 'WEBSITE_NAME', value: settings.websiteName || '', builtin: true, hint: 'Brand name shown in UI/emails' };
   return [urlRow, nameRow, ...(settings.env || [])];

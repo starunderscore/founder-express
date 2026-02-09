@@ -4,11 +4,12 @@ import { Title, Text, Card, Stack, Group, ActionIcon, TextInput, Button, Alert }
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { WebContentEditor } from '@/components/WebContentEditor';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { createPrivacyPolicy } from '@/services/admin-settings/privacy-policy';
+import { useToast } from '@/components/ToastProvider';
 
 export default function PrivacyPolicyNewPage() {
   const router = useRouter();
+  const toast = useToast();
   const [title, setTitle] = useState('');
   const [html, setHtml] = useState('');
   const [saving, setSaving] = useState(false);
@@ -17,16 +18,19 @@ export default function PrivacyPolicyNewPage() {
   const onSave = async () => {
     const t = title.trim();
     if (!t) { setError('Enter a title'); return; }
+    const rawLen = (html || '').length;
+    if (rawLen > 20000) { setError('Policy content too long (max 20,000 characters)'); return; }
+    const plain = (html || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!plain) { setError('Enter policy content'); return; }
     setSaving(true);
     setError(null);
     try {
-      await addDoc(collection(db(), 'privacy_policies'), {
-        title: t,
-        type: 'client',
-        bodyHtml: html || '',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      } as any);
+      await createPrivacyPolicy({ title: t, type: 'client', bodyHtml: html || '' });
+      toast.show({ title: 'Saved', message: 'Privacy policy created.', color: 'green' });
       router.push('/employee/admin-settings/privacy-policy');
     } catch (e: any) {
       setError(e?.message || 'Failed to save');
@@ -51,7 +55,7 @@ export default function PrivacyPolicyNewPage() {
             </div>
           </Group>
           <Group gap="xs">
-            <Button variant="light" onClick={onSave} loading={saving}>Save</Button>
+            <Button onClick={onSave} loading={saving}>Save</Button>
           </Group>
         </Group>
 
@@ -59,7 +63,28 @@ export default function PrivacyPolicyNewPage() {
 
         <Card withBorder>
           <Stack>
-            <TextInput label="Title" placeholder="e.g., Client Privacy Policy v1" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required />
+            <Text fw={600}>Title</Text>
+            <TextInput
+              placeholder="e.g., Client Privacy Policy v1"
+              value={title}
+              onChange={(e) => setTitle(e.currentTarget.value)}
+              required
+              maxLength={120}
+              rightSection={<Text size="xs" c="dimmed">{(title || '').length}/120</Text>}
+              rightSectionWidth={56}
+            />
+          </Stack>
+        </Card>
+
+        <Card withBorder>
+          <Stack>
+            <Group justify="space-between" align="flex-end">
+              <div>
+                <Text fw={600}>Policy content</Text>
+                <Text c="dimmed" size="sm">Shown to users during signup and when updated.</Text>
+              </div>
+              <Text size="xs" c="dimmed">{(html || '').length}/20000</Text>
+            </Group>
             <WebContentEditor
               placeholder="Write your policy…"
               onChangeHTML={setHtml}
@@ -72,4 +97,3 @@ export default function PrivacyPolicyNewPage() {
     </EmployerAdminGate>
   );
 }
-

@@ -1,15 +1,17 @@
 "use client";
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, TextInput, Button, ActionIcon, Table, Menu, Modal, Select, Badge } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, TextInput, Button, ActionIcon, Table, Menu, Modal } from '@mantine/core';
 import { IconAdjustments } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { ensureDefaultAdminSettings, listenSystemValues, updateBuiltinSystemValue, createSystemEnvVar, updateSystemEnvVar, rowsFromSettings } from '@/services/admin-settings/system-values';
+import { ensureDefaultAdminSettings, listenSystemValues, updateBuiltinSystemValue, rowsFromSettings } from '@/services/admin-settings/system-values';
+import { useToast } from '@/components/ToastProvider';
 import { useEffect, useState } from 'react';
 
 type Row = { id: string; key: string; value: string; builtin?: boolean; hint?: string };
 
 export default function SystemValuesPage() {
   const router = useRouter();
+  const toast = useToast();
   // Deletion disabled on System values page; only edits allowed
   // Seed UI with built-in rows so the page never appears empty
   const [rows, setRows] = useState<Row[]>(() => rowsFromSettings({ websiteUrl: '', websiteName: '', env: [] } as any) as Row[]);
@@ -28,50 +30,29 @@ export default function SystemValuesPage() {
   }, []);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [mode, setMode] = useState<'create' | 'edit'>('create');
-  const [type, setType] = useState<'builtin' | 'custom'>('custom');
   const [builtinKey, setBuiltinKey] = useState<'WEBSITE_URL'>('WEBSITE_URL');
-  const [id, setId] = useState<string>('');
-  const [keyInput, setKeyInput] = useState('');
   const [valueInput, setValueInput] = useState('');
-  const [hintInput, setHintInput] = useState('');
 
   const resetForm = () => {
-    setMode('create');
-    setType('custom');
     setBuiltinKey('WEBSITE_URL');
-    setId('');
-    setKeyInput('');
     setValueInput('');
-    setHintInput('');
   };
-
-  const openCreate = () => { resetForm(); setModalOpen(true); };
   const openEdit = (r: Row) => {
-    setMode('edit');
-    setType(r.builtin ? 'builtin' : 'custom');
+    if (r.key !== 'WEBSITE_URL' && r.key !== 'WEBSITE_NAME') return; // only edit built-ins here
     setBuiltinKey((r.key as any) || 'WEBSITE_URL');
-    setId(r.id);
-    setKeyInput(r.key);
     setValueInput(r.value);
-    setHintInput(r.hint || '');
     setModalOpen(true);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (type === 'builtin') {
+    try {
       await updateBuiltinSystemValue(builtinKey, valueInput);
+      toast.show({ title: 'Saved', message: `${builtinKey} updated.`, color: 'green' });
       setModalOpen(false);
-      return;
+    } catch (err: any) {
+      toast.show({ title: 'Update failed', message: String(err?.message || err || 'Unknown error'), color: 'red' });
     }
-    if (mode === 'create') {
-      if (!keyInput.trim()) return;
-      await createSystemEnvVar({ key: keyInput.trim(), value: valueInput, hint: hintInput || undefined });
-    } else {
-      await updateSystemEnvVar(id, { key: keyInput.trim(), value: valueInput, hint: hintInput || undefined });
-    }
-    setModalOpen(false);
   };
 
   return (
@@ -107,9 +88,7 @@ export default function SystemValuesPage() {
             <Table.Tbody>
               {rows.map((r) => (
                 <Table.Tr key={r.id}>
-                  <Table.Td>
-                    {r.key} {r.builtin && <Badge ml={6} size="xs" variant="light">built-in</Badge>}
-                  </Table.Td>
+                  <Table.Td>{r.key}</Table.Td>
                   <Table.Td>{r.value || '—'}</Table.Td>
                   <Table.Td><Text c="dimmed" size="sm">{r.hint || '—'}</Text></Table.Td>
                   <Table.Td>
@@ -117,11 +96,13 @@ export default function SystemValuesPage() {
                       <Menu.Target>
                         <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
                       </Menu.Target>
-                      <Menu.Dropdown>
+                    <Menu.Dropdown>
+                      {(r.key === 'WEBSITE_URL' || r.key === 'WEBSITE_NAME') && (
                         <Menu.Item onClick={() => openEdit(r)}>Edit</Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Table.Td>
+                      )}
+                    </Menu.Dropdown>
+                  </Menu>
+                </Table.Td>
                 </Table.Tr>
               ))}
               {rows.length === 0 && (
@@ -133,43 +114,26 @@ export default function SystemValuesPage() {
           </Table>
         </Card>
 
-        <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title={mode === 'create' ? 'Add variable' : 'Edit variable'} centered>
+        <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title={'Edit variable'} centered>
           <form onSubmit={onSubmit}>
             <Stack>
-              {mode === 'create' ? (
-                <Select label="Type" data={[{ value: 'custom', label: 'Custom' }, { value: 'builtin', label: 'Built-in' }]} value={type} onChange={(v: any) => setType(v)} />
-              ) : null}
-              {type === 'builtin' ? (
-                <>
-                  {/* Key */}
-                  <Text fw={600} size="sm">Key</Text>
-                  {mode === 'edit' ? (
-                    <Text size="sm" c="dimmed">{builtinKey}</Text>
-                  ) : (
-                    <Select data={[{ value: 'WEBSITE_URL', label: 'Website URL' }, { value: 'WEBSITE_NAME', label: 'Website Name' }]} value={builtinKey} onChange={(v: any) => setBuiltinKey(v)} />
-                  )}
-                  {/* Value */}
-                  <Text fw={600} size="sm" mt={6}>Value</Text>
-                  <TextInput placeholder={builtinKey === 'WEBSITE_URL' ? 'https://www.example.com' : 'Acme Inc.'} value={valueInput} onChange={(e) => setValueInput(e.currentTarget.value)} required />
-                </>
-              ) : (
-                <>
-                  {/* Key */}
-                  <Text fw={600} size="sm">Key</Text>
-                  {mode === 'edit' ? (
-                    <Text size="sm" c="dimmed">{keyInput}</Text>
-                  ) : (
-                    <TextInput placeholder="MY_KEY" value={keyInput} onChange={(e) => setKeyInput(e.currentTarget.value)} required />
-                  )}
-                  {/* Value */}
-                  <Text fw={600} size="sm" mt={6}>Value</Text>
-                  <TextInput placeholder="value" value={valueInput} onChange={(e) => setValueInput(e.currentTarget.value)} />
-                  <TextInput label="Hint (optional)" placeholder="Shown as helper text" value={hintInput} onChange={(e) => setHintInput(e.currentTarget.value)} />
-                </>
-              )}
+              {/* Key */}
+              <Text fw={600} size="sm">Key</Text>
+              <Text size="sm" c="dimmed">{builtinKey}</Text>
+              {/* Value */}
+              <Text fw={600} size="sm" mt={6}>Value</Text>
+              <TextInput
+                placeholder={builtinKey === 'WEBSITE_URL' ? 'https://www.example.com' : 'Acme Inc.'}
+                value={valueInput}
+                onChange={(e) => setValueInput(e.currentTarget.value)}
+                required
+                maxLength={builtinKey === 'WEBSITE_URL' ? 200 : 60}
+                rightSection={<Text size="xs" c="dimmed">{(valueInput || '').length}/{builtinKey === 'WEBSITE_URL' ? 200 : 60}</Text>}
+                rightSectionWidth={56}
+              />
               <Group justify="flex-end" mt="xs">
                 <Button variant="default" type="button" onClick={() => setModalOpen(false)}>Cancel</Button>
-                <Button type="submit">{mode === 'create' ? 'Add' : 'Save'}</Button>
+                <Button type="submit">Save</Button>
               </Group>
             </Stack>
           </form>

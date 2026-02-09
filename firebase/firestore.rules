@@ -133,6 +133,58 @@ service cloud.firestore {
       allow delete: if canDeleteTags();
     }
 
+    // Admin Settings — Employee Portal path
+    function validAdminSettings() {
+      return (
+        // WEBSITE_URL length <= 200 when present
+        !("websiteUrl" in request.resource.data)
+        || (
+          (request.resource.data.websiteUrl is string)
+          && request.resource.data.websiteUrl.size() <= 200
+        )
+      ) && (
+        // WEBSITE_NAME length <= 60 when present
+        !("websiteName" in request.resource.data)
+        || (
+          (request.resource.data.websiteName is string)
+          && request.resource.data.websiteName.size() <= 60
+        )
+      );
+    }
+
+    match /ep_admin_settings/{document=**} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin() && validAdminSettings();
+      allow update: if isAdmin() && validAdminSettings();
+      allow delete: if isAdmin();
+    }
+
+    // Privacy Policies — admin/owner only with basic limits
+    function validPrivacyPolicyDoc() {
+      return (
+        !("title" in request.resource.data)
+        || (
+          (request.resource.data.title is string)
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 120
+        )
+      ) && (
+        !("bodyHtml" in request.resource.data)
+        || (
+          (request.resource.data.bodyHtml is string)
+          && request.resource.data.bodyHtml.size() <= 20000
+        )
+      );
+    }
+
+    match /privacy_policies/{id} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin() && validPrivacyPolicyDoc();
+      allow update: if isAdmin() && validPrivacyPolicyDoc();
+      allow delete: if isAdmin();
+    }
+
+
     // TESTED BOUNDARY — gateway rules ABOVE this line are covered by tests; rules BELOW are not yet covered
     // --------------------------------------------------------------------------------
 
@@ -154,14 +206,9 @@ service cloud.firestore {
     }
 
     // Admin Settings — admin/owner only (legacy path)
-    match /admin_settings/{document=**} {
-      allow get, list, create, update, delete: if isAdmin();
-    }
-
-    // Admin Settings — Employee Portal path
-    match /ep_admin_settings/{document=**} {
-      allow get, list, create, update, delete: if isAdmin();
-    }
+    // match /admin_settings/{document=**} {
+    //   allow get, list, create, update, delete: if isAdmin();
+    // }
 
     match /crm_customers/{id} {
       allow get, list, create, update, delete: if isAdmin();

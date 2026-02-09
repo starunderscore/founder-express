@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, Button, Menu, ActionIcon, Tabs } from '@mantine/core';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import { restoreEmailTemplate, deleteEmailTemplate, type EmailTemplateItem } from '@/lib/firebase/emailSettings';
+import { restoreEmailTemplate, removeEmailTemplate, type EmailTemplateItem } from '@/lib/firebase/emailSettings';
 import { IconMail } from '@tabler/icons-react';
 
 export default function EmailTemplatesRemovedPage() {
@@ -29,7 +29,7 @@ export default function EmailTemplatesRemovedPage() {
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item onClick={async () => { await restoreEmailTemplate(r.id); }}>Restore</Menu.Item>
-              <Menu.Item color="red" onClick={async () => { await deleteEmailTemplate(r.id); }}>Delete permanently</Menu.Item>
+              <Menu.Item color="red" onClick={async () => { await removeEmailTemplate(r.id); }}>Delete permanently</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>

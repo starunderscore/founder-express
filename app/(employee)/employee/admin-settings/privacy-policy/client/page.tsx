@@ -4,29 +4,18 @@ import { Title, Text, Card, Stack, Group, ActionIcon, TextInput, Button, Alert }
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { WebContentEditor } from '@/components/WebContentEditor';
-import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
-
-type Policy = { id: string; title: string; type: 'client' | string; bodyHtml?: string; createdAt?: number; updatedAt?: number; deletedAt?: number };
+import { listenPrivacyPolicies, updatePrivacyPolicy, type PrivacyPolicy } from '@/services/admin-settings/privacy-policy';
 
 export default function PrivacyPolicyClientEditPage() {
   const router = useRouter();
-  const [items, setItems] = useState<Policy[]>([]);
+  const [items, setItems] = useState<PrivacyPolicy[]>([]);
   const [title, setTitle] = useState('');
   const [html, setHtml] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db(), 'privacy_policies'));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows: Policy[] = [];
-      snap.forEach((d) => {
-        const data = d.data() as any;
-        rows.push({ id: d.id, title: data.title || '(Untitled)', type: data.type || 'client', bodyHtml: data.bodyHtml || '', createdAt: data.createdAt, updatedAt: data.updatedAt, deletedAt: data.deletedAt });
-      });
-      setItems(rows.filter((p) => !p.deletedAt && (p.type || 'client') === 'client'));
-    });
+    const unsub = listenPrivacyPolicies((rows) => setItems(rows.filter((p) => (p.type || 'client') === 'client')));
     return () => unsub();
   }, []);
 
@@ -45,10 +34,18 @@ export default function PrivacyPolicyClientEditPage() {
     if (!current) { setError('No client policy found. Create a new one first.'); return; }
     const t = title.trim();
     if (!t) { setError('Enter a title'); return; }
+    const rawLen = (html || '').length;
+    if (rawLen > 20000) { setError('Policy content too long (max 20,000 characters)'); return; }
+    const plain = (html || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!plain) { setError('Enter policy content'); return; }
     setSaving(true);
     setError(null);
     try {
-      await updateDoc(doc(db(), 'privacy_policies', current.id), { title: t, bodyHtml: html || '', updatedAt: Date.now() } as any);
+      await updatePrivacyPolicy(current.id, { title: t, bodyHtml: html || '' });
       router.push('/employee/admin-settings/privacy-policy');
     } catch (e: any) {
       setError(e?.message || 'Failed to save');
@@ -57,12 +54,25 @@ export default function PrivacyPolicyClientEditPage() {
     }
   };
 
+  const status: 'active' | 'archived' | 'removed' | 'none' = useMemo(() => {
+    if (!current) return 'none';
+    if (current.deletedAt) return 'removed';
+    if (current.isActive) return 'active' as any;
+    return 'archived';
+  }, [current?.id, current?.isActive, current?.deletedAt]);
+
+  const backHref = status === 'removed'
+    ? '/employee/admin-settings/privacy-policy/removed'
+    : status === 'archived'
+      ? '/employee/admin-settings/privacy-policy/archive'
+      : '/employee/admin-settings/privacy-policy';
+
   return (
     <EmployerAdminGate>
       <Stack>
         <Group justify="space-between" align="flex-start" mb="xs">
           <Group>
-            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/admin-settings/privacy-policy')}>
+            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(backHref)}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
@@ -73,9 +83,16 @@ export default function PrivacyPolicyClientEditPage() {
             </div>
           </Group>
           <Group gap="xs">
-            <Button variant="light" onClick={onSave} loading={saving} disabled={!current}>Save</Button>
+            <Button onClick={onSave} loading={saving} disabled={!current}>Save</Button>
           </Group>
         </Group>
+
+        {status === 'archived' && (
+          <Alert color="yellow">This policy is archived. It is not active for users.</Alert>
+        )}
+        {status === 'removed' && (
+          <Alert color="red">This policy is removed. Restore it from the Removed tab to edit and use it.</Alert>
+        )}
 
         {items.length === 0 && (
           <Alert color="orange">No client privacy policy found. Create one first from the list page.</Alert>
@@ -84,7 +101,26 @@ export default function PrivacyPolicyClientEditPage() {
 
         <Card withBorder>
           <Stack>
-            <TextInput label="Title" placeholder="e.g., Client Privacy Policy" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required />
+            <Text fw={600}>Title</Text>
+            <TextInput
+              placeholder="e.g., Client Privacy Policy"
+              value={title}
+              onChange={(e) => setTitle(e.currentTarget.value)}
+              required
+              maxLength={120}
+              rightSection={<Text size="xs" c="dimmed">{(title || '').length}/120</Text>}
+              rightSectionWidth={56}
+            />
+          </Stack>
+        </Card>
+
+        <Card withBorder>
+          <Stack>
+            <div>
+              <Text fw={600}>Policy content</Text>
+              <Text c="dimmed" size="sm">Shown to users during signup and when updated.</Text>
+              <Text size="xs" c="dimmed">{(html || '').length}/20000</Text>
+            </div>
             <WebContentEditor
               placeholder="Update your policy…"
               initialHTML={html}
@@ -98,4 +134,3 @@ export default function PrivacyPolicyClientEditPage() {
     </EmployerAdminGate>
   );
 }
-
