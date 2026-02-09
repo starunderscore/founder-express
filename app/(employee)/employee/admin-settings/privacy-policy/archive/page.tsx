@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, ActionIcon, Tabs, Menu, Modal, Button } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, ActionIcon, Tabs, Menu, Modal, Button, Alert } from '@mantine/core';
 import { IconShieldCheck } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
@@ -50,6 +50,13 @@ export default function PrivacyPolicyArchivePage() {
             <Tabs.Tab value="removed"><Link href="/employee/admin-settings/privacy-policy/removed">Removed</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
+
+        {!enabled && (
+          <Alert color="yellow">
+            Privacy policies are currently disabled. Go to the
+            {' '}<Link href="/employee/admin-settings/privacy-policy">Active</Link>{' '}tab and turn on “Website privacy policy” to manage archived items.
+          </Alert>
+        )}
 
         {enabled && (
           <Card withBorder>
