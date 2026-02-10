@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, Button, Menu, ActionIcon, Tabs, Modal, TextInput, Textarea } from '@mantine/core';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import { archiveEmailVar, softRemoveEmailVar, addEmailVar, updateEmailVar, type EmailVar } from '@/lib/firebase/emailSettings';
+import { archiveEmailVarDoc, softRemoveEmailVarDoc, createEmailVar, updateEmailVarDoc, type EmailVar } from '@/services/company-settings/email-variables';
 import { IconForms } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import EmailVarRemoveModal from '@/components/admin-settings/email-variables/EmailVarRemoveModal';
 
 export default function EmailVariablesArchivePage() {
   const router = useRouter();
@@ -24,6 +25,9 @@ export default function EmailVariablesArchivePage() {
   const [editKey, setEditKey] = useState('');
   const [editValue, setEditValue] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [target, setTarget] = useState<(EmailVar & { id: string }) | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const columns: Column<EmailVar & { id: string }>[] = [
     { key: 'key', header: 'Key', render: (r) => (
@@ -36,6 +40,9 @@ export default function EmailVariablesArchivePage() {
       </Text>
     ) },
     { key: 'value', header: 'Value', render: (r) => (<Text c="dimmed" size="sm">{r.value || '—'}</Text>) },
+    { key: 'description', header: 'Description', render: (r) => (
+      <Text c={r.description ? undefined : 'dimmed'} size="sm" lineClamp={2}>{r.description || '—'}</Text>
+    ) },
     {
       key: 'actions', header: '', width: 1,
       render: (r) => (
@@ -52,8 +59,8 @@ export default function EmailVariablesArchivePage() {
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item onClick={() => { setEditId(r.id); setEditKey(r.key); setEditValue(r.value); setEditDesc(r.description || ''); setEditOpen(true); }}>Edit</Menu.Item>
-              <Menu.Item onClick={async () => { await archiveEmailVar(r.id, false); }}>Restore</Menu.Item>
-              <Menu.Item color="red" onClick={async () => { await softRemoveEmailVar(r.id); }}>Remove</Menu.Item>
+              <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
+              <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmRemove(true); }}>Remove</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -92,7 +99,7 @@ export default function EmailVariablesArchivePage() {
 
         <Card withBorder>
           <FirestoreDataTable
-            collectionPath="admin_settings/global/email_vars"
+            collectionPath="ep_company_settings/global/email_vars"
             columns={columns}
             initialSort={{ field: 'key', direction: 'asc' }}
             clientFilter={(r: any) => !!r.archivedAt && !r.deletedAt}
@@ -114,7 +121,7 @@ export default function EmailVariablesArchivePage() {
                 if (!k || !v) return;
                 setSaving(true);
                 try {
-                  await addEmailVar({ key: k, value: v, description: varDesc.trim() || undefined });
+                  await createEmailVar({ key: k, value: v, description: varDesc.trim() || undefined });
                   toast.show({ title: 'Variable added', message: k, color: 'green' });
                   setAddOpen(false); setVarKey(''); setVarValue(''); setVarDesc('');
                   router.push('/employee/company-settings/email-management/email-variables');
@@ -137,7 +144,7 @@ export default function EmailVariablesArchivePage() {
                 if (!k || !v) return;
                 setSaving(true);
                 try {
-                  await updateEmailVar(editId, { key: k, value: v, description: editDesc.trim() || undefined } as any);
+                  await updateEmailVarDoc(editId, { key: k, value: v, description: editDesc.trim() || undefined });
                   toast.show({ title: 'Variable updated', message: k, color: 'green' });
                   setEditOpen(false);
                   router.push('/employee/company-settings/email-management/email-variables');
@@ -146,6 +153,35 @@ export default function EmailVariablesArchivePage() {
             </Group>
           </Stack>
         </Modal>
+
+        <Modal opened={confirmRestore} onClose={() => setConfirmRestore(false)} title="Restore variable" centered>
+          <Stack>
+            <Text>Restore this variable back to Active?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmRestore(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!target) return;
+                await archiveEmailVarDoc(target.id, false);
+                setConfirmRestore(false); setTarget(null);
+                setRefreshKey((rk) => rk + 1);
+                toast.show({ title: 'Variable restored', message: target.key, color: 'green' });
+              }}>Restore</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <EmailVarRemoveModal
+          opened={confirmRemove}
+          onClose={() => setConfirmRemove(false)}
+          varKey={target?.key || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await softRemoveEmailVarDoc(target.id);
+            setConfirmRemove(false); setTarget(null);
+            setRefreshKey((rk) => rk + 1);
+            toast.show({ title: 'Variable moved to removed', message: target.key, color: 'orange' });
+          }}
+        />
       </Stack>
     </EmployerAdminGate>
   );

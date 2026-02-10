@@ -24,7 +24,7 @@ export type EmailVar = {
 };
 
 // Store under a single admin settings document's subcollection for validity
-const COL_PATH = 'admin_settings/global/email_vars';
+const COL_PATH = 'ep_company_settings/global/email_vars';
 
 export function listenEmailVars(cb: (vars: EmailVar[]) => void): Unsubscribe {
   const col = collection(db(), COL_PATH);

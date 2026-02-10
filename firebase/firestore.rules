@@ -264,6 +264,54 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Admin Settings — Email Variables (employee portal)
+    function validEmailVarDoc() {
+      return (
+        !("key" in request.resource.data)
+        || (
+          (request.resource.data.key is string)
+          && request.resource.data.key.size() > 0
+          && request.resource.data.key.size() <= 60
+        )
+      ) && (
+        !("value" in request.resource.data)
+        || (
+          (request.resource.data.value is string)
+          && request.resource.data.value.size() <= 1000
+        )
+      ) && (
+        !("description" in request.resource.data)
+        || (
+          (request.resource.data.description is string)
+          && request.resource.data.description.size() <= 280
+        )
+      );
+    }
+
+    // New root path for company settings
+    match /ep_company_settings/global/email_vars/{id} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin()
+        && (request.resource.data.key is string)
+        && request.resource.data.key.size() > 0
+        && request.resource.data.key.size() <= 60
+        && validEmailVarDoc();
+      allow update: if isAdmin() && validEmailVarDoc();
+      allow delete: if isAdmin();
+    }
+
+    // Legacy path kept for backward compatibility (can be removed after data migration)
+    match /admin_settings/global/email_vars/{id} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin()
+        && (request.resource.data.key is string)
+        && request.resource.data.key.size() > 0
+        && request.resource.data.key.size() <= 60
+        && validEmailVarDoc();
+      allow update: if isAdmin() && validEmailVarDoc();
+      allow delete: if isAdmin();
+    }
+
     
 
     // Notifications — readable by active employees/admin; writable by admin only
