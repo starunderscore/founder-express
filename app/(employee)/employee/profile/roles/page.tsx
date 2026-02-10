@@ -1,13 +1,11 @@
 "use client";
-import { useState, useEffect, useMemo } from 'react';
-import { Title, Text, Stack, Card, Group, Badge, Alert, Tabs, Divider } from '@mantine/core';
+import { useState, useEffect } from 'react';
+import { Title, Text, Stack, Card, Group, Badge, Alert, Tabs } from '@mantine/core';
 import Link from 'next/link';
 import { useAuth } from '@/lib/firebase/auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { PermissionsMatrix } from '@/components/PermissionsMatrix';
-import { allPermissionNames } from '@/components/permissionsSchema';
-import { idsToNames } from '@/lib/permissions';
+// Permissions UI removed per requirements; this page focuses on roles and admin status only
 
 export default function EmployeeRolesPage() {
   const { user } = useAuth();
@@ -40,22 +38,11 @@ export default function EmployeeRolesPage() {
     return () => unsub();
   }, []);
 
-  // Compute effective permission names for the current employee (roles + extra)
-  const effectivePermissionNames = useMemo(() => {
-    if (!employee) return [] as string[];
-    const roleIds = Array.isArray(employee.roleIds) ? employee.roleIds : [];
-    const extraIds = Array.isArray(employee.permissionIds) ? employee.permissionIds : [];
-    const rolePermIds = roleIds.flatMap((rid: string) => roleMap[rid]?.permissionIds || []);
-    // unique ids
-    const idSet = new Set<string>([...rolePermIds, ...extraIds]);
-    return idsToNames(Array.from(idSet));
-  }, [employee?.id, roleMap]);
-
   return (
     <Stack>
       <div>
-        <Title order={2} mb={4}>Roles & Permissions</Title>
-        <Text c="dimmed">Review your access to troubleshoot permission issues.</Text>
+        <Title order={2} mb={4}>Roles</Title>
+        <Text c="dimmed">Your roles and admin status.</Text>
       </div>
 
       <Tabs value={'roles'}>
@@ -85,21 +72,8 @@ export default function EmployeeRolesPage() {
               ))}
               {(!Array.isArray(employee.roleIds) || employee.roleIds.length === 0) && <Text c="dimmed">No roles assigned</Text>}
             </Group>
-            <Text c="dimmed" size="sm">Additional permissions: {Array.isArray(employee.permissionIds) ? employee.permissionIds.length : 0}</Text>
           </Stack>
         )}
-      </Card>
-
-      <Card withBorder>
-        <Stack>
-          <Text fw={600}>Your effective permissions</Text>
-          <PermissionsMatrix
-            value={effectivePermissionNames}
-            // Disable all interactions for read-only view
-            disabledNames={allPermissionNames()}
-            onChange={() => {}}
-          />
-        </Stack>
       </Card>
     </Stack>
   );
