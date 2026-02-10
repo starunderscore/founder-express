@@ -3,7 +3,8 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, TextInput, Button, Alert, ActionIcon } from '@mantine/core';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, reauthWithPassword, updateUserPassword } from '@/lib/firebase/auth';
+import { useAuth } from '@/lib/firebase/auth';
+import { changePassword } from '@/services/user-settings/security';
 
 export default function UserSecurityPage() {
   const router = useRouter();
@@ -17,20 +18,15 @@ export default function UserSecurityPage() {
 
   const onChangePassword = async () => {
     if (!user) return;
-    if (!currentPw) { setPwError('Enter current password'); setPwStatus('error'); return; }
-    if (!newPw || newPw.length < 6) { setPwError('Password must be at least 6 characters'); setPwStatus('error'); return; }
-    if (newPw !== newPw2) { setPwError('Passwords do not match'); setPwStatus('error'); return; }
     setPwStatus('saving');
     setPwError(null);
-    try {
-      const email = user.email || '';
-      await reauthWithPassword(email, currentPw);
-      await updateUserPassword(newPw);
+    const res = await changePassword({ email: user.email || '', currentPassword: currentPw, newPassword: newPw, confirmPassword: newPw2 });
+    if (res.ok) {
       setCurrentPw(''); setNewPw(''); setNewPw2('');
       setPwStatus('saved');
       setTimeout(() => setPwStatus('idle'), 1500);
-    } catch (e: any) {
-      setPwError(e?.message || 'Failed to update password');
+    } else {
+      setPwError(res.reason);
       setPwStatus('error');
     }
   };
@@ -67,4 +63,3 @@ export default function UserSecurityPage() {
     </EmployerAuthGate>
   );
 }
-

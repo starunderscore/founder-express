@@ -3,11 +3,38 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, SegmentedControl, Group, Badge, ActionIcon } from '@mantine/core';
 import { useMantineColorScheme, useComputedColorScheme } from '@mantine/core';
 import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/lib/firebase/auth';
+import { createAppearance, listenAppearanceByUser, updateAppearance, type AppearanceSettings } from '@/services/user-settings/appearance';
 
 export default function AppearanceSettingsPage() {
   const { setColorScheme, colorScheme } = useMantineColorScheme();
   const computed = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const router = useRouter();
+  const { user } = useAuth();
+  const [record, setRecord] = useState<AppearanceSettings | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = listenAppearanceByUser(user.uid, (row) => {
+      setRecord(row);
+      if (row && row.theme && row.theme !== colorScheme) {
+        setColorScheme(row.theme);
+      }
+    });
+    return () => unsub();
+  }, [user?.uid]);
+
+  const onThemeChange = async (v: 'light' | 'dark' | 'auto') => {
+    setColorScheme(v);
+    if (!user) return;
+    try {
+      if (record) await updateAppearance(record.id, { theme: v });
+      else await createAppearance({ userId: user.uid, theme: v });
+    } catch (e) {
+      // ignore for now; rules will enforce ownership
+    }
+  };
 
   return (
     <EmployerAuthGate>
@@ -35,7 +62,7 @@ export default function AppearanceSettingsPage() {
             </Group>
             <SegmentedControl
               value={colorScheme}
-              onChange={(v: any) => setColorScheme(v)}
+              onChange={(v: any) => onThemeChange(v)}
               data={[
                 { label: 'Light', value: 'light' },
                 { label: 'Dark', value: 'dark' },

@@ -270,5 +270,16 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+
+    // User Settings — Appearance: owner or admin, auth users only
+    match /user_settings_appearance/{id} {
+      allow get, list: if isAdmin() || (authed() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (authed() && request.resource.data.userId == request.auth.uid
+        && (request.resource.data.theme in ['light','dark','auto']));
+      allow update: if isAdmin() || (authed() && resource.data.userId == request.auth.uid
+        && !("userId" in request.resource.data) // cannot change owner
+        && (!('theme' in request.resource.data) || (request.resource.data.theme in ['light','dark','auto'])));
+      allow delete: if isAdmin() || (authed() && resource.data.userId == request.auth.uid);
+    }
   }
 }
