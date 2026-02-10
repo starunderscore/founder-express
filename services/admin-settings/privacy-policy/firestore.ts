@@ -5,7 +5,7 @@ import { buildPrivacyPolicyCreate, buildPrivacyPolicyPatch, normalizePrivacyPoli
 
 type Options = { getDb?: () => Firestore };
 
-const colRef = (store: Firestore) => collection(store, 'privacy_policies');
+const colRef = (store: Firestore) => collection(store, 'ep_privacy_policies');
 const settingsDoc = (store: Firestore) => doc(store, 'ep_admin_settings', 'global');
 
 export async function listPrivacyPolicies(opts?: Options): Promise<PrivacyPolicy[]> {
@@ -36,7 +36,7 @@ export async function updatePrivacyPolicy(id: string, patch: PrivacyPolicyPatchI
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
   const obj = buildPrivacyPolicyPatch(patch);
-  await updateDoc(doc(store, 'privacy_policies', id), obj);
+  await updateDoc(doc(store, 'ep_privacy_policies', id), obj);
 }
 
 export async function setActiveClientPolicy(id: string, opts?: Options): Promise<void> {
@@ -47,7 +47,7 @@ export async function setActiveClientPolicy(id: string, opts?: Options): Promise
   for (const p of clientRows) {
     const desired = p.id === id;
     if ((p.isActive ?? false) !== desired) {
-      await updateDoc(doc(store, 'privacy_policies', p.id), { isActive: desired, updatedAt: Date.now() } as any);
+      await updateDoc(doc(store, 'ep_privacy_policies', p.id), { isActive: desired, updatedAt: Date.now() } as any);
     }
   }
 }
@@ -78,6 +78,7 @@ export async function setPrivacyPolicyEnabled(enabled: boolean, opts?: Options):
 export async function ensureDefaultPrivacyPolicy(opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
+  try { await migratePrivacyPoliciesIfNeeded({ getDb }); } catch {}
   // Ensure toggle defaults to true if absent
   try {
     const sref = settingsDoc(store);
@@ -102,6 +103,19 @@ export async function ensureDefaultPrivacyPolicy(opts?: Options): Promise<void> 
   }
 }
 
+export async function migratePrivacyPoliciesIfNeeded(opts?: Options): Promise<boolean> {
+  const getDb = opts?.getDb || defaultDb;
+  const store = getDb();
+  const oldSnap = await getDocs(query(collection(store, 'privacy_policies')));
+  const newSnap = await getDocs(query(collection(store, 'ep_privacy_policies')));
+  if (newSnap.size > 0 || oldSnap.size === 0) return false;
+  for (const d of oldSnap.docs) {
+    const data = d.data();
+    await setDoc(doc(store, 'ep_privacy_policies', d.id), data as any, { merge: true });
+  }
+  return true;
+}
+
 export async function getActiveClientPolicy(opts?: Options): Promise<PrivacyPolicy | null> {
   const rows = await listPrivacyPolicies(opts);
   const active = rows.find((r) => (r.type || 'client') === 'client' && r.isActive);
@@ -111,23 +125,23 @@ export async function getActiveClientPolicy(opts?: Options): Promise<PrivacyPoli
 export async function archivePrivacyPolicy(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'privacy_policies', id), { isActive: false, updatedAt: Date.now() } as any);
+  await updateDoc(doc(store, 'ep_privacy_policies', id), { isActive: false, updatedAt: Date.now() } as any);
 }
 
 export async function removePrivacyPolicy(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'privacy_policies', id), { deletedAt: Date.now(), updatedAt: Date.now() } as any);
+  await updateDoc(doc(store, 'ep_privacy_policies', id), { deletedAt: Date.now(), updatedAt: Date.now() } as any);
 }
 
 export async function restorePrivacyPolicy(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'privacy_policies', id), { deletedAt: null, updatedAt: Date.now() } as any);
+  await updateDoc(doc(store, 'ep_privacy_policies', id), { deletedAt: null, updatedAt: Date.now() } as any);
 }
 
 export async function deletePrivacyPolicy(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await deleteDoc(doc(store, 'privacy_policies', id));
+  await deleteDoc(doc(store, 'ep_privacy_policies', id));
 }

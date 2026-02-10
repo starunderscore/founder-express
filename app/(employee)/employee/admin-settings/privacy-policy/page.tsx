@@ -111,7 +111,7 @@ export default function PrivacyPolicyPage() {
           <>
             <Card withBorder>
               <FirestoreDataTable
-                collectionPath="privacy_policies"
+                collectionPath="ep_privacy_policies"
                 columns={[
                   { key: 'title', header: 'Title', render: (r: any) => (<Link href="/employee/admin-settings/privacy-policy/client" style={{ textDecoration: 'none' }}>{r.title || '(Untitled)'}</Link>) },
                   { key: 'active', header: 'Active', width: 120, render: (r: any) => (r.isActive ? <Badge variant="light" color="green">Active</Badge> : '—') },

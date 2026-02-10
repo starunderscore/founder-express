@@ -2,25 +2,24 @@
 import Link from 'next/link';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, ActionIcon, Tabs, Menu, Modal, Button, Alert } from '@mantine/core';
-import { IconShieldCheck } from '@tabler/icons-react';
+import { IconCookie } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import { restorePrivacyPolicy, deletePrivacyPolicy, listenPrivacyPolicyEnabled } from '@/services/admin-settings/privacy-policy';
-import PolicyDeletePermanentModal from '@/components/privacy/PolicyDeletePermanentModal';
+import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { listenCookiePolicyEnabled, restoreCookiePolicy, deleteCookiePolicy } from '@/services/admin-settings/cookie-policy';
 
-export default function PrivacyPolicyRemovedPage() {
+export default function CookiePolicyRemovedPage() {
   const router = useRouter();
+  const [enabled, setEnabled] = useState<boolean>(true);
   const toast = useToast();
   const [target, setTarget] = useState<any | null>(null);
   const [confirmRestore, setConfirmRestore] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [enabled, setEnabled] = useState<boolean>(true);
-
   useEffect(() => {
-    const unsub = listenPrivacyPolicyEnabled((flag) => setEnabled(flag ?? true));
+    const unsub = listenCookiePolicyEnabled((flag) => setEnabled(flag ?? true));
     return () => unsub();
   }, []);
   return (
@@ -34,10 +33,10 @@ export default function PrivacyPolicyRemovedPage() {
               </svg>
             </ActionIcon>
             <Group gap="xs" align="center">
-              <IconShieldCheck size={20} />
+              <IconCookie size={20} />
               <div>
-                <Title order={2} mb={4}>Privacy Policy</Title>
-                <Text c="dimmed">Removed client privacy policies.</Text>
+                <Title order={2} mb={4}>Cookie Policy</Title>
+                <Text c="dimmed">Removed cookie policies.</Text>
               </div>
             </Group>
           </Group>
@@ -45,25 +44,25 @@ export default function PrivacyPolicyRemovedPage() {
 
         <Tabs value={'removed'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/admin-settings/privacy-policy">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/admin-settings/privacy-policy/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/admin-settings/privacy-policy/removed">Removed</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/admin-settings/cookie-policy">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/admin-settings/cookie-policy/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/admin-settings/cookie-policy/removed">Removed</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
         {!enabled && (
           <Alert color="yellow">
-            Privacy policies are currently disabled. Go to the
-            {' '}<Link href="/employee/admin-settings/privacy-policy">Active</Link>{' '}tab and turn on “Website privacy policy” to manage removed items.
+            Cookie policies are currently disabled. Go to the
+            {' '}<Link href="/employee/admin-settings/cookie-policy">Active</Link>{' '}tab and turn on “Website cookie policy” to manage removed items.
           </Alert>
         )}
 
         {enabled && (
           <Card withBorder>
-          <FirestoreDataTable
-            collectionPath="ep_privacy_policies"
-            columns={[
-              { key: 'title', header: 'Title', render: (r: any) => (<Link href="/employee/admin-settings/privacy-policy/client" style={{ textDecoration: 'none' }}>{r.title || '(Untitled)'}</Link>) },
+            <FirestoreDataTable
+              collectionPath="eq_cookie_policies"
+              columns={[
+              { key: 'title', header: 'Title', render: (r: any) => (<Link href={`/employee/admin-settings/cookie-policy/client?id=${r.id}`} style={{ textDecoration: 'none' }}>{r.title || '(Untitled)'}</Link>) },
               { key: 'actions', header: '', width: 1, render: (r: any) => (
                 <Menu withinPortal position="bottom-end" shadow="md" width={200}>
                   <Menu.Target>
@@ -76,19 +75,19 @@ export default function PrivacyPolicyRemovedPage() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item component={Link as any} href="/employee/admin-settings/privacy-policy/client">Edit</Menu.Item>
+                    <Menu.Item component={Link as any} href="/employee/admin-settings/cookie-policy/client">Edit</Menu.Item>
                     <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
                     <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmDelete(true); }}>Delete permanently</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               )},
-            ] as Column<any>[]}
-            initialSort={{ field: 'updatedAt', direction: 'desc' }}
-            clientFilter={(r: any) => !!r.deletedAt && (r.type || 'client') === 'client'}
-            enableSelection={false}
-            defaultPageSize={25}
-            refreshKey={refreshKey}
-          />
+              ] as Column<any>[]}
+              initialSort={{ field: 'updatedAt', direction: 'desc' }}
+              clientFilter={(r: any) => !!r.removedAt}
+              enableSelection={false}
+              defaultPageSize={25}
+              refreshKey={refreshKey}
+            />
           </Card>
         )}
 
@@ -99,7 +98,7 @@ export default function PrivacyPolicyRemovedPage() {
               <Button variant="default" onClick={() => setConfirmRestore(false)}>Cancel</Button>
               <Button onClick={async () => {
                 if (!target) return;
-                await restorePrivacyPolicy(target.id);
+                await restoreCookiePolicy(target.id);
                 setConfirmRestore(false); setTarget(null);
                 setRefreshKey((k) => k + 1);
                 toast.show({ title: 'Saved', message: 'Policy restored to Archive.', color: 'green' });
@@ -108,18 +107,21 @@ export default function PrivacyPolicyRemovedPage() {
           </Stack>
         </Modal>
 
-        <PolicyDeletePermanentModal
-          opened={confirmDelete}
-          onClose={() => setConfirmDelete(false)}
-          policyTitle={target?.title || ''}
-          onConfirm={async () => {
-            if (!target) return;
-            await deletePrivacyPolicy(target.id);
-            setConfirmDelete(false); setTarget(null);
-            setRefreshKey((k) => k + 1);
-            toast.show({ title: 'Deleted', message: 'Policy permanently deleted.', color: 'green' });
-          }}
-        />
+        <Modal opened={confirmDelete} onClose={() => setConfirmDelete(false)} title="Permanently delete policy" centered>
+          <Stack>
+            <Text color="red">This action permanently deletes the policy and cannot be undone.</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+              <Button color="red" onClick={async () => {
+                if (!target) return;
+                await deleteCookiePolicy(target.id);
+                setConfirmDelete(false); setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Deleted', message: 'Policy permanently deleted.', color: 'green' });
+              }}>Delete permanently</Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </EmployerAdminGate>
   );

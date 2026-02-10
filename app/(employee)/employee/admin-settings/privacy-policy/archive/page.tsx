@@ -60,8 +60,8 @@ export default function PrivacyPolicyArchivePage() {
 
         {enabled && (
           <Card withBorder>
-            <FirestoreDataTable
-            collectionPath="privacy_policies"
+          <FirestoreDataTable
+            collectionPath="ep_privacy_policies"
             columns={[
               { key: 'title', header: 'Title', render: (r: any) => (<Link href="/employee/admin-settings/privacy-policy/client" style={{ textDecoration: 'none' }}>{r.title || '(Untitled)'}</Link>) },
               { key: 'actions', header: '', width: 1, render: (r: any) => (
