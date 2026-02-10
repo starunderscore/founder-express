@@ -3,27 +3,19 @@ import { useState, useEffect } from 'react';
 import { Title, Text, TextInput, Button, Group, Stack, Alert, Tabs } from '@mantine/core';
 import Link from 'next/link';
 import { useAuth } from '@/lib/firebase/auth';
-import { updateUserProfile } from '@/lib/firebase/auth';
-import { collection, onSnapshot, query, updateDoc, where, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { listenEmployeeForUser, updateEmployee, updateDisplayName } from '@/services/profile';
 // layout provides header/sidebar
 
 export default function EmployeeAccountPage() {
   const { user } = useAuth();
-  // Load current employee doc from Firestore by matching email
+  // Load current employee doc by userId
   const [employee, setEmployee] = useState<any | null>(null);
   const [empLoaded, setEmpLoaded] = useState(false);
   useEffect(() => {
-    if (!user?.email) { setEmployee(null); setEmpLoaded(true); return; }
-    const q = query(collection(db(), 'employees'), where('email', '==', user.email));
-    const unsub = onSnapshot(q, (snap) => {
-      let found: any | null = null;
-      snap.forEach((d) => { if (!found) found = { id: d.id, ...(d.data() as any) }; });
-      setEmployee(found);
-      setEmpLoaded(true);
-    });
+    if (!user?.uid) { setEmployee(null); setEmpLoaded(true); return; }
+    const unsub = listenEmployeeForUser({ uid: user.uid, email: user.email }, (row) => { setEmployee(row); setEmpLoaded(true); });
     return () => unsub();
-  }, [user?.email]);
+  }, [user?.uid]);
 
   // Roles UI moved to /employee/profile/roles
 
@@ -31,6 +23,13 @@ export default function EmployeeAccountPage() {
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [fullName, setFullName] = useState(employee?.name || '');
   const [dob, setDob] = useState(employee?.dateOfBirth || '');
+
+  // Sync form fields when loaded employee record changes
+  useEffect(() => {
+    setFullName(employee?.name || '');
+    setDob(employee?.dateOfBirth || '');
+    if (employee?.displayName) setDisplayName(employee.displayName);
+  }, [employee?.id, employee?.name, employee?.dateOfBirth]);
   const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -39,13 +38,8 @@ export default function EmployeeAccountPage() {
     setSaveStatus('saving');
     setSaveError(null);
     try {
-      await updateUserProfile({ displayName });
-      try {
-        await updateDoc(doc(db(), 'employees', employee.id), { name: fullName, dateOfBirth: dob });
-      } catch (e) {
-        // Surface failure; keep user profile update even if employee doc fails
-        throw e;
-      }
+      await updateDisplayName(displayName);
+      await updateEmployee(employee.id, { name: fullName, dateOfBirth: dob, displayName });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 1500);
     } catch (e: any) {

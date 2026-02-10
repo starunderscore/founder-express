@@ -225,9 +225,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Employees — admin/owner only
+    // Employees — admin-only create/delete; owner may read/update own basic fields
+    function ownerEmployeeUpdate() {
+      let diff = request.resource.data.diff(resource.data);
+      return diff.addedKeys().size() == 0 && diff.removedKeys().size() == 0 && diff.changedKeys().hasOnly(['name','dateOfBirth','email','displayName']);
+    }
     match /employees/{uid} {
-      allow get, list, create, update, delete: if isAdmin();
+      allow get, list: if isAdmin() || (authed() && uid == request.auth.uid);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (authed() && (uid == request.auth.uid || resource.data.userId == request.auth.uid) && ownerEmployeeUpdate());
     }
 
     // Admin Settings — admin/owner only (legacy path)
