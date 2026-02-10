@@ -261,7 +261,7 @@ service cloud.firestore {
     
 
     // Notifications — readable by active employees/admin; writable by admin only
-    match /notifications/{id} {
+    match /ep_notifications/{id} {
       allow get, list: if isEmployee() || isAdmin();
       allow create, update, delete: if isAdmin();
     }

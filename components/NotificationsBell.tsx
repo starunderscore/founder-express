@@ -2,17 +2,13 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ActionIcon, Indicator, Tooltip } from '@mantine/core';
-import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { listenUnreadCount } from '@/services/notifications';
 
 export function NotificationsBell() {
   const [unread, setUnread] = useState<number>(0);
 
   useEffect(() => {
-    const q = query(collection(db(), 'notifications'), where('read', '==', false));
-    const unsub = onSnapshot(q, (snap) => {
-      setUnread(snap.size);
-    });
+    const unsub = listenUnreadCount((n) => setUnread(n));
     return () => unsub();
   }, []);
 
@@ -33,4 +29,3 @@ export function NotificationsBell() {
     </Tooltip>
   );
 }
-
