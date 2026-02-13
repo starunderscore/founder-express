@@ -8,8 +8,9 @@ import { useRouter } from 'next/navigation';
 import { WebContentEditor } from '@/components/WebContentEditor';
 import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { Newsbar } from '@/components/Newsbar';
-import { listenNewsbar, saveNewsbar } from '@/lib/firebase/website';
+import { listenNewsbar, saveNewsbarDoc } from '@/services/website/newsbar';
 import { useAuth } from '@/lib/firebase/auth';
+import { useToast } from '@/components/ToastProvider';
 
 export default function NewsbarSettingsPage() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function NewsbarSettingsPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
   const { user } = useAuth();
+  const toast = useToast();
 
   useEffect(() => {
     setEnabled(!!newsbar.enabled);
@@ -48,9 +50,9 @@ export default function NewsbarSettingsPage() {
     try {
       updateNewsbar({ enabled, primaryHtml: (primaryHtml || '').trim(), secondaryHtml: (secondaryHtml || '').trim() });
       // Persist to Firestore
-      saveNewsbar({ enabled, primaryHtml, secondaryHtml, updatedBy: user?.uid }).catch(() => {/* ignore */});
-      setStatus('saved');
-      setTimeout(() => setStatus('idle'), 1200);
+      saveNewsbarDoc({ enabled, primaryHtml, secondaryHtml, updatedBy: user?.uid }).catch(() => {/* ignore */});
+      setStatus('idle');
+      toast.show({ title: 'News bar saved', color: 'green' });
     } catch (e: any) {
       setError(e?.message || 'Failed to save');
       setStatus('error');
@@ -117,7 +119,6 @@ export default function NewsbarSettingsPage() {
               </>
             )}
             {error && <Alert color="red">{error}</Alert>}
-            {status === 'saved' && <Alert color="green">Saved</Alert>}
           </Stack>
         </Card>
 

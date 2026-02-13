@@ -7,7 +7,7 @@ import { useWebsiteStore } from '@/state/websiteStore';
 
 export default function EmployerWebsitePage() {
   const newsbar = useWebsiteStore((s) => s.newsbar);
-  const preview = stripHtml(newsbar.primaryHtml || '');
+  const preview = newsbar.enabled ? stripHtml(newsbar.primaryHtml || '') : '';
 
   return (
     <EmployerAuthGate>
