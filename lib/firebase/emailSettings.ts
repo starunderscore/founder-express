@@ -81,7 +81,7 @@ export type EmailTemplateItem = {
   deletedAt?: number | null;
 };
 
-const TPL_COL = 'admin_settings/global/email_templates';
+const TPL_COL = 'ep_company_settings/global/email_templates';
 
 export function listenEmailTemplates(cb: (list: EmailTemplateItem[]) => void): Unsubscribe {
   const col = collection(db(), TPL_COL);
@@ -143,7 +143,7 @@ export type SystemEmail = {
   updatedAt?: number;
 };
 
-const SYS_COL = 'admin_settings/global/system_emails';
+const SYS_COL = 'ep_company_settings/global/system_emails';
 
 export async function getSystemEmail(id: SystemEmailId): Promise<SystemEmail | null> {
   const ref = doc(db(), SYS_COL, id);

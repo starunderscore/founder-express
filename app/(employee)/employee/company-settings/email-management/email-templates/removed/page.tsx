@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, Button, Menu, ActionIcon, Tabs } from '@mantine/core';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import { restoreEmailTemplate, removeEmailTemplate, type EmailTemplateItem } from '@/lib/firebase/emailSettings';
+import { restoreEmailTemplateDoc, deleteEmailTemplateDoc, type EmailTemplate as EmailTemplateItem } from '@/services/company-settings/email-templates';
 import { IconMail } from '@tabler/icons-react';
 
 export default function EmailTemplatesRemovedPage() {
@@ -28,8 +28,8 @@ export default function EmailTemplatesRemovedPage() {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item onClick={async () => { await restoreEmailTemplate(r.id); }}>Restore</Menu.Item>
-              <Menu.Item color="red" onClick={async () => { await removeEmailTemplate(r.id); }}>Delete permanently</Menu.Item>
+              <Menu.Item onClick={async () => { await restoreEmailTemplateDoc(r.id); }}>Restore</Menu.Item>
+              <Menu.Item color="red" onClick={async () => { await deleteEmailTemplateDoc(r.id); }}>Delete permanently</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -68,7 +68,7 @@ export default function EmailTemplatesRemovedPage() {
 
         <Card withBorder>
           <FirestoreDataTable
-            collectionPath="admin_settings/global/email_templates"
+            collectionPath="ep_company_settings/global/email_templates"
             columns={columns}
             initialSort={{ field: 'createdAt', direction: 'desc' }}
             clientFilter={(r: any) => !!r.deletedAt}

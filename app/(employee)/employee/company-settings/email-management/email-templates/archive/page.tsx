@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, Button, Menu, ActionIcon, Tabs } from '@mantine/core';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import { archiveEmailTemplate, softRemoveEmailTemplate, type EmailTemplateItem } from '@/lib/firebase/emailSettings';
+import { archiveEmailTemplateDoc, softRemoveEmailTemplateDoc, type EmailTemplate as EmailTemplateItem } from '@/services/company-settings/email-templates';
 import { IconMail } from '@tabler/icons-react';
 
 export default function EmailTemplatesArchivePage() {
@@ -28,8 +28,8 @@ export default function EmailTemplatesArchivePage() {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item onClick={async () => { await archiveEmailTemplate(r.id, false); }}>Restore</Menu.Item>
-              <Menu.Item color="red" onClick={async () => { await softRemoveEmailTemplate(r.id); }}>Remove</Menu.Item>
+              <Menu.Item onClick={async () => { await archiveEmailTemplateDoc(r.id, false); }}>Restore</Menu.Item>
+              <Menu.Item color="red" onClick={async () => { await softRemoveEmailTemplateDoc(r.id); }}>Remove</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -68,7 +68,7 @@ export default function EmailTemplatesArchivePage() {
 
         <Card withBorder>
           <FirestoreDataTable
-            collectionPath="admin_settings/global/email_templates"
+            collectionPath="ep_company_settings/global/email_templates"
             columns={columns}
             initialSort={{ field: 'createdAt', direction: 'desc' }}
             clientFilter={(r: any) => !!r.archivedAt && !r.deletedAt}

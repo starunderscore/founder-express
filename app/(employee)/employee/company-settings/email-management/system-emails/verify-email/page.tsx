@@ -3,7 +3,8 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { ActionIcon, Button, Card, Group, Stack, Text, TextInput, Title, Select, Modal } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { getSystemEmail, saveSystemEmail, listenEmailVars, type EmailVar } from '@/lib/firebase/emailSettings';
+import { listenEmailVars, type EmailVar } from '@/services/company-settings/email-variables';
+import { getSystemEmailDoc, saveSystemEmailDoc } from '@/services/company-settings/system-emails';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
 import { EmailPreviewWindow } from '@/components/EmailPreviewWindow';
 
@@ -36,7 +37,7 @@ export default function VerifyEmailSystemEmailPage() {
   const [status, setStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
 
   useEffect(() => {
-    getSystemEmail('verify_email').then((e) => {
+    getSystemEmailDoc('verify_email').then((e) => {
       setSubject(e?.subject || 'Verify your email for {{COMPANY_NAME}}');
       setHtml(e?.body || '<p>Hi {{USERNAME}},</p><p>Please confirm your email address by clicking the link below:</p><p><a href=\\"{{ACTION_URL}}\\" target=\\"_blank\\" rel=\\"noopener\\">Verify email</a></p><p>Thanks!<br/>— {{COMPANY_NAME}}</p>');
     });
@@ -46,7 +47,7 @@ export default function VerifyEmailSystemEmailPage() {
     setStatus('saving');
     try {
       if (!html.trim()) { setStatus('error'); setTimeout(() => setStatus('idle'), 1500); return; }
-      await saveSystemEmail('verify_email', { subject: subject.trim(), body: html });
+      await saveSystemEmailDoc('verify_email', { subject: subject.trim(), body: html });
       setStatus('saved');
       setTimeout(() => setStatus('idle'), 1200);
     } catch {

@@ -312,6 +312,74 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Company Settings — Email Templates (employee portal)
+    function validEmailTemplateDoc() {
+      return (
+        !("name" in request.resource.data)
+        || (
+          (request.resource.data.name is string)
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 120
+        )
+      ) && (
+        !("subject" in request.resource.data)
+        || (
+          (request.resource.data.subject is string)
+          && request.resource.data.subject.size() > 0
+          && request.resource.data.subject.size() <= 240
+        )
+      ) && (
+        !("body" in request.resource.data)
+        || (
+          (request.resource.data.body is string)
+          && request.resource.data.body.size() <= 50000
+        )
+      );
+    }
+
+    match /ep_company_settings/global/email_templates/{id} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin()
+        && (request.resource.data.name is string)
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && (request.resource.data.subject is string)
+        && request.resource.data.subject.size() > 0
+        && request.resource.data.subject.size() <= 240
+        && validEmailTemplateDoc();
+      allow update: if isAdmin() && validEmailTemplateDoc();
+      allow delete: if isAdmin();
+    }
+
+    // Company Settings — System Emails (password reset, verify email)
+    function validSystemEmailDoc() {
+      return (
+        !("subject" in request.resource.data)
+        || (
+          (request.resource.data.subject is string)
+          && request.resource.data.subject.size() > 0
+          && request.resource.data.subject.size() <= 240
+        )
+      ) && (
+        !("body" in request.resource.data)
+        || (
+          (request.resource.data.body is string)
+          && request.resource.data.body.size() <= 50000
+        )
+      );
+    }
+
+    match /ep_company_settings/global/system_emails/{id} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin()
+        && (request.resource.data.subject is string)
+        && request.resource.data.subject.size() > 0
+        && request.resource.data.subject.size() <= 240
+        && validSystemEmailDoc();
+      allow update: if isAdmin() && validSystemEmailDoc();
+      allow delete: if isAdmin();
+    }
+
     
 
     // Notifications — readable by active employees/admin; writable by admin only

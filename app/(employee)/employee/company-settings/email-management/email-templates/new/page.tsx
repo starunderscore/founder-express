@@ -6,7 +6,7 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
 import { EmailPreviewWindow } from '@/components/EmailPreviewWindow';
 import { listenEmailVars, type EmailVar } from '@/lib/firebase/emailSettings';
-import { addEmailTemplate, updateEmailTemplate, getEmailTemplate } from '@/lib/firebase/emailSettings';
+import { createEmailTemplate, updateEmailTemplateDoc, getEmailTemplateDoc } from '@/services/company-settings/email-templates';
 
 export default function NewEmailTemplatePage() {
   const router = useRouter();
@@ -47,7 +47,7 @@ export default function NewEmailTemplatePage() {
     let cancelled = false;
     (async () => {
       if (!editId) { setLoaded(true); return; }
-      const tpl = await getEmailTemplate(editId);
+      const tpl = await getEmailTemplateDoc(editId);
       if (!cancelled) {
         if (tpl) { setName(tpl.name || ''); setSubject(tpl.subject || ''); setHtml(tpl.body || ''); }
         setLoaded(true);
@@ -67,8 +67,8 @@ export default function NewEmailTemplatePage() {
       return;
     }
     const body = html || '';
-    if (editId) await updateEmailTemplate(editId, { name: trimmed, subject: subject.trim(), body });
-    else await addEmailTemplate({ name: trimmed, subject: subject.trim(), body });
+    if (editId) await updateEmailTemplateDoc(editId, { name: trimmed, subject: subject.trim(), body });
+    else await createEmailTemplate({ name: trimmed, subject: subject.trim(), body });
     router.push('/employee/company-settings/email-management/email-templates');
   };
 

@@ -3,7 +3,8 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { ActionIcon, Button, Card, Group, Stack, Text, TextInput, Title, Select, Modal } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { getSystemEmail, saveSystemEmail, listenEmailVars, type EmailVar } from '@/lib/firebase/emailSettings';
+import { listenEmailVars, type EmailVar } from '@/services/company-settings/email-variables';
+import { getSystemEmailDoc, saveSystemEmailDoc } from '@/services/company-settings/system-emails';
 import { EmailPreviewWindow } from '@/components/EmailPreviewWindow';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
 
@@ -36,7 +37,7 @@ export default function PasswordResetSystemEmailPage() {
   const [status, setStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
 
   useEffect(() => {
-    getSystemEmail('password_reset').then((e) => {
+    getSystemEmailDoc('password_reset').then((e) => {
       setSubject(e?.subject || 'Reset your password for {{COMPANY_NAME}}');
       setHtml(e?.body || '<p>Hi {{USERNAME}},</p><p>Click the link below to reset your password:</p><p><a href="{{ACTION_URL}}" target="_blank" rel="noopener">Reset password</a></p><p>If you did not request this, you can ignore this email.</p><p>— {{COMPANY_NAME}}</p>');
     });
@@ -46,7 +47,7 @@ export default function PasswordResetSystemEmailPage() {
     setStatus('saving');
     try {
       if (!html.trim()) { setStatus('error'); setTimeout(() => setStatus('idle'), 1500); return; }
-      await saveSystemEmail('password_reset', { subject: subject.trim(), body: html });
+      await saveSystemEmailDoc('password_reset', { subject: subject.trim(), body: html });
       setStatus('saved');
       setTimeout(() => setStatus('idle'), 1200);
     } catch {

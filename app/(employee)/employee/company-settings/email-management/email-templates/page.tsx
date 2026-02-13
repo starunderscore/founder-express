@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, Button, Menu, ActionIcon, Tabs } from '@mantine/core';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import { archiveEmailTemplate, softRemoveEmailTemplate, type EmailTemplateItem } from '@/lib/firebase/emailSettings';
+import { archiveEmailTemplateDoc, softRemoveEmailTemplateDoc, type EmailTemplate as EmailTemplateItem } from '@/services/company-settings/email-templates';
 import { IconMail } from '@tabler/icons-react';
 
 export default function EmailTemplatesActivePage() {
@@ -29,8 +29,8 @@ export default function EmailTemplatesActivePage() {
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item onClick={() => router.push(`/employee/company-settings/email-management/email-templates/new?edit=${encodeURIComponent(r.id)}`)}>Edit</Menu.Item>
-              <Menu.Item onClick={async () => { await archiveEmailTemplate(r.id, true); }}>Archive</Menu.Item>
-              <Menu.Item color="red" onClick={async () => { await softRemoveEmailTemplate(r.id); }}>Remove</Menu.Item>
+              <Menu.Item onClick={async () => { await archiveEmailTemplateDoc(r.id, true); }}>Archive</Menu.Item>
+              <Menu.Item color="red" onClick={async () => { await softRemoveEmailTemplateDoc(r.id); }}>Remove</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -69,7 +69,7 @@ export default function EmailTemplatesActivePage() {
 
         <Card withBorder>
           <FirestoreDataTable
-            collectionPath="admin_settings/global/email_templates"
+            collectionPath="ep_company_settings/global/email_templates"
             columns={columns}
             initialSort={{ field: 'createdAt', direction: 'desc' }}
             clientFilter={(r: any) => !r.archivedAt && !r.deletedAt && r.id !== 'auth-password-reset' && r.id !== 'auth-email-verification'}
