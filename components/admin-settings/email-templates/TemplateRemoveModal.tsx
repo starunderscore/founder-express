@@ -1,0 +1,29 @@
+"use client";
+import { useEffect, useState } from 'react';
+import { Button, CopyButton, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
+
+export default function TemplateRemoveModal({ opened, onClose, templateName, onConfirm }: { opened: boolean; onClose: () => void; templateName: string; onConfirm: () => void | Promise<void>; }) {
+  const [input, setInput] = useState('');
+  useEffect(() => { if (opened) setInput(''); }, [opened, templateName]);
+  const canRemove = !!templateName && input === templateName;
+  return (
+    <Modal opened={opened} onClose={onClose} title="Remove template" centered>
+      <Stack>
+        <Text>This will move the template to Removed. You can restore it later or permanently delete it from there.</Text>
+        <Text c="dimmed">To confirm removal, type the full template name.</Text>
+        <Group align="end" gap="sm">
+          <TextInput label="Template name" value={templateName} readOnly style={{ flex: 1 }} />
+          <CopyButton value={templateName}>{({ copied, copy }) => (
+            <Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>
+          )}</CopyButton>
+        </Group>
+        <TextInput label="Type here to confirm" placeholder="Paste or type template name" value={input} onChange={(e) => setInput(e.currentTarget.value)} />
+        <Group justify="flex-end">
+          <Button variant="default" onClick={onClose}>Cancel</Button>
+          <Button color="red" onClick={onConfirm} disabled={!canRemove}>Remove</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+

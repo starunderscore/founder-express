@@ -2,13 +2,21 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, Button, Menu, ActionIcon, Tabs } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Menu, ActionIcon, Tabs, Modal } from '@mantine/core';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { restoreEmailTemplateDoc, deleteEmailTemplateDoc, type EmailTemplate as EmailTemplateItem } from '@/services/company-settings/email-templates';
+import { useState } from 'react';
+import TemplateDeletePermanentModal from '@/components/admin-settings/email-templates/TemplateDeletePermanentModal';
 import { IconMail } from '@tabler/icons-react';
+import { useToast } from '@/components/ToastProvider';
 
 export default function EmailTemplatesRemovedPage() {
   const router = useRouter();
+  const toast = useToast();
+  const [target, setTarget] = useState<(EmailTemplateItem & { id: string }) | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const columns: Column<EmailTemplateItem & { id: string }>[] = [
     { key: 'name', header: 'Name', render: (r) => (r.name || '—') },
@@ -28,8 +36,8 @@ export default function EmailTemplatesRemovedPage() {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item onClick={async () => { await restoreEmailTemplateDoc(r.id); }}>Restore</Menu.Item>
-              <Menu.Item color="red" onClick={async () => { await deleteEmailTemplateDoc(r.id); }}>Delete permanently</Menu.Item>
+              <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
+              <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmDelete(true); }}>Delete permanently</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -74,8 +82,38 @@ export default function EmailTemplatesRemovedPage() {
             clientFilter={(r: any) => !!r.deletedAt}
             defaultPageSize={25}
             enableSelection={false}
+            refreshKey={refreshKey}
           />
         </Card>
+
+        <Modal opened={confirmRestore} onClose={() => setConfirmRestore(false)} title="Restore template" centered>
+          <Stack>
+            <Text>Restore this template back to Active?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmRestore(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!target) return;
+                await restoreEmailTemplateDoc(target.id);
+                setConfirmRestore(false); setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Template restored', message: target.name, color: 'green' });
+              }}>Restore</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <TemplateDeletePermanentModal
+          opened={confirmDelete}
+          onClose={() => setConfirmDelete(false)}
+          templateName={target?.name || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await deleteEmailTemplateDoc(target.id);
+            setConfirmDelete(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+            toast.show({ title: 'Template deleted', message: target.name, color: 'red' });
+          }}
+        />
       </Stack>
     </EmployerAdminGate>
   );

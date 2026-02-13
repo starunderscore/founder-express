@@ -6,12 +6,25 @@ import { Title, Text, Card, Stack, Group, Button, Menu, ActionIcon, Tabs } from 
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { archiveEmailTemplateDoc, softRemoveEmailTemplateDoc, type EmailTemplate as EmailTemplateItem } from '@/services/company-settings/email-templates';
 import { IconMail } from '@tabler/icons-react';
+import { useToast } from '@/components/ToastProvider';
+import { useState } from 'react';
+import TemplateArchiveModal from '@/components/admin-settings/email-templates/TemplateArchiveModal';
+import TemplateRemoveModal from '@/components/admin-settings/email-templates/TemplateRemoveModal';
 
 export default function EmailTemplatesActivePage() {
   const router = useRouter();
+  const toast = useToast();
+  const [target, setTarget] = useState<(EmailTemplateItem & { id: string }) | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const columns: Column<EmailTemplateItem & { id: string }>[] = [
-    { key: 'name', header: 'Name', render: (r) => (r.name || '—') },
+    { key: 'name', header: 'Name', render: (r) => (
+      <Link href={`/employee/company-settings/email-management/email-templates/new?edit=${encodeURIComponent(r.id)}`} style={{ textDecoration: 'none' }}>
+        {r.name || '—'}
+      </Link>
+    ) },
     { key: 'subject', header: 'Subject', render: (r) => (<Text c="dimmed" size="sm">{r.subject || '—'}</Text>) },
     {
       key: 'actions', header: '', width: 1,
@@ -29,8 +42,8 @@ export default function EmailTemplatesActivePage() {
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item onClick={() => router.push(`/employee/company-settings/email-management/email-templates/new?edit=${encodeURIComponent(r.id)}`)}>Edit</Menu.Item>
-              <Menu.Item onClick={async () => { await archiveEmailTemplateDoc(r.id, true); }}>Archive</Menu.Item>
-              <Menu.Item color="red" onClick={async () => { await softRemoveEmailTemplateDoc(r.id); }}>Remove</Menu.Item>
+              <Menu.Item onClick={() => { setTarget(r); setConfirmArchive(true); }}>Archive</Menu.Item>
+              <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmRemove(true); }}>Remove</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -75,8 +88,35 @@ export default function EmailTemplatesActivePage() {
             clientFilter={(r: any) => !r.archivedAt && !r.deletedAt && r.id !== 'auth-password-reset' && r.id !== 'auth-email-verification'}
             defaultPageSize={25}
             enableSelection={false}
+            refreshKey={refreshKey}
           />
         </Card>
+
+        <TemplateArchiveModal
+          opened={confirmArchive}
+          onClose={() => setConfirmArchive(false)}
+          templateName={target?.name || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await archiveEmailTemplateDoc(target.id, true);
+            setConfirmArchive(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+            toast.show({ title: 'Template archived', message: target.name, color: 'green' });
+          }}
+        />
+
+        <TemplateRemoveModal
+          opened={confirmRemove}
+          onClose={() => setConfirmRemove(false)}
+          templateName={target?.name || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await softRemoveEmailTemplateDoc(target.id);
+            setConfirmRemove(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+            toast.show({ title: 'Template moved to removed', message: target.name, color: 'orange' });
+          }}
+        />
       </Stack>
     </EmployerAdminGate>
   );
