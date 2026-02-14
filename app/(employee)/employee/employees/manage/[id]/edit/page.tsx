@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, Checkbox, Group, MultiSelect, Stack, Text, TextInput, Title, ActionIcon, Badge } from '@mantine/core';
 import { PermissionsMatrix } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { db } from '@/lib/firebase/client';
-import { collection, doc, onSnapshot, query, updateDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query } from 'firebase/firestore';
+import { updateEmployeeDoc } from '@/services/employees';
 import { namesToIds, idsToNames } from '@/lib/permissions';
 
 export default function EditEmployeePage({ params }: { params: { id: string } }) {
@@ -69,7 +69,7 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
     if (e) e.preventDefault();
     if (!name.trim() || !email.trim()) return;
     const directIds = isAdmin ? [] : namesToIds(extraNames);
-    await updateDoc(doc(db(), 'employees', emp.id), {
+    await updateEmployeeDoc(emp.id, {
       name: name.trim(),
       email: email.trim(),
       isAdmin: !!isAdmin,

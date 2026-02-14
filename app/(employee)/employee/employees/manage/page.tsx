@@ -4,27 +4,21 @@ import { useEffect, useState } from 'react';
 import { Button, Card, Group, Stack, Text, Title, Badge, Menu, ActionIcon, Tabs } from '@mantine/core';
 import { IconUsers } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { archiveEmployeeDoc, softRemoveEmployeeDoc, type Employee } from '@/services/employees';
+import { listRoles } from '@/services/roles';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 
-type EmployeeDoc = { id: string; name: string; email: string; roleIds: string[]; permissionIds: string[]; isAdmin?: boolean; isArchived?: boolean; deletedAt?: number };
+type EmployeeDoc = Employee;
 
 export default function EmployerEmployeesManagePage() {
   const router = useRouter();
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
   useEffect(() => {
-    const qRoles = query(collection(db(), 'ep_employee_roles'));
-    const unsub = onSnapshot(qRoles, (snap) => {
-      const list: Array<{ id: string; name: string }> = [];
-      snap.forEach((d) => {
-        const data = d.data() as any;
-        if (!data.deletedAt) list.push({ id: d.id, name: data.name || '' });
-      });
-      setRoles(list);
-    });
-    return () => unsub();
+    (async () => {
+      const rows = await listRoles('active');
+      setRoles(rows.map(r => ({ id: r.id, name: r.name })));
+    })();
   }, []);
 
   const roleName = (rid: string) => roles.find((r) => r.id === rid)?.name || null;
@@ -96,8 +90,8 @@ export default function EmployerEmployeesManagePage() {
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item component={Link as any} href={`/employee/employees/manage/${r.id}/edit`}>Edit</Menu.Item>
-                      <Menu.Item onClick={async () => { await updateDoc(doc(db(), 'employees', r.id), { isArchived: true }); setRefreshKey((k) => k + 1); }}>Archive</Menu.Item>
-                      <Menu.Item color="red" onClick={async () => { await updateDoc(doc(db(), 'employees', r.id), { deletedAt: Date.now() }); setRefreshKey((k) => k + 1); }}>Remove</Menu.Item>
+                      <Menu.Item onClick={async () => { await archiveEmployeeDoc(r.id, true); setRefreshKey((k) => k + 1); }}>Archive</Menu.Item>
+                      <Menu.Item color="red" onClick={async () => { await softRemoveEmployeeDoc(r.id); setRefreshKey((k) => k + 1); }}>Remove</Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
                 </Group>

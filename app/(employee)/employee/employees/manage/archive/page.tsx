@@ -1,48 +1,16 @@
 "use client";
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { Button, Card, Group, Stack, Table, Text, Title, Badge, Menu, ActionIcon, Center, Loader, Tabs } from '@mantine/core';
+import { Button, Card, Group, Stack, Text, Title, Badge, Menu, ActionIcon, Tabs } from '@mantine/core';
 import { IconUsers } from '@tabler/icons-react';
-import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { useRouter } from 'next/navigation';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import { archiveEmployeeDoc, softRemoveEmployeeDoc, type Employee } from '@/services/employees';
 
-type EmployeeDoc = { id: string; name: string; email: string; roleIds: string[]; permissionIds: string[]; isAdmin?: boolean; isArchived?: boolean; deletedAt?: number };
+type EmployeeDoc = Employee;
 
 export default function EmployerEmployeesArchivePage() {
   const router = useRouter();
-  const [employees, setEmployees] = useState<EmployeeDoc[] | null>(null);
-
-  useEffect(() => {
-    const q = query(collection(db(), 'employees'));
-    const unsub = onSnapshot(q, (snap) => {
-      const list: EmployeeDoc[] = [];
-      snap.forEach((d) => {
-        const data = d.data() as any;
-        list.push({
-          id: d.id,
-          name: data.name || '',
-          email: data.email || '',
-          roleIds: Array.isArray(data.roleIds) ? data.roleIds : [],
-          permissionIds: Array.isArray(data.permissionIds) ? data.permissionIds : [],
-          isAdmin: !!data.isAdmin,
-          isArchived: !!data.isArchived,
-          deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined,
-        });
-      });
-      setEmployees(list.filter((e) => e.isArchived && !e.deletedAt));
-    });
-    return () => unsub();
-  }, []);
-
-  if (employees === null) {
-    return (
-      <Center mih={200}>
-        <Loader size="sm" />
-      </Center>
-    );
-  }
 
   return (
     <EmployerAdminGate>
@@ -73,47 +41,32 @@ export default function EmployerEmployeesArchivePage() {
       </Tabs>
 
       <Card withBorder>
-        <Table verticalSpacing="sm">
-          <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Email</Table.Th>
-                <Table.Th>Admin</Table.Th>
-                <Table.Th>Roles</Table.Th>
-                <Table.Th></Table.Th>
-              </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {employees.map((e) => (
-              <Table.Tr key={e.id}>
-                <Table.Td>{e.name}</Table.Td>
-                <Table.Td>{e.email}</Table.Td>
-                <Table.Td>{e.isAdmin ? <Badge size="xs" variant="light" color="indigo">admin</Badge> : '—'}</Table.Td>
-                <Table.Td>{Array.isArray(e.roleIds) ? e.roleIds.length : 0}</Table.Td>
-                <Table.Td>
-                  <Group justify="flex-end">
-                    <Menu shadow="md" width={180}>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item onClick={async () => { await updateDoc(doc(db(), 'employees', e.id), { isArchived: false }); }}>Restore</Menu.Item>
-                        <Menu.Item color="red" onClick={async () => { await updateDoc(doc(db(), 'employees', e.id), { deletedAt: Date.now() }); }}>Remove</Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            {employees.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={5}>
-                  <Text c="dimmed">No archived employees</Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+        <FirestoreDataTable
+          collectionPath="employees"
+          columns={[
+            { key: 'name', header: 'Name', render: (r: EmployeeDoc) => (r.name || '—') },
+            { key: 'email', header: 'Email', render: (r: EmployeeDoc) => (r.email || '—') },
+            { key: 'isAdmin', header: 'Admin', width: 100, render: (r: EmployeeDoc) => (r.isAdmin ? <Badge size="xs" variant="light" color="indigo">admin</Badge> : '—') },
+            { key: 'roleIds', header: 'Roles', render: (r: EmployeeDoc) => (Array.isArray(r.roleIds) ? r.roleIds.length : 0) },
+            { key: 'actions', header: '', width: 1, render: (r: EmployeeDoc) => (
+              <Group justify="flex-end">
+                <Menu shadow="md" width={180}>
+                  <Menu.Target>
+                    <ActionIcon variant="subtle" aria-label="More actions">⋯</ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item onClick={async () => { await archiveEmployeeDoc(r.id, false); }}>Restore</Menu.Item>
+                    <Menu.Item color="red" onClick={async () => { await softRemoveEmployeeDoc(r.id); }}>Remove</Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
+            ) }
+          ] as Column<EmployeeDoc>[]}
+          initialSort={{ field: 'name', direction: 'asc' }}
+          clientFilter={(r: any) => !!r.isArchived && !r.deletedAt}
+          defaultPageSize={25}
+          enableSelection={false}
+        />
       </Card>
     </Stack>
     </EmployerAdminGate>

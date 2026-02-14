@@ -5,7 +5,8 @@ import { Button, Card, Checkbox, Group, MultiSelect, Stack, Text, TextInput, Tit
 import { PermissionsMatrix, labelFor, RESOURCES } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { db } from '@/lib/firebase/client';
-import { collection, addDoc, onSnapshot, serverTimestamp, query } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { createEmployee } from '@/services/employees';
 import { namesToIds, idsToNames } from '@/lib/permissions';
 
 export default function NewEmployeePage() {
@@ -57,20 +58,8 @@ export default function NewEmployeePage() {
     if (!name.trim() || !email.trim()) return;
     const directIds = isAdmin ? [] : namesToIds(extraNames);
 
-    try {
-      // Use auto-id docs for employees created by the owner
-      await addDoc(collection(db(), 'employees'), {
-        name: name.trim(),
-        email: email.trim(),
-        roleIds: isAdmin ? [] : roleIds,
-        permissionIds: directIds,
-        isAdmin: !!isAdmin,
-        createdAt: serverTimestamp(),
-      });
-      router.push('/employee/employees/manage');
-    } catch (_e) {
-      // Silently noop for now or you can surface via a toast
-    }
+    await createEmployee({ name: name.trim(), email: email.trim(), roleIds: isAdmin ? [] : roleIds, permissionIds: directIds, isAdmin: !!isAdmin });
+    router.push('/employee/employees/manage');
   };
 
   return (
