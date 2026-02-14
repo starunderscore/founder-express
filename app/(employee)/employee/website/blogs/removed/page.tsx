@@ -1,6 +1,9 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, Table, Badge, ActionIcon, Menu } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Badge, ActionIcon, Menu, Modal, TextInput, CopyButton } from '@mantine/core';
+import { useToast } from '@/components/ToastProvider';
+import Link from 'next/link';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { IconFileText } from '@tabler/icons-react';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useEffect, useMemo, useState } from 'react';
@@ -9,7 +12,13 @@ import { listenBlogsRemoved, restoreBlog, hardDeleteBlog, type BlogDoc } from '@
 
 export default function WebsiteBlogsRemovedPage() {
   const router = useRouter();
+  const toast = useToast();
   const [removed, setRemoved] = useState<(BlogDoc & { id: string })[]>([]);
+  const [target, setTarget] = useState<(BlogDoc & { id: string }) | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     const unsub = listenBlogsRemoved(setRemoved);
     return () => unsub();
@@ -36,68 +45,107 @@ export default function WebsiteBlogsRemovedPage() {
               </div>
             </Group>
           </Group>
-          <Group gap={8}>
-            <Badge variant="light" color="blue">Total: {total}</Badge>
-            <Badge variant="light" color="green">Published: {publishedCount}</Badge>
-            <Badge variant="light" color="gray">Drafts: {draftsCount}</Badge>
-            <Button onClick={() => router.push('/employee/website/blogs/new')}>New post</Button>
-          </Group>
+          {/* Removed counts chips and New post button per request */}
         </Group>
 
         <RouteTabs
           value={'removed'}
           mb="md"
           tabs={[
-            { value: 'all', label: 'Blogs', href: '/employee/website/blogs' },
+            { value: 'active', label: 'Active', href: '/employee/website/blogs' },
             { value: 'drafts', label: 'Drafts', href: '/employee/website/blogs/drafts' },
-            { value: 'archive', label: 'Archive', href: '/employee/website/blogs/archive' },
+            { value: 'archives', label: 'Archives', href: '/employee/website/blogs/archive' },
             { value: 'removed', label: 'Removed', href: '/employee/website/blogs/removed' },
           ]}
         />
 
         <Card withBorder>
-          <div style={{ padding: '12px 16px' }}>
-            <Text c="dimmed" size="sm">Restore or permanently delete blog posts.</Text>
-          </div>
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Title</Table.Th>
-                <Table.Th>Slug</Table.Th>
-                <Table.Th>Removed</Table.Th>
-                <Table.Th style={{ width: 1 }}></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {removed.map((b) => (
-                <Table.Tr key={b.id}>
-                  <Table.Td>
-                    <Text fw={600}>{b.title}</Text>
-                    {b.excerpt && <Text size="sm" c="dimmed" lineClamp={1}>{b.excerpt}</Text>}
-                  </Table.Td>
-                  <Table.Td><Text size="sm">/{b.slug}</Text></Table.Td>
-                  <Table.Td><Text size="sm" c="dimmed">{b.deletedAt ? new Date(b.deletedAt).toLocaleString() : '—'}</Text></Table.Td>
-                  <Table.Td>
+          {(() => {
+            type Row = import('@/lib/firebase/blogs').BlogDoc & { id: string };
+            const columns: Column<Row>[] = [
+              { key: 'title', header: 'Title', render: (r) => (
+                <Link href={`/employee/website/blogs/new?edit=${encodeURIComponent((r as any).id)}`} style={{ textDecoration: 'none' }}>
+                  {r.title || '—'}
+                </Link>
+              ) },
+              { key: 'slug', header: 'Slug', render: (r) => (<Text size="sm">/{r.slug}</Text>) },
+              { key: 'deletedAt', header: 'Removed', render: (r) => (<Text size="sm" c="dimmed">{r.deletedAt ? new Date(r.deletedAt).toLocaleString() : '—'}</Text>) },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (r) => (
+                  <Group justify="flex-end">
                     <Menu shadow="md" width={200}>
                       <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
+                        <ActionIcon variant="subtle" aria-label="More actions">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                          </svg>
+                        </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item onClick={() => restoreBlog(b.id)}>Restore</Menu.Item>
-                        <Menu.Item color="red" onClick={() => hardDeleteBlog(b.id)}>Delete permanently</Menu.Item>
+                        <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
+                        <Menu.Item color="red" onClick={() => { setTarget(r); setDeleteInput(''); setConfirmDelete(true); }}>Delete permanently</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {removed.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={4}><Text c="dimmed">No removed posts</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+                  </Group>
+                )
+              }
+            ];
+            return (
+              <FirestoreDataTable
+                collectionPath="blogs"
+                columns={columns}
+                initialSort={{ field: 'deletedAt', direction: 'desc' }}
+                clientFilter={(r: any) => !!r.deletedAt}
+                defaultPageSize={25}
+                enableSelection={false}
+                refreshKey={refreshKey}
+              />
+            );
+          })()}
         </Card>
+
+        <Modal opened={confirmRestore} onClose={() => setConfirmRestore(false)} title="Restore post" centered>
+          <Stack>
+            <Text>Restore this post back to Active?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmRestore(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!target) return;
+                await restoreBlog(target.id);
+                setConfirmRestore(false); setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post restored', message: target.title, color: 'green' });
+              }}>Restore</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <Modal opened={confirmDelete} onClose={() => setConfirmDelete(false)} title="Permanently delete post" centered>
+          <Stack>
+            <Text color="red">This action permanently deletes the post and cannot be undone.</Text>
+            <Text c="dimmed">To confirm, type the full post title.</Text>
+            <Group align="end" gap="sm">
+              <TextInput label="Post title" value={target?.title || ''} readOnly style={{ flex: 1 }} />
+              <CopyButton value={target?.title || ''}>{({ copied, copy }) => (
+                <Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>
+              )}</CopyButton>
+            </Group>
+            <TextInput label="Type here to confirm" placeholder="Paste or type post title" value={deleteInput} onChange={(e) => setDeleteInput(e.currentTarget.value)} />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+              <Button color="red" onClick={async () => {
+                if (!target) return;
+                await hardDeleteBlog(target.id);
+                setConfirmDelete(false); setTarget(null); setDeleteInput('');
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post deleted', message: target.title, color: 'red' });
+              }} disabled={!target?.title || deleteInput !== (target?.title || '')}>Delete permanently</Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </EmployerAuthGate>
   );

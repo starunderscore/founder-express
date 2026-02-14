@@ -1,6 +1,9 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, Table, Badge, ActionIcon, Menu } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Badge, ActionIcon, Menu, Modal, TextInput, CopyButton } from '@mantine/core';
+import { useToast } from '@/components/ToastProvider';
+import Link from 'next/link';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { IconFileText } from '@tabler/icons-react';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useEffect, useMemo, useState } from 'react';
@@ -9,7 +12,13 @@ import { useRouter } from 'next/navigation';
 
 export default function WebsiteBlogsArchivePage() {
   const router = useRouter();
+  const toast = useToast();
   const [archived, setArchived] = useState<(BlogDoc & { id: string })[]>([]);
+  const [target, setTarget] = useState<(BlogDoc & { id: string }) | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removeInput, setRemoveInput] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     const unsub = listenBlogsArchived(setArchived);
     return () => unsub();
@@ -17,6 +26,8 @@ export default function WebsiteBlogsArchivePage() {
   const total = archived.length;
   const publishedCount = archived.filter((b) => b.published).length;
   const draftsCount = archived.length - publishedCount;
+
+  const openEdit = (row: BlogDoc & { id: string }) => router.push(`/employee/website/blogs/new?edit=${encodeURIComponent(row.id)}`);
 
   return (
     <EmployerAuthGate>
@@ -36,68 +47,107 @@ export default function WebsiteBlogsArchivePage() {
               </div>
             </Group>
           </Group>
-          <Group gap={8}>
-            <Badge variant="light" color="blue">Total: {total}</Badge>
-            <Badge variant="light" color="green">Published: {publishedCount}</Badge>
-            <Badge variant="light" color="gray">Drafts: {draftsCount}</Badge>
-            <Button onClick={() => router.push('/employee/website/blogs/new')}>New post</Button>
-          </Group>
+          {/* Removed counts chips and New post button per request */}
         </Group>
 
         <RouteTabs
-          value={'archive'}
+          value={'archives'}
           mb="md"
           tabs={[
-            { value: 'all', label: 'Blogs', href: '/employee/website/blogs' },
+            { value: 'active', label: 'Active', href: '/employee/website/blogs' },
             { value: 'drafts', label: 'Drafts', href: '/employee/website/blogs/drafts' },
-            { value: 'archive', label: 'Archive', href: '/employee/website/blogs/archive' },
+            { value: 'archives', label: 'Archives', href: '/employee/website/blogs/archive' },
             { value: 'removed', label: 'Removed', href: '/employee/website/blogs/removed' },
           ]}
         />
 
         <Card withBorder>
-          <div style={{ padding: '12px 16px' }}>
-            <Text c="dimmed" size="sm">Restore archived posts back to Blogs.</Text>
-          </div>
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Title</Table.Th>
-                <Table.Th>Slug</Table.Th>
-                <Table.Th>Updated</Table.Th>
-                <Table.Th style={{ width: 1 }}></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {archived.map((b) => (
-                <Table.Tr key={b.id}>
-                  <Table.Td>
-                    <Text fw={600}>{b.title}</Text>
-                    {b.excerpt && <Text size="sm" c="dimmed" lineClamp={1}>{b.excerpt}</Text>}
-                  </Table.Td>
-                  <Table.Td><Text size="sm">/{b.slug}</Text></Table.Td>
-                  <Table.Td><Text size="sm" c="dimmed">{new Date(b.updatedAt).toLocaleString()}</Text></Table.Td>
-                  <Table.Td>
+          {(() => {
+            type Row = import('@/lib/firebase/blogs').BlogDoc & { id: string };
+            const columns: Column<Row>[] = [
+              { key: 'title', header: 'Title', render: (r) => (
+                <Link href={`/employee/website/blogs/new?edit=${encodeURIComponent((r as any).id)}`} style={{ textDecoration: 'none' }}>
+                  {r.title || '—'}
+                </Link>
+              ) },
+              { key: 'slug', header: 'Slug', render: (r) => (<Text size="sm">/{r.slug}</Text>) },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (r) => (
+                  <Group justify="flex-end">
                     <Menu shadow="md" width={220}>
                       <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
+                        <ActionIcon variant="subtle" aria-label="More actions">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                          </svg>
+                        </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item onClick={() => archiveBlog(b.id, false)}>Restore to Blogs</Menu.Item>
-                        <Menu.Item color="red" onClick={() => softRemoveBlog(b.id)}>Move to Removed</Menu.Item>
+                        <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
+                        <Menu.Item color="red" onClick={() => { setTarget(r); setRemoveInput(''); setConfirmRemove(true); }}>Remove</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {archived.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={4}><Text c="dimmed">No archived posts</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+                  </Group>
+                )
+              }
+            ];
+            return (
+              <FirestoreDataTable
+                collectionPath="blogs"
+                columns={columns}
+                initialSort={{ field: 'updatedAt', direction: 'desc' }}
+                clientFilter={(r: any) => !!r.isArchived}
+                defaultPageSize={25}
+                enableSelection={false}
+                refreshKey={refreshKey}
+              />
+            );
+          })()}
         </Card>
+        {/* Inline edit modal removed; use dedicated edit page */}
+
+        <Modal opened={confirmRestore} onClose={() => setConfirmRestore(false)} title="Restore post" centered>
+          <Stack>
+            <Text>Restore this post back to Active?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmRestore(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!target) return;
+                await archiveBlog(target.id, false);
+                setConfirmRestore(false); setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post restored', message: target.title, color: 'green' });
+              }}>Restore</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <Modal opened={confirmRemove} onClose={() => setConfirmRemove(false)} title="Remove post" centered>
+          <Stack>
+            <Text>This will move the post to Removed. You can permanently delete it from there.</Text>
+            <Text c="dimmed">To confirm, type the full post title.</Text>
+            <Group align="end" gap="sm">
+              <TextInput label="Post title" value={target?.title || ''} readOnly style={{ flex: 1 }} />
+              <CopyButton value={target?.title || ''}>{({ copied, copy }) => (
+                <Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>
+              )}</CopyButton>
+            </Group>
+            <TextInput label="Type here to confirm" placeholder="Paste or type post title" value={removeInput} onChange={(e) => setRemoveInput(e.currentTarget.value)} />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmRemove(false)}>Cancel</Button>
+              <Button color="red" onClick={async () => {
+                if (!target) return;
+                await softRemoveBlog(target.id);
+                setConfirmRemove(false); setTarget(null); setRemoveInput('');
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post moved to removed', message: target.title, color: 'orange' });
+              }} disabled={!target?.title || removeInput !== (target?.title || '')}>Remove</Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </EmployerAuthGate>
   );

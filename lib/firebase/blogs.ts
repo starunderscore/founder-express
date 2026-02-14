@@ -12,6 +12,7 @@ import {
   serverTimestamp,
   type Unsubscribe,
   getDocs,
+  getDoc,
 } from 'firebase/firestore';
 
 export type BlogDoc = {
@@ -110,4 +111,10 @@ export async function restoreBlog(id: string) {
 
 export async function hardDeleteBlog(id: string) {
   await deleteDoc(doc(db(), COL, id));
+}
+
+export async function getBlog(id: string): Promise<(BlogDoc & { id: string }) | null> {
+  const snap = await getDoc(doc(db(), COL, id));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...(snap.data() as any) } as any;
 }

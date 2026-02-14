@@ -1,6 +1,9 @@
 "use client";
+import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, Table, Modal, TextInput, Textarea, Switch, ActionIcon, Menu } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Modal, TextInput, Textarea, Switch, ActionIcon, Menu, Badge, CopyButton } from '@mantine/core';
+import { useToast } from '@/components/ToastProvider';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { IconFileText } from '@tabler/icons-react';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useMemo, useState, useEffect } from 'react';
@@ -18,62 +21,30 @@ function slugify(input: string): string {
 
 export default function WebsiteBlogsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [blogs, setBlogs] = useState<(BlogDoc & { id: string })[]>([]);
   useEffect(() => {
     const unsub = listenBlogsActive(setBlogs);
     return () => unsub();
   }, []);
 
-  const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<'create' | 'edit'>('create');
-  const [editId, setEditId] = useState<string>('');
-  const [title, setTitle] = useState('');
-  const [slug, setSlug] = useState('');
-  const [excerpt, setExcerpt] = useState('');
-  const [content, setContent] = useState('');
-  const [published, setPublished] = useState(false);
+  // Inline edit modal removed; edits go to dedicated page
+  const [target, setTarget] = useState<(BlogDoc & { id: string }) | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removeInput, setRemoveInput] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const activeBlogs = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived), [blogs]);
   const total = activeBlogs.length;
   const publishedCount = useMemo(() => activeBlogs.filter((b) => b.published).length, [activeBlogs]);
   const draftsCount = total - publishedCount;
 
-  const openCreate = () => {
-    setMode('create');
-    setEditId('');
-    setTitle('');
-    setSlug('');
-    setExcerpt('');
-    setContent('');
-    setPublished(false);
-    setOpen(true);
-  };
+  const openCreate = () => { router.push('/employee/website/blogs/new'); };
 
-  const openEdit = (id: string) => {
-    const b = blogs.find((x) => x.id === id);
-    if (!b) return;
-    setMode('edit');
-    setEditId(id);
-    setTitle(b.title);
-    setSlug(b.slug);
-    setExcerpt(b.excerpt || '');
-    setContent(b.content);
-    setPublished(b.published);
-    setOpen(true);
-  };
+  const openEdit = (id: string) => { router.push(`/employee/website/blogs/new?edit=${encodeURIComponent(id)}`); };
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanTitle = title.trim();
-    if (!cleanTitle) return;
-    const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    if (mode === 'create') {
-      createBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published });
-    } else {
-      fbUpdateBlog(editId, { title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content, published });
-    }
-    setOpen(false);
-  };
+  // removed inline edit submit handler
 
   return (
     <EmployerAuthGate>
@@ -93,86 +64,113 @@ export default function WebsiteBlogsPage() {
               </div>
             </Group>
           </Group>
+          <Button component={Link as any} href="/employee/website/blogs/new" variant="light">New post</Button>
         </Group>
 
         <RouteTabs
-          value={'all'}
+          value={'active'}
           mb="md"
           tabs={[
-            { value: 'all', label: 'Blogs', href: '/employee/website/blogs' },
+            { value: 'active', label: 'Active', href: '/employee/website/blogs' },
             { value: 'drafts', label: 'Drafts', href: '/employee/website/blogs/drafts' },
-            { value: 'archive', label: 'Archive', href: '/employee/website/blogs/archive' },
+            { value: 'archives', label: 'Archives', href: '/employee/website/blogs/archive' },
             { value: 'removed', label: 'Removed', href: '/employee/website/blogs/removed' },
           ]}
         />
 
-        <Group justify="flex-end" mb="sm">
-          <Button onClick={() => router.push('/employee/website/blogs/new')}>New post</Button>
-        </Group>
 
         <Card withBorder>
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Title</Table.Th>
-                <Table.Th>Slug</Table.Th>
-                <Table.Th>Published</Table.Th>
-                <Table.Th>Updated</Table.Th>
-                <Table.Th style={{ width: 1 }}></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {activeBlogs.map((b) => (
-                <Table.Tr key={b.id}>
-                  <Table.Td>
-                    <Text fw={600}>{b.title}</Text>
-                    {b.excerpt && <Text size="sm" c="dimmed" lineClamp={1}>{b.excerpt}</Text>}
-                  </Table.Td>
-                  <Table.Td><Text size="sm">/{b.slug}</Text></Table.Td>
-                  <Table.Td>
-                    <Switch checked={b.published} onChange={(e) => fbUpdateBlog(b.id, { published: e.currentTarget.checked })} />
-                  </Table.Td>
-                  <Table.Td><Text size="sm" c="dimmed">{new Date(b.updatedAt).toLocaleString()}</Text></Table.Td>
-                  <Table.Td>
+          {(() => {
+            const columns: Column<(BlogDoc & { id: string })>[] = [
+              { key: 'title', header: 'Title', render: (r) => (
+                <Link href="#" onClick={(e) => { e.preventDefault(); openEdit(r.id); }} style={{ textDecoration: 'none' }}>
+                  {r.title || '—'}
+                </Link>
+              ) },
+              { key: 'slug', header: 'Slug', render: (r) => (<Text size="sm">/{r.slug}</Text>) },
+              { key: 'published', header: 'Published', render: (r) => (
+                <Badge variant="light" color={r.published ? 'green' : 'gray'}>{r.published ? 'Yes' : 'No'}</Badge>
+              ) },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (r) => (
+                  <Group justify="flex-end">
                     <Menu shadow="md" width={160}>
                       <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
+                        <ActionIcon variant="subtle" aria-label="More actions">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                          </svg>
+                        </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item onClick={() => openEdit(b.id)}>Edit</Menu.Item>
-                        <Menu.Item onClick={() => archiveBlog(b.id, true)}>Archive</Menu.Item>
-                        <Menu.Item color="red" onClick={() => softRemoveBlog(b.id)}>Remove</Menu.Item>
+                        <Menu.Item onClick={() => openEdit(r.id)}>Edit</Menu.Item>
+                        <Menu.Item onClick={() => { setTarget(r); setConfirmArchive(true); }}>Archive</Menu.Item>
+                        <Menu.Item color="red" onClick={() => { setTarget(r); setRemoveInput(''); setConfirmRemove(true); }}>Remove</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {activeBlogs.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={5}><Text c="dimmed">No posts yet</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+                  </Group>
+                )
+              }
+            ];
+            return (
+              <FirestoreDataTable
+                collectionPath="blogs"
+                columns={columns}
+                initialSort={{ field: 'updatedAt', direction: 'desc' }}
+                clientFilter={(r: any) => !r.deletedAt && !r.isArchived}
+                defaultPageSize={25}
+                enableSelection={false}
+                refreshKey={refreshKey}
+              />
+            );
+          })()}
         </Card>
 
-        <Modal opened={open} onClose={() => setOpen(false)} title={mode === 'create' ? 'New post' : 'Edit post'} size="lg" centered>
-          <form onSubmit={onSubmit}>
-            <Stack>
-              <TextInput label="Title" placeholder="Post title" value={title} onChange={(e) => { setTitle(e.currentTarget.value); if (!slug) setSlug(slugify(e.currentTarget.value)); }} required />
-              <TextInput label="Slug" description="URL segment" leftSection={<span style={{ color: 'var(--mantine-color-dimmed)' }}>/</span>} value={slug} onChange={(e) => setSlug(slugify(e.currentTarget.value))} />
-              <TextInput label="Excerpt" placeholder="Short summary (optional)" value={excerpt} onChange={(e) => setExcerpt(e.currentTarget.value)} />
-              <Textarea label="Content" minRows={8} placeholder="Write your post content..." value={content} onChange={(e) => setContent(e.currentTarget.value)} />
-              <Group justify="space-between" align="center">
-                <Switch label="Published" checked={published} onChange={(e) => setPublished(e.currentTarget.checked)} />
-                <Group>
-                  <Button variant="default" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-                  <Button type="submit">{mode === 'create' ? 'Create' : 'Save'}</Button>
-                </Group>
-              </Group>
-            </Stack>
-          </form>
+        <Modal opened={confirmArchive} onClose={() => setConfirmArchive(false)} title="Archive post" centered>
+          <Stack>
+            <Text>Archive this post? It will move to Archives and can be restored later.</Text>
+            <Text c="dimmed">Post: {target?.title || '—'}</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmArchive(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!target) return;
+                await archiveBlog(target.id, true);
+                setConfirmArchive(false); setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post archived', message: target.title, color: 'green' });
+              }}>Archive</Button>
+            </Group>
+          </Stack>
         </Modal>
+
+        <Modal opened={confirmRemove} onClose={() => setConfirmRemove(false)} title="Remove post" centered>
+          <Stack>
+            <Text>This will move the post to Removed. You can restore it later or permanently delete from there.</Text>
+            <Text c="dimmed">To confirm removal, type the full post title.</Text>
+            <Group align="end" gap="sm">
+              <TextInput label="Post title" value={target?.title || ''} readOnly style={{ flex: 1 }} />
+              <CopyButton value={target?.title || ''}>{({ copied, copy }) => (
+                <Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>
+              )}</CopyButton>
+            </Group>
+            <TextInput label="Type here to confirm" placeholder="Paste or type post title" value={removeInput} onChange={(e) => setRemoveInput(e.currentTarget.value)} />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmRemove(false)}>Cancel</Button>
+              <Button color="red" onClick={async () => {
+                if (!target) return;
+                await softRemoveBlog(target.id);
+                setConfirmRemove(false); setTarget(null); setRemoveInput('');
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post moved to removed', message: target.title, color: 'orange' });
+              }} disabled={!target?.title || removeInput !== (target?.title || '')}>Remove</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        {/* Inline edit modal removed in favor of dedicated edit page */}
       </Stack>
     </EmployerAuthGate>
   );

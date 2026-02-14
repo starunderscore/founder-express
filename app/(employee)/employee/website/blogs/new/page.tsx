@@ -1,11 +1,11 @@
 "use client";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, TextInput, ActionIcon, Modal } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, TextInput, ActionIcon, Modal, Switch, Alert } from '@mantine/core';
 import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { WebContentEditor } from '@/components/WebContentEditor';
-import { createBlog } from '@/lib/firebase/blogs';
+import { createBlog, updateBlog, getBlog } from '@/lib/firebase/blogs';
 
 function slugify(input: string): string {
   return input
@@ -18,22 +18,51 @@ function slugify(input: string): string {
 
 export default function NewBlogPostPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
   // Persist directly to Firestore; Zustand store is not used here
   const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
+  const [slugEdited, setSlugEdited] = useState(false);
   const [excerpt, setExcerpt] = useState('');
   const [html, setHtml] = useState('');
+  const [published, setPublished] = useState(false);
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pile, setPile] = useState<'active' | 'drafts' | 'archives' | 'removed'>('active');
+
+  // Load existing post when editing
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!editId) return;
+      const row = await getBlog(editId);
+      if (!mounted || !row) return;
+      setTitle(row.title);
+      setSlug(row.slug);
+      setExcerpt(row.excerpt || '');
+      setHtml(row.content || '');
+      setPublished(!!row.published);
+      const nextPile: 'active' | 'drafts' | 'archives' | 'removed' = (row as any).deletedAt
+        ? 'removed'
+        : ((row as any).isArchived ? 'archives' : (row.published ? 'active' : 'drafts'));
+      setPile(nextPile);
+    })();
+    return () => { mounted = false; };
+  }, [editId]);
 
   const onSaveDraft = () => {
     const cleanTitle = title.trim();
     if (!cleanTitle) { setError('Title is required'); return; }
     const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    createBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: false });
+    if (editId) {
+      updateBlog(editId, { title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: false });
+    } else {
+      createBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: false });
+    }
     router.push('/employee/website/blogs');
   };
 
@@ -41,7 +70,11 @@ export default function NewBlogPostPage() {
     const cleanTitle = title.trim();
     if (!cleanTitle) { setError('Title is required'); return; }
     const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    createBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: true });
+    if (editId) {
+      updateBlog(editId, { title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: true });
+    } else {
+      createBlog({ title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content: html, published: true });
+    }
     router.push('/employee/website/blogs');
   };
 
@@ -50,13 +83,25 @@ export default function NewBlogPostPage() {
       <Stack>
         <Group justify="space-between" align="flex-start" mb="xs">
           <Group>
-            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/website/blogs')}>
+            <ActionIcon
+              variant="subtle"
+              size="lg"
+              aria-label="Back"
+              onClick={() => {
+                const route = !editId
+                  ? '/employee/website/blogs'
+                  : (pile === 'removed' ? '/employee/website/blogs/removed'
+                    : (pile === 'archives' ? '/employee/website/blogs/archive'
+                      : (pile === 'drafts' ? '/employee/website/blogs/drafts' : '/employee/website/blogs')));
+                router.push(route);
+              }}
+            >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
             </ActionIcon>
             <div>
-              <Title order={2}>New blog post</Title>
+              <Title order={2}>{editId ? 'Edit blog post' : 'New blog post'}</Title>
               <Group gap={8} mt={4}>
                 <Text c="dimmed">Write and publish a blog post</Text>
               </Group>
@@ -65,15 +110,27 @@ export default function NewBlogPostPage() {
           <Group gap="xs">
             <Button variant="light" onClick={onSaveDraft}>Save draft</Button>
             <Button variant="light" onClick={() => setPreviewOpen(true)}>Preview</Button>
-            <Button onClick={onPublish}>Publish</Button>
+            <Button onClick={onPublish}>{editId ? 'Save' : 'Publish'}</Button>
           </Group>
         </Group>
 
+        {editId && pile !== 'active' && (
+          <Alert color={pile === 'removed' ? 'red' : (pile === 'archives' ? 'blue' : 'yellow')} variant="light">
+            {pile === 'removed' && 'This post is in Removed. You can restore it from the Removed list or delete it permanently.'}
+            {pile === 'archives' && 'This post is archived. It does not appear in Active. You can restore it from Archives.'}
+            {pile === 'drafts' && 'This post is a draft and not publicly visible.'}
+          </Alert>
+        )}
+
         <Card withBorder>
           <Stack>
-            <TextInput label="Title" placeholder="Post title" value={title} onChange={(e) => { setTitle(e.currentTarget.value); if (!slug) setSlug(slugify(e.currentTarget.value)); }} required autoFocus />
-            <TextInput label="Slug" description="URL segment" leftSection={<span style={{ color: 'var(--mantine-color-dimmed)' }}>/</span>} value={slug} onChange={(e) => setSlug(slugify(e.currentTarget.value))} />
+            <TextInput label="Title" placeholder="Post title" value={title} onChange={(e) => { const v = e.currentTarget.value; setTitle(v); if (!slugEdited) setSlug(slugify(v)); }} required autoFocus />
+            <TextInput label="Slug" description="URL segment" leftSection={<span style={{ color: 'var(--mantine-color-dimmed)' }}>/</span>} value={slug} onChange={(e) => { setSlugEdited(true); setSlug(slugify(e.currentTarget.value)); }} />
             <TextInput label="Excerpt" placeholder="Short summary (optional)" value={excerpt} onChange={(e) => setExcerpt(e.currentTarget.value)} />
+            <Group justify="space-between" align="center">
+              <Text fw={500} size="sm">Publishing</Text>
+              <Switch label="Published" checked={published} onChange={(e) => setPublished(e.currentTarget.checked)} />
+            </Group>
 
             <Stack gap={2}>
               <Text fw={500} size="sm">Post content</Text>

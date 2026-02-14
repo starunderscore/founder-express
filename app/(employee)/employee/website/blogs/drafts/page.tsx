@@ -1,6 +1,9 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, Table, TextInput, Textarea, Switch, Badge, ActionIcon, Menu, Modal } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Badge, ActionIcon, Menu, Modal, TextInput, CopyButton } from '@mantine/core';
+import { useToast } from '@/components/ToastProvider';
+import Link from 'next/link';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { IconFileText } from '@tabler/icons-react';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useWebsiteStore } from '@/state/websiteStore';
@@ -18,6 +21,7 @@ function slugify(input: string): string {
 
 export default function WebsiteBlogsDraftsPage() {
   const router = useRouter();
+  const toast = useToast();
   const blogs = useWebsiteStore((s) => s.blogs);
   const updateBlog = useWebsiteStore((s) => s.updateBlog);
   const removeBlog = useWebsiteStore((s) => s.removeBlog);
@@ -28,33 +32,13 @@ export default function WebsiteBlogsDraftsPage() {
   const publishedCount = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived && b.published).length, [blogs]);
   const draftsCount = total - publishedCount;
 
-  // Inline editor modal (optional quick edit)
-  const [open, setOpen] = useState(false);
-  const [editId, setEditId] = useState<string>('');
-  const [title, setTitle] = useState('');
-  const [slug, setSlug] = useState('');
-  const [excerpt, setExcerpt] = useState('');
-  const [content, setContent] = useState('');
-
-  const openEdit = (id: string) => {
-    const b = blogs.find((x) => x.id === id);
-    if (!b) return;
-    setEditId(id);
-    setTitle(b.title);
-    setSlug(b.slug);
-    setExcerpt(b.excerpt || '');
-    setContent(b.content);
-    setOpen(true);
-  };
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanTitle = title.trim();
-    if (!cleanTitle) return;
-    const s = (slug || slugify(cleanTitle)).slice(0, 80);
-    updateBlog(editId, { title: cleanTitle, slug: s, excerpt: excerpt.trim() || undefined, content });
-    setOpen(false);
-  };
+  const openEdit = (id: string) => router.push(`/employee/website/blogs/new?edit=${encodeURIComponent(id)}`);
+  const [target, setTarget] = useState<({ id: string } & import('@/lib/firebase/blogs').BlogDoc) | null>(null);
+  const [confirmPublish, setConfirmPublish] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removeInput, setRemoveInput] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   return (
     <EmployerAuthGate>
@@ -74,84 +58,130 @@ export default function WebsiteBlogsDraftsPage() {
               </div>
             </Group>
           </Group>
-          <Group gap={8}>
-            <Badge variant="light" color="blue">Total: {total}</Badge>
-            <Badge variant="light" color="green">Published: {publishedCount}</Badge>
-            <Badge variant="light" color="gray">Drafts: {draftsCount}</Badge>
-            <Button onClick={() => router.push('/employee/website/blogs/new')}>New post</Button>
-          </Group>
+          {/* Removed counts chips and New post button per request */}
         </Group>
 
         <RouteTabs
           value={'drafts'}
           mb="md"
           tabs={[
-            { value: 'all', label: 'Blogs', href: '/employee/website/blogs' },
+            { value: 'active', label: 'Active', href: '/employee/website/blogs' },
             { value: 'drafts', label: 'Drafts', href: '/employee/website/blogs/drafts' },
-            { value: 'archive', label: 'Archive', href: '/employee/website/blogs/archive' },
+            { value: 'archives', label: 'Archives', href: '/employee/website/blogs/archive' },
             { value: 'removed', label: 'Removed', href: '/employee/website/blogs/removed' },
           ]}
         />
 
         <Card withBorder>
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Title</Table.Th>
-                <Table.Th>Slug</Table.Th>
-                <Table.Th>Published</Table.Th>
-                <Table.Th>Updated</Table.Th>
-                <Table.Th style={{ width: 1 }}></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {activeDrafts.map((b) => (
-                <Table.Tr key={b.id}>
-                  <Table.Td>
-                    <Text fw={600}>{b.title}</Text>
-                    {b.excerpt && <Text size="sm" c="dimmed" lineClamp={1}>{b.excerpt}</Text>}
-                  </Table.Td>
-                  <Table.Td><Text size="sm">/{b.slug}</Text></Table.Td>
-                  <Table.Td>
-                    <Switch checked={b.published} onChange={(e) => updateBlog(b.id, { published: e.currentTarget.checked })} />
-                  </Table.Td>
-                  <Table.Td><Text size="sm" c="dimmed">{new Date(b.updatedAt).toLocaleString()}</Text></Table.Td>
-                  <Table.Td>
+          {(() => {
+            type Row = import('@/lib/firebase/blogs').BlogDoc & { id: string };
+            const columns: Column<Row>[] = [
+              { key: 'title', header: 'Title', render: (r) => (
+                <Link href={`/employee/website/blogs/new?edit=${encodeURIComponent(r.id)}`} style={{ textDecoration: 'none' }}>
+                  {r.title || '—'}
+                </Link>
+              ) },
+              { key: 'slug', header: 'Slug', render: (r) => (<Text size="sm">/{r.slug}</Text>) },
+              { key: 'published', header: 'Published', render: (r) => (
+                <Badge variant="light" color={r.published ? 'green' : 'gray'}>{r.published ? 'Yes' : 'No'}</Badge>
+              ) },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (r) => (
+                  <Group justify="flex-end">
                     <Menu shadow="md" width={160}>
                       <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
+                        <ActionIcon variant="subtle" aria-label="More actions">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                          </svg>
+                        </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item onClick={() => openEdit(b.id)}>Edit</Menu.Item>
-                        <Menu.Item onClick={() => setBlogArchived(b.id, true)}>Archive</Menu.Item>
-                        <Menu.Item color="red" onClick={() => removeBlog(b.id)}>Remove</Menu.Item>
+                        <Menu.Item onClick={() => openEdit(r.id)}>Edit</Menu.Item>
+                        <Menu.Item onClick={() => { setTarget(r as any); setConfirmPublish(true); }}>Publish</Menu.Item>
+                        <Menu.Item onClick={() => { setTarget(r as any); setConfirmArchive(true); }}>Archive</Menu.Item>
+                        <Menu.Item color="red" onClick={() => { setTarget(r as any); setRemoveInput(''); setConfirmRemove(true); }}>Remove</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {activeDrafts.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={5}><Text c="dimmed">No drafts</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+                  </Group>
+                )
+              }
+            ];
+            return (
+              <FirestoreDataTable
+                collectionPath="blogs"
+                columns={columns}
+                initialSort={{ field: 'updatedAt', direction: 'desc' }}
+                clientFilter={(r: any) => !r.deletedAt && !r.isArchived && !r.published}
+                defaultPageSize={25}
+                enableSelection={false}
+                refreshKey={refreshKey}
+              />
+            );
+          })()}
         </Card>
 
-        <Modal opened={open} onClose={() => setOpen(false)} title={'Edit draft'} size="lg" centered>
-          <form onSubmit={onSubmit}>
-            <Stack>
-              <TextInput label="Title" placeholder="Post title" value={title} onChange={(e) => { setTitle(e.currentTarget.value); if (!slug) setSlug(slugify(e.currentTarget.value)); }} required />
-              <TextInput label="Slug" description="URL segment" leftSection={<span style={{ color: 'var(--mantine-color-dimmed)' }}>/</span>} value={slug} onChange={(e) => setSlug(slugify(e.currentTarget.value))} />
-              <TextInput label="Excerpt" placeholder="Short summary (optional)" value={excerpt} onChange={(e) => setExcerpt(e.currentTarget.value)} />
-              <Textarea label="Content" minRows={8} placeholder="Write your post content..." value={content} onChange={(e) => setContent(e.currentTarget.value)} />
-              <Group justify="flex-end">
-                <Button variant="default" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button type="submit">Save</Button>
-              </Group>
-            </Stack>
-          </form>
+        {/* Publish confirm modal */}
+        <Modal opened={confirmPublish} onClose={() => setConfirmPublish(false)} title="Publish draft" centered>
+          <Stack>
+            <Text>Publish this draft so it becomes publicly visible?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmPublish(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!target) return;
+                await import('@/lib/firebase/blogs').then(m => m.updateBlog(target.id, { published: true }));
+                setConfirmPublish(false); setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post published', message: target.title, color: 'green' });
+              }}>Publish</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        {/* Archive modal (reuse pattern from Active) */}
+        <Modal opened={confirmArchive} onClose={() => setConfirmArchive(false)} title="Archive post" centered>
+          <Stack>
+            <Text>Archive this post? It will move to Archives and can be restored later.</Text>
+            <Text c="dimmed">Post: {target?.title || '—'}</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmArchive(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!target) return;
+                await import('@/lib/firebase/blogs').then(m => m.archiveBlog(target.id, true));
+                setConfirmArchive(false); setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post archived', message: target.title, color: 'green' });
+              }}>Archive</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        {/* Remove modal (type-to-confirm) */}
+        <Modal opened={confirmRemove} onClose={() => setConfirmRemove(false)} title="Remove post" centered>
+          <Stack>
+            <Text>This will move the post to Removed. You can restore it later or permanently delete from there.</Text>
+            <Text c="dimmed">To confirm removal, type the full post title.</Text>
+            <Group align="end" gap="sm">
+              <TextInput label="Post title" value={target?.title || ''} readOnly style={{ flex: 1 }} />
+              <CopyButton value={target?.title || ''}>{({ copied, copy }) => (
+                <Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>
+              )}</CopyButton>
+            </Group>
+            <TextInput label="Type here to confirm" placeholder="Paste or type post title" value={removeInput} onChange={(e) => setRemoveInput(e.currentTarget.value)} />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmRemove(false)}>Cancel</Button>
+              <Button color="red" onClick={async () => {
+                if (!target) return;
+                await import('@/lib/firebase/blogs').then(m => m.softRemoveBlog(target.id));
+                setConfirmRemove(false); setTarget(null); setRemoveInput('');
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Post moved to removed', message: target.title, color: 'orange' });
+              }} disabled={!target?.title || removeInput !== (target?.title || '')}>Remove</Button>
+            </Group>
+          </Stack>
         </Modal>
       </Stack>
     </EmployerAuthGate>
