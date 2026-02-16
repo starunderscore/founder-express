@@ -264,6 +264,49 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Email Subscriptions — Newsletters (employee portal)
+    function validNewsletterDoc() {
+      return (
+        !("subject" in request.resource.data)
+        || (
+          (request.resource.data.subject is string)
+          && request.resource.data.subject.size() > 0
+          && request.resource.data.subject.size() <= 200
+        )
+      ) && (
+        !("body" in request.resource.data)
+        || (
+          (request.resource.data.body is string)
+          && request.resource.data.body.size() <= 50000
+        )
+      ) && (
+        !("status" in request.resource.data)
+        || (request.resource.data.status in ['Draft','Scheduled','Sent'])
+      ) && (
+        !("recipients" in request.resource.data)
+        || (request.resource.data.recipients is number)
+      ) && (
+        !("scheduledAt" in request.resource.data)
+        || (request.resource.data.scheduledAt is number || request.resource.data.scheduledAt == null)
+      ) && (
+        !("sentAt" in request.resource.data)
+        || (request.resource.data.sentAt is number || request.resource.data.sentAt == null)
+      );
+    }
+
+    match /newsletters/{id} {
+      // Read/list requires admin or newsletter read permission
+      allow get, list: if isAdmin() || hasPermissionId('perm-email_newsletter-read');
+      // Create/update requires admin or newsletter edit permission and valid fields
+      allow create: if (isAdmin() || hasPermissionId('perm-email_newsletter-edit'))
+        && (request.resource.data.subject is string)
+        && request.resource.data.subject.size() > 0
+        && validNewsletterDoc();
+      allow update: if (isAdmin() || hasPermissionId('perm-email_newsletter-edit')) && validNewsletterDoc();
+      // Delete requires admin or newsletter delete permission
+      allow delete: if isAdmin() || hasPermissionId('perm-email_newsletter-delete');
+    }
+
     // Admin Settings — Email Variables (employee portal)
     function validEmailVarDoc() {
       return (

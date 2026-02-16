@@ -1,17 +1,17 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, Table, Badge, Tabs, Anchor, TextInput, Alert, ActionIcon } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Anchor, TextInput, Alert, ActionIcon, Tabs, Badge } from '@mantine/core';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { IconMail } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { listenNewsletters, type Newsletter as NewsletterRow } from '@/services/email-subscriptions/newsletters';
 import Link from 'next/link';
 // RouteTabs removed per new design
 import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { useToast } from '@/components/ToastProvider';
 import { useRouter } from 'next/navigation';
 
-type Newsletter = { id: string; subject: string; status: 'Draft'|'Scheduled'|'Sent'; recipients: number; sentAt?: number; body?: string };
+type Newsletter = NewsletterRow;
 
 export default function EmployerEmailNewslettersPage() {
   const router = useRouter();
@@ -37,16 +37,8 @@ export default function EmployerEmailNewslettersPage() {
     toast.show({ title: 'Saved', message: 'WEBSITE_URL updated.' });
   };
   useEffect(() => {
-    const qN = query(collection(db(), 'newsletters'));
-    const unsub = onSnapshot(qN, (snap) => {
-      const rows: Newsletter[] = [];
-      snap.forEach((d) => {
-        const data = d.data() as any;
-        rows.push({ id: d.id, subject: data.subject || '', status: (data.status || 'Draft'), recipients: Number(data.recipients || 0), sentAt: typeof data.sentAt === 'number' ? data.sentAt : undefined, body: data.body || '' });
-      });
-      setNewsletters(rows);
-    });
-    return () => unsub();
+    const off = listenNewsletters((rows) => setNewsletters(rows));
+    return () => off();
   }, []);
 
   const dateStr = (ts: number) => new Date(ts).toLocaleString();
@@ -97,96 +89,35 @@ export default function EmployerEmailNewslettersPage() {
           </Group>
         </Group>
 
-        <Tabs defaultValue="sent">
+        <Tabs value={'sent'} mb="md">
           <Tabs.List>
-            <Tabs.Tab value="sent">Emails sent <Badge ml={6} size="xs" variant="light">{sent.length}</Badge></Tabs.Tab>
-            <Tabs.Tab value="drafts">Email drafts <Badge ml={6} size="xs" variant="light">{drafts.length}</Badge></Tabs.Tab>
-            <Tabs.Tab value="form">Copy & paste form</Tabs.Tab>
+            <Tabs.Tab value="sent"><Link href="/employee/email-subscriptions/newsletters">Emails sent</Link></Tabs.Tab>
+            <Tabs.Tab value="drafts"><Link href="/employee/email-subscriptions/newsletters/drafts">Email drafts</Link></Tabs.Tab>
+            <Tabs.Tab value="form"><Link href="/employee/email-subscriptions/newsletters/form">Copy & paste form</Link></Tabs.Tab>
           </Tabs.List>
-
-          <Tabs.Panel value="sent" pt="md">
-            <Card withBorder>
-              <Table verticalSpacing="xs">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Subject</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Recipients</Table.Th>
-                    <Table.Th>Sent</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {sent.map((n) => (
-                    <Table.Tr key={n.id}>
-                      <Table.Td>
-                        <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/${n.id}`} underline="hover">{n.subject}</Anchor>
-                      </Table.Td>
-                      <Table.Td><Badge variant="light" color={n.status === 'Sent' ? 'green' : n.status === 'Scheduled' ? 'indigo' : 'gray'}>{n.status}</Badge></Table.Td>
-                      <Table.Td>{n.recipients}</Table.Td>
-                      <Table.Td>{n.sentAt ? dateStr(n.sentAt) : '—'}</Table.Td>
-                    </Table.Tr>
-                  ))}
-                  {sent.length === 0 && (
-                    <Table.Tr>
-                      <Table.Td colSpan={4}><Text c="dimmed">No sent newsletters yet</Text></Table.Td>
-                    </Table.Tr>
-                  )}
-                </Table.Tbody>
-              </Table>
-            </Card>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="drafts" pt="md">
-            <Card withBorder>
-              <Table verticalSpacing="xs">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Subject</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Recipients</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {drafts.map((n) => (
-                    <Table.Tr key={n.id}>
-                      <Table.Td>
-                        <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/${n.id}`} underline="hover">{n.subject || '(Untitled draft)'}</Anchor>
-                      </Table.Td>
-                      <Table.Td><Badge variant="light" color="gray">{n.status}</Badge></Table.Td>
-                      <Table.Td>{n.recipients}</Table.Td>
-                    </Table.Tr>
-                  ))}
-                  {drafts.length === 0 && (
-                    <Table.Tr>
-                      <Table.Td colSpan={3}><Text c="dimmed">No drafts yet</Text></Table.Td>
-                    </Table.Tr>
-                  )}
-                </Table.Tbody>
-              </Table>
-            </Card>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="form" pt="md">
-            <Card withBorder>
-              <Stack>
-                <Text c="dimmed">Copy and paste this HTML form into your website. Submissions post to this app's API and can be wired to Firebase.</Text>
-                {(!websiteUrl || !validUrl(websiteUrl)) && (
-                  <Alert color="yellow" title="Set WEBSITE_URL">
-                    Update Company settings → Configuration → WEBSITE_URL to replace localhost in the form action.
-                  </Alert>
-                )}
-                <Group align="end" gap="sm">
-                  <div style={{ flex: 1 }}>
-                    <TextInput label="Website URL (WEBSITE_URL)" placeholder="https://www.example.com" value={urlInput} onChange={(e) => setUrlInput(e.currentTarget.value)} error={urlError || undefined} />
-                  </div>
-                  <Button onClick={onSaveUrl}>Save</Button>
-                  <Button variant="light" component={Link as any} href="/employee/admin-settings">Open settings</Button>
-                </Group>
-                {websiteUrl && validUrl(websiteUrl) && <CodeSnippet />}
-              </Stack>
-            </Card>
-          </Tabs.Panel>
         </Tabs>
+
+        <Card withBorder>
+          {(() => {
+            const columns: Column<Newsletter>[] = [
+              { key: 'subject', header: 'Subject', render: (r) => (
+                <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/${r.id}`} underline="hover">{r.subject || '(Untitled)'}</Anchor>
+              ) },
+              { key: 'recipients', header: 'Recipients', render: (r) => (r.recipients ?? 0) },
+              { key: 'sentAt', header: 'Sent', render: (r) => (r.sentAt ? new Date(r.sentAt).toLocaleString() : '—') },
+            ];
+            return (
+              <FirestoreDataTable
+                collectionPath="newsletters"
+                columns={columns}
+                initialSort={{ field: 'sentAt', direction: 'desc' }}
+                clientFilter={(r: any) => r.status !== 'Draft'}
+                defaultPageSize={25}
+                enableSelection={false}
+              />
+            );
+          })()}
+        </Card>
       </Stack>
     </EmployerAuthGate>
   );
