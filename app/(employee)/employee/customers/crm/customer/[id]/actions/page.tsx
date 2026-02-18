@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Title, Text, Card, Stack, Group, Button, Tabs, Alert, Switch, Modal, TextInput, CopyButton, ActionIcon, Badge, Center, Loader } from '@mantine/core';
+import CustomerHeader from '@/components/crm/CustomerHeader';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
-import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { archiveCRMRecord, removeCRMRecord, deleteCRMRecord, updateCRMRecord } from '@/services/crm';
 
 export default function CustomerActionsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -59,29 +61,7 @@ export default function CustomerActionsPage({ params }: { params: { id: string }
 
   return (
     <EmployerAuthGate>
-      <Group justify="space-between" mb="md">
-        <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/customers/crm')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-            </svg>
-          </ActionIcon>
-          <Group>
-            <Title order={2}>{customer.name}</Title>
-            <Badge color="blue" variant="filled">Customer</Badge>
-          </Group>
-        </Group>
-      </Group>
-
-      <RouteTabs
-        value={"actions"}
-        mb="md"
-        tabs={[
-          { value: 'overview', label: 'Overview', href: `/employee/customers/crm/customer/${customer.id}` },
-          { value: 'notes', label: 'Notes', href: `/employee/customers/crm/customer/${customer.id}/notes` },
-          { value: 'actions', label: 'Actions', href: `/employee/customers/crm/customer/${customer.id}/actions` },
-        ]}
-      />
+      <CustomerHeader customer={customer} current="actions" />
 
       {customer.isBlocked && (
         <Alert color="red" variant="light" mb="md" title="This customer is blocked">
@@ -93,11 +73,7 @@ export default function CustomerActionsPage({ params }: { params: { id: string }
         <Stack>
           <Title order={4}>Account controls</Title>
           <Group>
-            <Switch
-              checked={!!customer.isBlocked}
-              onChange={async (e) => { await updateDoc(doc(db(), 'crm_customers', customer.id), { isBlocked: e.currentTarget.checked }); }}
-              label="Block customer"
-            />
+            <Switch checked={!!customer.isBlocked} onChange={async (e) => { await updateCRMRecord(customer.id, { isBlocked: e.currentTarget.checked }); }} label="Block customer" />
           </Group>
         </Stack>
       </Card>
@@ -134,7 +110,7 @@ export default function CustomerActionsPage({ params }: { params: { id: string }
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setDeleteCustomerOpen(false)}>Cancel</Button>
             <Button color="red" disabled={customer.email.length > 0 && deleteCustomerInput !== customer.email} onClick={async () => {
-              await updateDoc(doc(db(), 'crm_customers', customer.id), { deletedAt: Date.now() });
+              await removeCRMRecord(customer.id);
               setDeleteCustomerOpen(false);
               toast.show({ title: 'Customer removed', message: 'Moved to Removed. You can restore or permanently delete it from the Removed tab.', color: 'green' });
             }}>Remove</Button>
@@ -154,7 +130,7 @@ export default function CustomerActionsPage({ params }: { params: { id: string }
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setArchiveCustomerOpen(false)}>Cancel</Button>
             <Button color="orange" disabled={customer.name.length > 0 && archiveCustomerInput !== customer.name} onClick={async () => {
-              await updateDoc(doc(db(), 'crm_customers', customer.id), { isArchived: true });
+              await archiveCRMRecord(customer.id);
               setArchiveCustomerOpen(false);
               toast.show({ title: 'Customer archived', message: 'Moved to Archive.' });
             }}>Archive</Button>
@@ -174,7 +150,7 @@ export default function CustomerActionsPage({ params }: { params: { id: string }
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setPermDeleteOpen(false)}>Cancel</Button>
             <Button color="red" disabled={customer.name.length > 0 && permDeleteInput !== customer.name} onClick={async () => {
-              await deleteDoc(doc(db(), 'crm_customers', customer.id));
+              await deleteCRMRecord(customer.id);
               setPermDeleteOpen(false);
               toast.show({ title: 'Customer deleted', message: 'Permanently deleted.' });
               router.push('/employee/customers/crm');

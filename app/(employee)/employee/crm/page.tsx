@@ -658,17 +658,7 @@ export default function EmployerCRMPage() {
                 <Table.Td style={{ width: 280, minWidth: 280, whiteSpace: 'nowrap' }}>
                   <Group gap="xs" justify="flex-end" wrap="nowrap">
                     <Badge color={c.type === 'vendor' ? 'orange' : 'blue'} variant="light">{c.type === 'vendor' ? 'Vendor' : 'Customer'}</Badge>
-                    <div style={{ width: 16 }} />
-                    <ActionIcon
-                      variant="subtle"
-                      aria-label="View"
-                      component={Link as any}
-                      href={`/employee/crm/${c.type}/${c.id}` as any}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" fill="currentColor"/>
-                      </svg>
-                    </ActionIcon>
+                    
                     <Menu withinPortal position="bottom-end" shadow="md" width={200}>
                       <Menu.Target>
                         <ActionIcon variant="subtle" aria-label="More actions">

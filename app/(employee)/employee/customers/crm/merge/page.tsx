@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { db } from '@/lib/firebase/client';
 import { collection, addDoc, onSnapshot, doc, updateDoc, query } from 'firebase/firestore';
 import { RouteTabs } from '@/components/RouteTabs';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 
 function MergeWorkspacePageInner() {
   const params = useSearchParams();
@@ -180,32 +181,36 @@ function MergeWorkspacePageInner() {
             <TextInput placeholder="Name or email" value={pickQ} onChange={(e) => setPickQ(e.currentTarget.value)} style={{ flex: 1 }} />
           </Group>
         </div>
-        <div style={{ padding: 0 }}>
-          <Table verticalSpacing="sm" highlightOnHover mt="sm">
-            <Table.Thead className="crm-thead">
-              <Table.Tr>
-                <Table.Th></Table.Th>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Email</Table.Th>
-                
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {pickFiltered.map((c) => (
-                <Table.Tr key={c.id}>
-                  <Table.Td style={{ width: 1 }}>
-                    <input type="checkbox" checked={pickSelected.includes(c.id)} onChange={() => togglePickSel(c.id)} disabled={!!pickGroupKey && pickKeyOf(c) !== pickGroupKey} title={(!pickKeyOf(c) ? (pickMergeMode === 'customer' ? 'Missing email' : 'Missing name') : (pickGroupKey && pickKeyOf(c) !== pickGroupKey ? 'Select with matching key' : '')) || ''} />
-                  </Table.Td>
-                  <Table.Td>{c.name}</Table.Td>
-                  <Table.Td><Text size="sm">{c.email || '—'}</Text></Table.Td>
-                  
-                </Table.Tr>
-              ))}
-              {pickFiltered.length === 0 && (
-                <Table.Tr><Table.Td colSpan={4}><Text c="dimmed">No records</Text></Table.Td></Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+        <div style={{ padding: '0 16px 12px 16px' }}>
+          <FirestoreDataTable
+            collectionPath="crm_customers"
+            columns={([
+              {
+                key: 'select', header: '', width: 1,
+                render: (c: any) => (
+                  <input
+                    type="checkbox"
+                    checked={pickSelected.includes(c.id)}
+                    onChange={() => togglePickSel(c.id)}
+                    disabled={!!pickGroupKey && pickKeyOf(c) !== pickGroupKey}
+                    title={(!pickKeyOf(c) ? (pickMergeMode === 'customer' ? 'Missing email' : 'Missing name') : (pickGroupKey && pickKeyOf(c) !== pickGroupKey ? 'Select with matching key' : '')) || ''}
+                  />
+                )
+              },
+              { key: 'name', header: 'Name', render: (c: any) => c.name },
+              { key: 'email', header: 'Email', render: (c: any) => (<Text size="sm">{c.email || '—'}</Text>) },
+            ]) as Column<any>[]}
+            initialSort={{ field: 'name', direction: 'asc' }}
+            clientFilter={(r: any) => {
+              const q = (pickQ || '').trim().toLowerCase();
+              const t = r?.type === 'vendor' ? 'vendor' : 'customer';
+              const matches = !q || String(r.name || '').toLowerCase().includes(q) || String(r.email || '').toLowerCase().includes(q);
+              const active = !r.deletedAt;
+              return t === 'customer' && active && matches;
+            }}
+            defaultPageSize={25}
+            enableSelection={false}
+          />
         </div>
       </Card>
       <style jsx>{`

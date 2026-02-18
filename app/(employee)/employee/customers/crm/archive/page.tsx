@@ -1,40 +1,56 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Group, Table, Anchor, Card, ActionIcon, Menu, TextInput, Modal, Stack, Button } from '@mantine/core';
+import { Title, Text, Group, Anchor, Card, Menu, TextInput, Modal, Stack, Button, ActionIcon, CopyButton } from '@mantine/core';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
-import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, doc, updateDoc, query } from 'firebase/firestore';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useRouter } from 'next/navigation';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import { restoreCRMRecord, removeCRMRecord } from '@/services/crm';
 
 export default function CRMArchivePage() {
   const router = useRouter();
   const toast = useToast();
-  const [customers, setCustomers] = useState<any[]>([]);
-  useEffect(() => {
-    const q = query(collection(db(), 'crm_customers'));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows: any[] = [];
-      snap.forEach((d) => {
-        const data = d.data() as any;
-        rows.push({ id: d.id, ...(data || {}) });
-      });
-      setCustomers(rows);
-    });
-    return () => unsub();
-  }, []);
-  const [search, setSearch] = useState('');
+  const [term, setTerm] = useState('');
   const [archRestoreOpen, setArchRestoreOpen] = useState(false);
   const [archTarget, setArchTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [removeInput, setRemoveInput] = useState('');
 
-  const archivedCustomers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return customers
-      .filter((c) => c.type === 'customer' && !!c.isArchived && !c.deletedAt)
-      .filter((c) => !q || c.name.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q));
-  }, [customers, search]);
+  const columns: Column<any>[] = useMemo(() => ([
+    {
+      key: 'name', header: 'Name',
+      render: (c: any) => (
+        <Anchor component={Link as any} href={`/employee/customers/crm/customer/${c.id}` as any} underline="hover">{c.name || '—'}</Anchor>
+      )
+    },
+    { key: 'email', header: 'Email', render: (c: any) => (<Text size="sm">{c.email || '—'}</Text>) },
+    {
+      key: 'actions', header: '', width: 1,
+      render: (c: any) => (
+        <Group gap="xs" justify="flex-end" wrap="nowrap">
+          <Menu withinPortal position="bottom-end" shadow="md" width={200}>
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label="More actions">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                  <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                  <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                </svg>
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item component={Link as any} href={`/employee/customers/crm/customer/${c.id}` as any}>View</Menu.Item>
+              <Menu.Item onClick={() => { setArchTarget({ id: c.id, name: c.name }); setArchRestoreOpen(true); }}>Restore</Menu.Item>
+              <Menu.Item color="red" onClick={() => { setArchTarget({ id: c.id, name: c.name }); setRemoveInput(''); setRemoveOpen(true); }}>Remove</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      )
+    },
+  ]), []);
 
   return (
     <EmployerAuthGate>
@@ -63,79 +79,63 @@ export default function CRMArchivePage() {
         ]}
       />
 
-      <Card withBorder padding={0}>
-        <div style={{ padding: '12px 16px' }}>
-          <TextInput placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
+      <Card withBorder>
+        <div style={{ padding: '12px 0' }}>
+          <TextInput placeholder="Search name or email" value={term} onChange={(e) => setTerm(e.currentTarget.value)} style={{ width: '100%' }} />
         </div>
-        <Table verticalSpacing="sm" highlightOnHover>
-          <Table.Thead className="crm-thead">
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Email</Table.Th>
-              <Table.Th style={{ width: 280, minWidth: 280 }}></Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {archivedCustomers.map((item) => (
-              <Table.Tr key={item.id}>
-                <Table.Td>
-                  <Anchor component={Link as any} href={`/employee/customers/crm/customer/${item.id}`} underline="hover">{item.name}</Anchor>
-                </Table.Td>
-                <Table.Td><Text size="sm">{item.email || '—'}</Text></Table.Td>
-                <Table.Td style={{ width: 280, minWidth: 280, whiteSpace: 'nowrap' }}>
-                  <Group gap="xs" justify="flex-end" wrap="nowrap">
-                    <ActionIcon
-                      variant="subtle"
-                      aria-label="View"
-                      component={Link as any}
-                      href={`/employee/customers/crm/customer/${item.id}` as any}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" fill="currentColor"/>
-                      </svg>
-                    </ActionIcon>
-                    <Menu withinPortal position="bottom-end" shadow="md" width={200}>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="More actions">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
-                          </svg>
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item component={Link as any} href={`/employee/customers/crm/customer/${item.id}` as any}>View</Menu.Item>
-                        <Menu.Item onClick={() => { setArchTarget({ id: item.id, name: item.name }); setArchRestoreOpen(true); }}>Restore</Menu.Item>
-            </Menu.Dropdown>
-            </Menu>
-          </Group>
-        </Table.Td>
-      </Table.Tr>
-    ))}
-            {archivedCustomers.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={4}>
-                  <Text c="dimmed">No archived records</Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+        <FirestoreDataTable
+          collectionPath="crm_customers"
+          columns={columns}
+          initialSort={{ field: 'name', direction: 'asc' }}
+          clientFilter={(r: any) => {
+            const q = (term || '').toLowerCase();
+            const t = r?.type === 'vendor' ? 'vendor' : 'customer';
+            const matches = !q || String(r.name || '').toLowerCase().includes(q) || String(r.email || '').toLowerCase().includes(q);
+            return t === 'customer' && !!r.isArchived && !r.deletedAt && matches;
+          }}
+          defaultPageSize={25}
+          enableSelection={false}
+          refreshKey={refreshKey}
+        />
       </Card>
 
-      <Modal opened={archRestoreOpen} onClose={() => setArchRestoreOpen(false)} title="Restore record" closeOnClickOutside={false} closeOnEscape={false} centered size="md">
+      <Modal opened={archRestoreOpen} onClose={() => setArchRestoreOpen(false)} centered>
         <Stack>
-          <Text c="dimmed">Restore this customer back to the Database view.</Text>
-          <TextInput label="Name" value={archTarget?.name || ''} readOnly />
+          <Text>Restore this customer back to the Database view?</Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setArchRestoreOpen(false)}>Cancel</Button>
-            <Button onClick={() => {
+            <Button onClick={async () => {
               if (!archTarget) return;
-              updateDoc(doc(db(), 'crm_customers', archTarget.id), { isArchived: false });
+              await restoreCRMRecord(archTarget.id);
               setArchRestoreOpen(false);
-              toast.show({ title: 'Restored', message: 'Record restored from Archive.' });
+              setRefreshKey((k) => k + 1);
+              toast.show({ title: 'Customer restored', message: archTarget.name, color: 'green' });
+              setArchTarget(null);
             }}>Restore</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={removeOpen} onClose={() => setRemoveOpen(false)} centered>
+        <Stack>
+          <Text>Move this customer to Removed? You can restore it later or delete permanently from the Removed tab.</Text>
+          <Group align="end" gap="sm">
+            <TextInput label="Customer name" value={archTarget?.name || ''} readOnly style={{ flex: 1 }} />
+            <CopyButton value={archTarget?.name || ''}>{({ copied, copy }) => (
+              <Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>
+            )}</CopyButton>
+          </Group>
+          <TextInput label="Type here to confirm" placeholder="Paste or type customer name" value={removeInput} onChange={(e) => setRemoveInput(e.currentTarget.value)} />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setRemoveOpen(false)}>Cancel</Button>
+            <Button color="red" disabled={(archTarget?.name?.length || 0) > 0 && removeInput !== (archTarget?.name || '')} onClick={async () => {
+              if (!archTarget) return;
+              await removeCRMRecord(archTarget.id);
+              setRemoveOpen(false);
+              setRefreshKey((k) => k + 1);
+              toast.show({ title: 'Removed customer', message: archTarget.name, color: 'orange' });
+              setArchTarget(null);
+            }}>Remove</Button>
           </Group>
         </Stack>
       </Modal>

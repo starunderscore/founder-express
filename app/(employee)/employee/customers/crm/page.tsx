@@ -1,57 +1,25 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useState, useMemo, useEffect } from 'react';
-import { Title, Text, Card, TextInput, Group, Button, Select, Table, Badge, Textarea, MultiSelect, TagsInput, Modal, Tabs, Anchor, ActionIcon, Menu, Radio, Avatar, Stack, Alert, CopyButton, SegmentedControl } from '@mantine/core';
+import { Title, Text, Card, TextInput, Group, Button, Select, Table, Badge, Textarea, MultiSelect, TagsInput, Modal, Tabs, Anchor, ActionIcon, Menu, Avatar, Stack, Alert, CopyButton, SegmentedControl } from '@mantine/core';
 import { useToast } from '@/components/ToastProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type LeadSource, type Note } from '@/state/crmStore';
 import { db } from '@/lib/firebase/client';
-import { collection, addDoc, onSnapshot, doc, updateDoc, query } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot } from 'firebase/firestore';
 // Employees list from Firestore (no Zustand persistence)
 import { useAuthUser } from '@/lib/firebase/auth';
 import { RouteTabs } from '@/components/RouteTabs';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import { archiveCRMRecord, removeCRMRecord } from '@/services/crm';
 
 const SOURCE_OPTIONS: LeadSource[] = ['no-source', 'Website', 'Referral', 'Paid Ads', 'Social', 'Event', 'Import', 'Waiting List', 'Other'];
 
 export default function EmployerCRMPage() {
   const router = useRouter();
   const toast = useToast();
-  // Firestore is the source of truth for the list
-  const [customers, setCustomers] = useState<any[]>([]);
-  useEffect(() => {
-    const q = query(collection(db(), 'crm_customers'));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows: any[] = [];
-      snap.forEach((d) => {
-        const data = d.data() as any;
-        rows.push({
-          id: d.id,
-          name: data.name || '',
-          email: data.email || '',
-          company: data.company || undefined,
-          phone: data.phone || undefined,
-          notes: Array.isArray(data.notes) ? data.notes : [],
-          source: data.source || 'no-source',
-          sourceDetail: data.sourceDetail || undefined,
-          createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
-          tags: Array.isArray(data.tags) ? data.tags : [],
-          type: data.type === 'vendor' ? 'vendor' : 'customer',
-          addresses: Array.isArray(data.addresses) ? data.addresses : [],
-          contacts: Array.isArray(data.contacts) ? data.contacts : [],
-          emails: Array.isArray(data.emails) ? data.emails : [],
-          phones: Array.isArray(data.phones) ? data.phones : [],
-          ownerId: typeof data.ownerId === 'string' ? data.ownerId : undefined,
-          isBlocked: !!data.isBlocked,
-          isArchived: !!data.isArchived,
-          doNotContact: !!data.doNotContact,
-          deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined,
-        });
-      });
-      setCustomers(rows);
-    });
-    return () => unsub();
-  }, []);
+  // FirestoreDataTable handles loading/pagination of the list
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -62,15 +30,15 @@ export default function EmployerCRMPage() {
   const [openNotes, setOpenNotes] = useState<{ id: string; body: string; createdAt: number }[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
-  // Use `search` to avoid shadowing Firestore's query()
-  const [search, setSearch] = useState('');
   // removed source filter select
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('overview');
+  const [term, setTerm] = useState('');
   // Top-level list tabs are now navigational links; main page always shows Database
   // Vendors removed from this view; only customers are shown
   const authUser = useAuthUser();
   const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   useEffect(() => {
     const unsub = onSnapshot(collection(db(), 'employees'), (snap) => {
       const rows: Array<{ id: string; name: string }> = [];
@@ -82,48 +50,50 @@ export default function EmployerCRMPage() {
     });
     return () => unsub();
   }, []);
-  // Removed/Archive panes moved to dedicated pages
-
-  // Add vendor: Email/Phone/Address tabs
-  const [vEmailValue, setVEmailValue] = useState('');
-  const [vEmailLabel, setVEmailLabel] = useState('');
-  const [vEmailKind, setVEmailKind] = useState<'Work' | 'Personal'>('Work');
-  const [vPhoneValue, setVPhoneValue] = useState('');
-  const [vPhoneExt, setVPhoneExt] = useState('');
-  const [vPhoneLabel, setVPhoneLabel] = useState('');
-  const [vPhoneKind, setVPhoneKind] = useState<'Work' | 'Personal'>('Work');
-  const [vAddr, setVAddr] = useState<{ label?: string; line1?: string; line2?: string; city?: string; region?: string; postal?: string; country?: string; isHQ?: boolean }>({});
-  // New list-style state for vendor modal tabs (to mirror contact modal)
-  type TempEmail = { id: string; email: string; label?: string; kind?: 'Work' | 'Personal' };
-  type TempPhone = { id: string; number: string; ext?: string; label?: string; kind?: 'Work' | 'Personal' };
-  type TempAddress = { id: string; label?: string; line1: string; line2?: string; city?: string; region?: string; postal?: string; country?: string; isHQ?: boolean };
-  const [vEmails, setVEmails] = useState<TempEmail[]>([]);
-  const [newVEmail, setNewVEmail] = useState<TempEmail>({ id: '', email: '', label: '', kind: 'Work' });
-  const [vEmailAddOpen, setVEmailAddOpen] = useState(false);
-  const [vPhones, setVPhones] = useState<TempPhone[]>([]);
-  const [newVPhone, setNewVPhone] = useState<TempPhone>({ id: '', number: '', ext: '', label: '', kind: 'Work' });
-  const [vPhoneAddOpen, setVPhoneAddOpen] = useState(false);
-  const [vAddresses, setVAddresses] = useState<TempAddress[]>([]);
-  const [newVAddress, setNewVAddress] = useState<TempAddress>({ id: '', label: '', line1: '', line2: '', city: '', region: '', postal: '', country: '', isHQ: false });
-  const [vAddressAddOpen, setVAddressAddOpen] = useState(false);
-  const [vNotes, setVNotes] = useState<Note[]>([]);
-  const [vNoteAddOpen, setVNoteAddOpen] = useState(false);
-  const [newVNoteBody, setNewVNoteBody] = useState('');
-  const [ownerId, setOwnerId] = useState<string | null>(null);
+  // Removed/Archive panes moved to dedicated pages; vendor add UI removed from Customers CRM
   // Confirmations for destructive actions
   const [confirmArchiveOpen, setConfirmArchiveOpen] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [targetRecord, setTargetRecord] = useState<any | null>(null);
 
-  const filtered = useMemo(() => {
-    return customers.filter((c) => {
-      const q = search.toLowerCase();
-      const matchesQuery = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
-      const notDeleted = !c.deletedAt;
-      const isCustomer = c.type === 'customer';
-      return !c.isArchived && notDeleted && isCustomer && matchesQuery;
-    });
-  }, [customers, search]);
+  // Table columns for new data-table
+  const columns: Column<any>[] = useMemo(() => ([
+    {
+      key: 'name', header: 'Name',
+      render: (c: any) => (
+        <Anchor component={Link as any} href={`/employee/customers/crm/customer/${c.id}` as any} underline="hover">
+          {c.name || '—'}
+        </Anchor>
+      )
+    },
+    {
+      key: 'email', header: 'Email',
+      render: (c: any) => (<Text size="sm">{c.email || '—'}</Text>)
+    },
+    {
+      key: 'actions', header: '', width: 1,
+      render: (c: any) => (
+        <Group gap="xs" justify="flex-end" wrap="nowrap">
+          <Menu withinPortal position="bottom-end" shadow="md" width={200}>
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label="More actions">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                  <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                  <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                </svg>
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item component={Link as any} href={`/employee/customers/crm/customer/${c.id}` as any}>View</Menu.Item>
+              <Menu.Item onClick={() => { setTargetRecord(c); setConfirmArchiveOpen(true); }}>Archive</Menu.Item>
+              <Menu.Item color="red" onClick={() => { setTargetRecord(c); setConfirmRemoveOpen(true); }}>Move to removed</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      )
+    },
+  ]), []);
 
   // Remove undefined values before Firestore writes
   const prune = (val: any): any => {
@@ -171,46 +141,7 @@ export default function EmployerCRMPage() {
     router.push(`/employee/customers/crm/customer/${ref.id}` as any);
   };
 
-  const onAddVendor = async () => {
-    if (!name.trim()) return;
-    const notesFromTabs: Note[] = openNotes.map((n) => ({
-      id: n.id,
-      title: deriveTitleFromMarkdown(n.body),
-      body: n.body,
-      createdAt: n.createdAt,
-      createdByName: authUser?.displayName || authUser?.email?.split('@')[0] || 'Unknown',
-      createdByEmail: authUser?.email || undefined,
-      createdByPhotoURL: authUser?.photoURL || undefined,
-    }));
-    const emails = vEmails.map(e => ({ id: e.id || `em-${Date.now()}-${Math.random()}`, email: e.email.trim(), label: e.label?.trim() || undefined, kind: e.kind }));
-    const phones = vPhones.map(p => ({ id: p.id || `ph-${Date.now()}-${Math.random()}`, number: p.number.trim(), ext: p.ext?.trim() || undefined, label: p.label?.trim() || undefined, kind: p.kind }));
-    const addresses = vAddresses.map(a => ({ id: a.id || `addr-${Date.now()}-${Math.random()}`, label: a.label?.trim() || undefined, line1: a.line1.trim(), line2: a.line2?.trim() || undefined, city: a.city?.trim() || undefined, region: a.region?.trim() || undefined, postal: a.postal?.trim() || undefined, country: a.country?.trim() || undefined, isHQ: !!a.isHQ }));
-    const ref = await addDoc(collection(db(), 'crm_customers'), prune({
-      name: name.trim(),
-      email: (emails[0]?.email) || '',
-      company: undefined,
-      phone: (phones[0]?.number) || undefined,
-      source,
-      sourceDetail: source === 'Other' ? (sourceDetail.trim() || undefined) : undefined,
-      notes: vNotes,
-      tags,
-      emails,
-      phones,
-      addresses,
-      ownerId: ownerId || undefined,
-      type: 'vendor',
-      createdAt: Date.now(),
-      isArchived: false,
-      isBlocked: false,
-      doNotContact: false,
-    }));
-    setName(''); setEmail(''); setCompany(''); setPhone(''); setSource('no-source'); setSourceDetail(''); setTags([]);
-    setVEmails([]); setNewVEmail({ id: '', email: '', label: '', kind: 'Work' });
-    setVPhones([]); setNewVPhone({ id: '', number: '', ext: '', label: '', kind: 'Work' });
-    setVAddresses([]); setNewVAddress({ id: '', label: '', line1: '', line2: '', city: '', region: '', postal: '', country: '', isHQ: false });
-    setVNotes([]); setNewVNoteBody('');
-    router.push(`/employee/customers/vendors/${ref.id}` as any);
-  };
+  // Vendor create flow removed from this page
 
   // badges removed; using simple horizontal tabs without status labels
 
@@ -273,6 +204,7 @@ export default function EmployerCRMPage() {
       />
 
       {null}
+      {false && (<>
 
       <Modal
         opened={false}
@@ -532,6 +464,7 @@ export default function EmployerCRMPage() {
           </Group>
         </Stack>
       </Modal>
+      </>)}
 
       <Modal
         opened={customerModalOpen}
@@ -626,72 +559,28 @@ export default function EmployerCRMPage() {
         </form>
       </Modal>
 
-      <Card withBorder padding={0}>
-        <div style={{ padding: '12px 16px' }}>
-          <Group align="center">
-            <TextInput placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.currentTarget.value)} style={{ flex: 1 }} />
-          </Group>
+      <Card withBorder>
+        <div style={{ padding: '12px 0' }}>
+          <TextInput
+            placeholder="Search name or email"
+            value={term}
+            onChange={(e) => setTerm(e.currentTarget.value)}
+            style={{ width: '100%' }}
+          />
         </div>
-        <Table verticalSpacing="sm" highlightOnHover>
-          <Table.Thead className="crm-thead">
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Email</Table.Th>
-              <Table.Th style={{ width: 280, minWidth: 280 }}></Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {filtered.map((c) => (
-              <Table.Tr key={c.id}>
-                <Table.Td>
-                  <Anchor component={Link as any} href={`/employee/customers/crm/customer/${c.id}` as any} underline="hover">
-                    {c.name}
-                  </Anchor>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm">{c.email || '—'}</Text>
-                </Table.Td>
-                <Table.Td style={{ width: 280, minWidth: 280, whiteSpace: 'nowrap' }}>
-                  <Group gap="xs" justify="flex-end" wrap="nowrap">
-                    <ActionIcon
-                      variant="subtle"
-                      aria-label="View"
-                      component={Link as any}
-                      href={`/employee/customers/crm/customer/${c.id}` as any}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" fill="currentColor"/>
-                      </svg>
-                    </ActionIcon>
-                    <Menu withinPortal position="bottom-end" shadow="md" width={200}>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="More actions">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
-                          </svg>
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item component={Link as any} href={`/employee/customers/crm/customer/${c.id}` as any}>View</Menu.Item>
-                        <Menu.Item onClick={() => { setTargetRecord(c); setConfirmArchiveOpen(true); }}>Archive</Menu.Item>
-                        <Menu.Item color="red" onClick={() => { setTargetRecord(c); setConfirmRemoveOpen(true); }}>Move to removed</Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            {filtered.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={3}>
-                  <Text c="dimmed">No customers found</Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+        <FirestoreDataTable
+          collectionPath="crm_customers"
+          columns={columns}
+          initialSort={{ field: 'name', direction: 'asc' }}
+          clientFilter={(r: any) => {
+            const q = (term || '').toLowerCase();
+            const t = r?.type === 'vendor' ? 'vendor' : 'customer';
+            const matches = !q || (String(r.name || '').toLowerCase().includes(q) || String(r.email || '').toLowerCase().includes(q));
+            return t === 'customer' && !r.isArchived && !r.deletedAt && matches;
+          }}
+          defaultPageSize={25}
+          enableSelection={false}
+        />
       </Card>
 
       <style jsx>{`
@@ -716,7 +605,7 @@ export default function EmployerCRMPage() {
             <Button variant="default" onClick={() => setConfirmArchiveOpen(false)}>Cancel</Button>
             <Button onClick={async () => {
               if (!targetRecord) return;
-              await updateDoc(doc(db(), 'crm_customers', targetRecord.id), { isArchived: true });
+              await archiveCRMRecord(targetRecord.id);
               setConfirmArchiveOpen(false);
               setTargetRecord(null);
               toast.show({ title: 'Archived', message: 'Moved to Archive.' });
@@ -734,7 +623,7 @@ export default function EmployerCRMPage() {
             <Button variant="default" onClick={() => setConfirmRemoveOpen(false)}>Cancel</Button>
             <Button color="red" onClick={async () => {
               if (!targetRecord) return;
-              await updateDoc(doc(db(), 'crm_customers', targetRecord.id), { deletedAt: Date.now() });
+              await removeCRMRecord(targetRecord.id);
               setConfirmRemoveOpen(false);
               setTargetRecord(null);
               toast.show({ title: 'Removed', message: 'Moved to Removed.' });

@@ -1,40 +1,52 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Group, Button, Table, Badge, Anchor, Card, ActionIcon, Menu, TextInput, Tabs, Modal, Stack, CopyButton, SegmentedControl } from '@mantine/core';
+import { Title, Text, Group, Button, Badge, Anchor, Card, ActionIcon, Menu, TextInput, Tabs, Modal, Stack, CopyButton, SegmentedControl } from '@mantine/core';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
-import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useRouter } from 'next/navigation';
 import { type Contact } from '@/state/crmStore';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import { restoreCRMRecord, deleteCRMRecord } from '@/services/crm';
 
 export default function CRMRemovedPage() {
   const router = useRouter();
   const toast = useToast();
-  const [customers, setCustomers] = useState<any[]>([]);
-  useEffect(() => {
-    const q = query(collection(db(), 'crm_customers'));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows: any[] = [];
-      snap.forEach((d) => rows.push({ id: d.id, ...(d.data() as any) }));
-      setCustomers(rows);
-    });
-    return () => unsub();
-  }, []);
-  const [search, setSearch] = useState('');
+  const [term, setTerm] = useState('');
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [target, setTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteInput, setDeleteInput] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const removedCustomers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return customers
-      .filter((c) => c.type === 'customer' && !!c.deletedAt)
-      .filter((c) => !q || c.name.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q));
-  }, [customers, search]);
+  const columns: Column<any>[] = useMemo(() => ([
+    { key: 'name', header: 'Name', render: (c: any) => (<Anchor component={Link as any} href={`/employee/customers/crm/customer/${c.id}` as any} underline="hover">{c.name || '—'}</Anchor>) },
+    { key: 'email', header: 'Email', render: (c: any) => (<Text size="sm">{c.email || '—'}</Text>) },
+    {
+      key: 'actions', header: '', width: 1,
+      render: (c: any) => (
+        <Group gap="xs" justify="flex-end" wrap="nowrap">
+          <Menu withinPortal position="bottom-end" shadow="md" width={220}>
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label="More actions">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                  <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                  <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                </svg>
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item component={Link as any} href={`/employee/customers/crm/customer/${c.id}` as any}>View</Menu.Item>
+              <Menu.Item onClick={() => { setTarget({ id: c.id, name: c.name }); setRestoreOpen(true); }}>Restore</Menu.Item>
+              <Menu.Item color="red" onClick={() => { setTarget({ id: c.id, name: c.name }); setDeleteInput(''); setDeleteOpen(true); }}>Permanently delete</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      )
+    },
+  ]), []);
 
   return (
     <EmployerAuthGate>
@@ -63,66 +75,24 @@ export default function CRMRemovedPage() {
         ]}
       />
 
-      <Card withBorder padding={0}>
-        <div style={{ padding: '12px 16px' }}>
-          <TextInput placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
+      <Card withBorder>
+        <div style={{ padding: '12px 0' }}>
+          <TextInput placeholder="Search name or email" value={term} onChange={(e) => setTerm(e.currentTarget.value)} style={{ width: '100%' }} />
         </div>
-        <Table verticalSpacing="sm" highlightOnHover>
-          <Table.Thead className="crm-thead">
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Email</Table.Th>
-              <Table.Th style={{ width: 280, minWidth: 280 }}></Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {removedCustomers.map((item) => (
-              <Table.Tr key={item.id}>
-                <Table.Td>
-                  <Anchor component={Link as any} href={`/employee/customers/crm/customer/${item.id}` as any} underline="hover">{item.name}</Anchor>
-                </Table.Td>
-                <Table.Td><Text size="sm">{item.email || '—'}</Text></Table.Td>
-                <Table.Td style={{ width: 280, minWidth: 280, whiteSpace: 'nowrap' }}>
-                  <Group gap="xs" justify="flex-end" wrap="nowrap">
-                    <ActionIcon
-                      variant="subtle"
-                      aria-label="View"
-                      component={Link as any}
-                      href={`/employee/customers/crm/customer/${item.id}` as any}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" fill="currentColor"/>
-                      </svg>
-                    </ActionIcon>
-                    <Menu withinPortal position="bottom-end" shadow="md" width={220}>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="More actions">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
-                          </svg>
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item component={Link as any} href={`/employee/customers/crm/customer/${item.id}` as any}>View</Menu.Item>
-                        <Menu.Item onClick={() => { setTarget({ id: item.id, name: item.name }); setRestoreOpen(true); }}>Restore</Menu.Item>
-                        <Menu.Item color="red" onClick={() => { setTarget({ id: item.id, name: item.name }); setDeleteInput(''); setDeleteOpen(true); }}>Permanently delete</Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            {removedCustomers.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={4}>
-                  <Text c="dimmed">No removed records</Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+        <FirestoreDataTable
+          collectionPath="crm_customers"
+          columns={columns}
+          initialSort={{ field: 'name', direction: 'asc' }}
+          clientFilter={(r: any) => {
+            const q = (term || '').toLowerCase();
+            const t = r?.type === 'vendor' ? 'vendor' : 'customer';
+            const matches = !q || String(r.name || '').toLowerCase().includes(q) || String(r.email || '').toLowerCase().includes(q);
+            return t === 'customer' && !!r.deletedAt && matches;
+          }}
+          defaultPageSize={25}
+          enableSelection={false}
+          refreshKey={refreshKey}
+        />
       </Card>
       <style jsx>{`
         .crm-thead { background: var(--mantine-color-gray-2); }
@@ -131,38 +101,42 @@ export default function CRMRemovedPage() {
       `}</style>
 
       {/* Restore modal */}
-      <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} title="Restore customer" closeOnClickOutside={false} closeOnEscape={false} centered size="md">
+      <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} closeOnClickOutside={false} closeOnEscape={false} centered size="md">
         <Stack>
-          <Text c="dimmed">Restore this customer back to the Database view.</Text>
-          <TextInput label="Name" value={target?.name || ''} readOnly />
+          <Text>Restore this customer back to the Database view?</Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
-            <Button onClick={() => {
+            <Button onClick={async () => {
               if (!target) return;
-              updateDoc(doc(db(), 'crm_customers', target.id), { deletedAt: undefined });
+              await restoreCRMRecord(target.id);
               setRestoreOpen(false);
-              toast.show({ title: 'Restored', message: 'Customer restored successfully.' });
+              setRefreshKey((k) => k + 1);
+              toast.show({ title: 'Customer restored', message: target.name, color: 'green' });
+              setTarget(null);
             }}>Restore</Button>
           </Group>
         </Stack>
       </Modal>
 
       {/* Permanently delete modal */}
-      <Modal opened={deleteOpen} onClose={() => setDeleteOpen(false)} title="Permanently delete customer" closeOnClickOutside={false} closeOnEscape={false} centered size="md">
+      <Modal opened={deleteOpen} onClose={() => setDeleteOpen(false)} closeOnClickOutside={false} closeOnEscape={false} centered size="md">
         <Stack>
-          <Text c="dimmed">This action cannot be undone. Type the exact name to confirm permanent deletion.</Text>
+          <Text color="red">This action permanently deletes the customer and cannot be undone.</Text>
+          <Text c="dimmed">To confirm, type the full customer name.</Text>
           <Group align="end" gap="sm">
             <TextInput label="Name" value={target?.name || ''} readOnly style={{ flex: 1 }} />
             <CopyButton value={target?.name || ''}>{({ copied, copy }) => (<Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>)}</CopyButton>
           </Group>
-          <TextInput label="Type here to confirm" placeholder="Paste or type name" value={deleteInput} onChange={(e) => setDeleteInput(e.currentTarget.value)} />
+          <TextInput label="Type here to confirm" placeholder="Paste or type customer name" value={deleteInput} onChange={(e) => setDeleteInput(e.currentTarget.value)} />
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setDeleteOpen(false)}>Cancel</Button>
-            <Button color="red" disabled={(target?.name?.length || 0) > 0 && deleteInput !== (target?.name || '')} onClick={() => {
+            <Button color="red" disabled={(target?.name?.length || 0) > 0 && deleteInput !== (target?.name || '')} onClick={async () => {
               if (!target) return;
-              deleteDoc(doc(db(), 'crm_customers', target.id));
+              await deleteCRMRecord(target.id);
               setDeleteOpen(false);
-              toast.show({ title: 'Deleted', message: 'Customer permanently deleted.' });
+              setRefreshKey((k) => k + 1);
+              toast.show({ title: 'Customer deleted', message: target.name, color: 'red' });
+              setTarget(null);
             }}>Delete</Button>
           </Group>
         </Stack>

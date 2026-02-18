@@ -5,11 +5,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
+import CustomerHeader from '@/components/crm/CustomerHeader';
 import { Card, Title, Text, Group, Badge, Button, Stack, Select, Modal, Tabs, TextInput, Avatar, ActionIcon, Menu, CopyButton, Table, Textarea, Switch, Alert, Divider, MultiSelect, Center, Loader } from '@mantine/core';
 import { useAuthUser, sendPasswordReset } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
-import { doc, onSnapshot, updateDoc, deleteDoc, collection } from 'firebase/firestore';
+import { doc, onSnapshot, collection } from 'firebase/firestore';
+import { archiveCRMRecord, removeCRMRecord, restoreCRMRecord, deleteCRMRecord, updateCRMRecord } from '@/services/crm';
 
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -115,7 +117,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     const body = editNoteBody.trim();
     const title = deriveTitleFromMarkdown(body);
     const notes = (customer.notes || []).map((n: Note) => (n.id === editNoteId ? { ...n, body, title } : n));
-    await updateDoc(doc(db(), 'crm_customers', customer.id), { notes: prune(notes) });
+    await updateCRMRecord(customer.id, { notes: prune(notes) as any });
     setEditNoteOpen(false);
   };
   const openDeleteNote = (id: string) => {
@@ -134,7 +136,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     const required = deleteNoteSnippet;
     if (required.length > 0 && deleteNoteInput !== required) return;
     const notes = (customer.notes || []).filter((n: Note) => n.id !== deleteNoteId);
-    await updateDoc(doc(db(), 'crm_customers', customer.id), { notes: prune(notes) });
+    await updateCRMRecord(customer.id, { notes: prune(notes) as any });
     setDeleteNoteOpen(false);
   };
 
@@ -161,7 +163,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     } else {
       phones = [{ id: `ph-${Date.now()}`, number: num, ext: phoneExt.trim() || undefined, label: phoneLabel.trim() || undefined, kind: phoneKind }, ...phones];
     }
-    await updateDoc(doc(db(), 'crm_customers', customer.id), { phones: prune(phones) });
+    await updateCRMRecord(customer.id, { phones: prune(phones) as any });
     setPhoneNumber(''); setPhoneExt(''); setPhoneLabel(''); setPhoneKind('Work'); setEditingPhoneId(null); setEditPhonesOpen(false);
   };
 
@@ -181,7 +183,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       createdByPhotoURL: authUser?.photoURL || undefined,
     };
     const notes = Array.isArray(customer.notes) ? [newNote, ...customer.notes] : [newNote];
-    await updateDoc(doc(db(), 'crm_customers', customer.id), { notes: prune(notes) });
+    await updateCRMRecord(customer.id, { notes: prune(notes) as any });
     setNoteBody('');
     setNoteOpen(false);
   };
@@ -213,55 +215,11 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   return (
     <EmployerAuthGate>
-      <Group justify="space-between" mb="md">
-        <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/customers/crm')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-            </svg>
-          </ActionIcon>
-          <Group>
-            <Title order={2}>
-              {customer.name}
-            </Title>
-            <Badge color="blue" variant="filled">Customer</Badge>
-            {customer.isBlocked && <Badge color="red" variant="filled">Blocked</Badge>}
-            {customer.doNotContact && <Badge color="yellow" variant="filled">Do Not Contact</Badge>}
-            {customer.isArchived && <Badge color="gray" variant="light">Archived</Badge>}
-          </Group>
-        </Group>
-      </Group>
-
-
-      <RouteTabs
-        value={"overview"}
-        tabs={[
-          { value: 'overview', label: 'Overview', href: `/employee/customers/crm/customer/${customer.id}` },
-          { value: 'notes', label: 'Notes', href: `/employee/customers/crm/customer/${customer.id}/notes` },
-          { value: 'actions', label: 'Actions', href: `/employee/customers/crm/customer/${customer.id}/actions` },
-        ]}
-      />
+      <CustomerHeader customer={customer} current="overview" />
 
       <div style={{ paddingTop: 'var(--mantine-spacing-md)' }}>
-      {customer?.deletedAt && (
-        <Alert color="red" variant="light" mb="md" title="Removed">
-          <Group justify="space-between" align="center">
-            <Text>This customer is removed and appears in the Removed tab.</Text>
-            <Group gap="xs">
-              <Button variant="light" onClick={async () => { await updateDoc(doc(db(), 'crm_customers', customer.id), { deletedAt: null }); toast.show({ title: 'Customer restored', message: 'Customer is back in Database.' }); }}>Restore</Button>
-              <Button variant="subtle" color="red" onClick={() => { setPermDeleteInput(''); setPermDeleteOpen(true); }}>Permanently delete</Button>
-            </Group>
-          </Group>
-        </Alert>
-      )}
-      {customer?.isArchived && (
-        <Alert color="gray" variant="light" mb="md" title="Archived">
-          <Group justify="space-between" align="center">
-            <Text>This customer is archived and hidden from the Database view.</Text>
-            <Button variant="light" onClick={async () => { await updateDoc(doc(db(), 'crm_customers', customer.id), { isArchived: false }); toast.show({ title: 'Customer restored', message: 'Unarchived back to Database.' }); }}>Unarchive</Button>
-          </Group>
-        </Alert>
-      )}
+      {/* Removed alert moved to shared header */}
+      {/* Archived alert moved to shared header */}
       {customer.isBlocked && (
         <Alert color="red" variant="light" mb="md" title="Blocked">
           This customer is blocked and cannot access their account.
@@ -436,7 +394,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setDeleteCustomerOpen(false)}>Cancel</Button>
             <Button color="red" disabled={customer.email.length > 0 && deleteCustomerInput !== customer.email} onClick={async () => {
-              await updateDoc(doc(db(), 'crm_customers', customer.id), { deletedAt: Date.now() });
+              await removeCRMRecord(customer.id);
               setDeleteCustomerOpen(false);
               toast.show({ title: 'Customer removed', message: 'Moved to Removed. You can restore or permanently delete it from the Removed tab.', color: 'green' });
             }}>Remove</Button>
@@ -456,7 +414,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setArchiveCustomerOpen(false)}>Cancel</Button>
             <Button color="orange" disabled={customer.name.length > 0 && archiveCustomerInput !== customer.name} onClick={async () => {
-              await updateDoc(doc(db(), 'crm_customers', customer.id), { isArchived: true });
+              await archiveCRMRecord(customer.id);
               setArchiveCustomerOpen(false);
               toast.show({ title: 'Customer archived', message: 'Moved to Archive.' });
             }}>Archive</Button>
@@ -476,7 +434,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setPermDeleteOpen(false)}>Cancel</Button>
             <Button color="red" disabled={customer.name.length > 0 && permDeleteInput !== customer.name} onClick={async () => {
-              await deleteDoc(doc(db(), 'crm_customers', customer.id));
+              await deleteCRMRecord(customer.id);
               setPermDeleteOpen(false);
               toast.show({ title: 'Customer deleted', message: 'Permanently deleted.' });
               router.push('/employee/customers/crm');
@@ -531,7 +489,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 tags: gTags,
                 ownerId: gOwnerId || undefined,
               };
-              await updateDoc(doc(db(), 'crm_customers', customer.id), prune(patch));
+              await updateCRMRecord(customer.id, patch);
               setEditGeneralOpen(false);
               toast.show({ title: 'Saved', message: 'Customer updated.', color: 'green' });
             }}>Save</Button>
@@ -577,7 +535,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <Button color="red" disabled={deletePhoneSnippet.length > 0 && deletePhoneInput !== deletePhoneSnippet} onClick={async () => {
               if (!customer || !deletePhoneId) return;
               const phones = (customer.phones || []).filter((p: Phone) => p.id !== deletePhoneId);
-              await updateDoc(doc(db(), 'crm_customers', customer.id), { phones: prune(phones) });
+              await updateCRMRecord(customer.id, { phones: prune(phones) as any });
               setDeletePhoneOpen(false);
             }}>Delete</Button>
           </Group>
