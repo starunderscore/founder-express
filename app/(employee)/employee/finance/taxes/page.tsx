@@ -1,11 +1,12 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { ActionIcon, Button, Card, Checkbox, Group, Modal, NumberInput, Stack, Table, Text, TextInput, Title, Menu, Tabs } from '@mantine/core';
+import { ActionIcon, Button, Card, Checkbox, Group, Modal, NumberInput, Stack, Text, TextInput, Title, Menu, Tabs, Anchor } from '@mantine/core';
 import { IconPercentage } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
 
 export default function FinanceTaxesPage() {
   const router = useRouter();
@@ -56,39 +57,39 @@ export default function FinanceTaxesPage() {
           <Group justify="space-between" mb="xs">
             <Text fw={600}>Tax rates</Text>
           </Group>
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Rate</Table.Th>
-                <Table.Th>Enabled</Table.Th>
-                <Table.Th></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {settings.taxes.filter((t) => !t.isArchived && !t.deletedAt).map((t) => (
-                <Table.Tr key={t.id}>
-                  <Table.Td>{t.name}</Table.Td>
-                  <Table.Td>{t.rate}%</Table.Td>
-                  <Table.Td>
-                    <Checkbox checked={t.enabled} onChange={(e) => updateTax(t.id, { enabled: e.currentTarget.checked })} />
-                  </Table.Td>
-                  <Table.Td>
-                    <Group justify="flex-end" gap={6}>
-                      <Button size="xs" variant="light" onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxOpen(true); }}>Edit</Button>
-                      <Button size="xs" variant="light" color="orange" onClick={() => archiveTax(t.id)}>Archive</Button>
-                      <Button size="xs" variant="subtle" color="red" onClick={() => removeTax(t.id)}>Remove</Button>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {settings.taxes.filter((t) => !t.isArchived && !t.deletedAt).length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={4}><Text c="dimmed">No tax rates</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+          {(() => {
+            const columns: Column<any>[] = [
+              { key: 'name', header: 'Name', render: (t: any) => (
+                <Anchor onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxOpen(true); }}>
+                  {t.name || '—'}
+                </Anchor>
+              ) },
+              { key: 'rate', header: 'Rate', width: 120, render: (t: any) => `${t.rate}%` },
+              { key: 'enabled', header: 'Enabled', width: 120, render: (t: any) => (
+                <Checkbox checked={t.enabled} onChange={(e) => updateTax(t.id, { enabled: e.currentTarget.checked })} />
+              ) },
+              { key: 'actions', header: '', width: 1, render: (t: any) => (
+                <Menu withinPortal position="bottom-end" shadow="md" width={180}>
+                  <Menu.Target>
+                    <ActionIcon variant="subtle" aria-label="Actions">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                        <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                      </svg>
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxOpen(true); }}>Edit</Menu.Item>
+                    <Menu.Item onClick={() => archiveTax(t.id)}>Archive</Menu.Item>
+                    <Menu.Item color="red" onClick={() => removeTax(t.id)}>Remove</Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              ) },
+            ];
+            const rows = settings.taxes.filter((t) => !t.isArchived && !t.deletedAt);
+            return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
+          })()}
         </Card>
 
         {/* Archived taxes moved to /archive tab */}
