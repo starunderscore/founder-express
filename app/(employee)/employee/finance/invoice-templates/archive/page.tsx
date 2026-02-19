@@ -2,17 +2,24 @@
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
-import { ActionIcon, Card, Group, Menu, Stack, Table, Tabs, Text, Title } from '@mantine/core';
+import { ActionIcon, Anchor, Button, Card, Group, Menu, Modal, NumberInput, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
 import { IconFileInvoice } from '@tabler/icons-react';
 import { useFinanceStore } from '@/state/financeStore';
+import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
+import { useState } from 'react';
 
 export default function InvoiceTemplatesArchivePage() {
   const router = useRouter();
   const templates = useFinanceStore((s) => s.settings.templates);
   const restoreTemplate = useFinanceStore((s) => s.restoreTemplate);
   const removeTemplate = useFinanceStore((s) => s.removeTemplate);
+  const updateTemplate = useFinanceStore((s) => s.updateTemplate);
 
   const archived = templates.filter((t) => t.isArchived && !t.deletedAt);
+  const [tplOpen, setTplOpen] = useState(false);
+  const [editingTplId, setEditingTplId] = useState<string | null>(null);
+  const [tplName, setTplName] = useState('');
+  const [tplItemsCount, setTplItemsCount] = useState<number | string>('');
 
   return (
     <EmployerAuthGate>
@@ -43,40 +50,47 @@ export default function InvoiceTemplatesArchivePage() {
         </Tabs>
 
         <Card withBorder mt="sm">
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Items</Table.Th>
-                <Table.Th></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {archived.map((t) => (
-                <Table.Tr key={t.id}>
-                  <Table.Td>{t.name}</Table.Td>
-                  <Table.Td>{t.items.length}</Table.Td>
-                  <Table.Td style={{ width: 1 }}>
-                    <Menu shadow="md" width={180}>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item onClick={() => restoreTemplate(t.id)}>Restore</Menu.Item>
-                        <Menu.Item color="red" onClick={() => removeTemplate(t.id)}>Remove</Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {archived.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={3}><Text c="dimmed">No archived templates</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+          {(() => {
+            const columns: Column<any>[] = [
+              { key: 'name', header: 'Name', render: (tpl: any) => (
+                <Anchor onClick={() => { setTplName(tpl.name); setTplItemsCount(String(tpl.items.length)); setEditingTplId(tpl.id); setTplOpen(true); }}>
+                  {tpl.name || '—'}
+                </Anchor>
+              ) },
+              { key: 'items', header: 'Items', width: 120, render: (tpl: any) => <Text size="sm">{tpl.items.length}</Text> },
+              { key: 'taxes', header: 'Taxes', width: 120, render: (tpl: any) => <Text size="sm">{tpl.taxIds.length}</Text> },
+              { key: 'actions', header: '', width: 1, render: (tpl: any) => (
+                <Menu withinPortal position="bottom-end" shadow="md" width={180}>
+                  <Menu.Target>
+                    <ActionIcon variant="subtle" aria-label="Actions">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                        <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                      </svg>
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item onClick={() => restoreTemplate(tpl.id)}>Restore</Menu.Item>
+                    <Menu.Item color="red" onClick={() => removeTemplate(tpl.id)}>Remove</Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              ) },
+            ];
+            const rows = archived;
+            return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
+          })()}
         </Card>
+
+        <Modal opened={tplOpen} onClose={() => { setTplOpen(false); setEditingTplId(null); }} title={'View template'} centered>
+          <Stack>
+            <TextInput label="Template name" value={tplName} onChange={(e) => setTplName(e.currentTarget.value)} readOnly />
+            <NumberInput label="Items count" value={tplItemsCount as any} readOnly />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => { setTplOpen(false); setEditingTplId(null); }}>Close</Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </EmployerAuthGate>
   );

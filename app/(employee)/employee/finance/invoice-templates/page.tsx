@@ -1,7 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { ActionIcon, Button, Card, Group, Stack, Table, Text, TextInput, Title, NumberInput, MultiSelect, Menu, Modal, Tabs } from '@mantine/core';
+import { ActionIcon, Anchor, Button, Card, Group, Stack, Table, Text, TextInput, Title, NumberInput, MultiSelect, Menu, Modal, Tabs } from '@mantine/core';
 import { IconFileInvoice } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -55,35 +55,38 @@ export default function InvoiceTemplatesPage() {
         </Tabs>
 
         <Card withBorder mt="sm">
-          <Stack>
-            <Text fw={600}>Active templates</Text>
-            <Stack>
-              {settings.templates.filter((tpl) => !tpl.isArchived && !tpl.deletedAt).map((tpl) => (
-                <Card withBorder key={tpl.id}>
-                  <Group justify="space-between" align="flex-start">
-                    <div>
-                      <Text fw={600}>{tpl.name}</Text>
-                      <Text size="sm" c="dimmed">Items: {tpl.items.length} · Taxes: {tpl.taxIds.length}</Text>
-                    </div>
-                    <Group gap={6}>
-                      <Button size="xs" variant="light" onClick={() => {
-                        setTplName(tpl.name);
-                        setTplItems(tpl.items.map((it) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice) })));
-                        setTplTaxIds(tpl.taxIds);
-                        setEditingTplId(tpl.id);
-                        setTplOpen(true);
-                      }}>Edit</Button>
-                      <Button size="xs" variant="light" color="orange" onClick={() => archiveTemplate(tpl.id)}>Archive</Button>
-                      <Button size="xs" variant="subtle" color="red" onClick={() => removeTemplate(tpl.id)}>Remove</Button>
-                    </Group>
-                  </Group>
-                </Card>
-              ))}
-              {settings.templates.filter((tpl) => !tpl.isArchived && !tpl.deletedAt).length === 0 && (
-                <Card withBorder><Text c="dimmed">No templates</Text></Card>
-              )}
-            </Stack>
-          </Stack>
+          {(() => {
+            const columns: import('@/components/data-table/LocalDataTable').Column<any>[] = [
+              { key: 'name', header: 'Name', render: (tpl: any) => (
+                <Anchor onClick={() => { setTplName(tpl.name); setTplItems(tpl.items.map((it: any) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice) }))); setTplTaxIds(tpl.taxIds); setEditingTplId(tpl.id); setTplOpen(true); }}>
+                  {tpl.name || '—'}
+                </Anchor>
+              ) },
+              { key: 'items', header: 'Items', width: 120, render: (tpl: any) => <Text size="sm">{tpl.items.length}</Text> },
+              { key: 'taxes', header: 'Taxes', width: 120, render: (tpl: any) => <Text size="sm">{tpl.taxIds.length}</Text> },
+              { key: 'actions', header: '', width: 1, render: (tpl: any) => (
+                <Menu withinPortal position="bottom-end" shadow="md" width={180}>
+                  <Menu.Target>
+                    <ActionIcon variant="subtle" aria-label="Actions">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                        <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                      </svg>
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item onClick={() => { setTplName(tpl.name); setTplItems(tpl.items.map((it: any) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice) }))); setTplTaxIds(tpl.taxIds); setEditingTplId(tpl.id); setTplOpen(true); }}>Edit</Menu.Item>
+                    <Menu.Item onClick={() => archiveTemplate(tpl.id)}>Archive</Menu.Item>
+                    <Menu.Item color="red" onClick={() => removeTemplate(tpl.id)}>Remove</Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              ) },
+            ];
+            const LocalDataTable = require('@/components/data-table/LocalDataTable').default as typeof import('@/components/data-table/LocalDataTable').default;
+            const rows = settings.templates.filter((tpl) => !tpl.isArchived && !tpl.deletedAt);
+            return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
+          })()}
         </Card>
 
         <ModalEditTemplate
