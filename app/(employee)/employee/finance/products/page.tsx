@@ -1,11 +1,12 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Title, Tabs } from '@mantine/core';
+import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Text, TextInput, Title, Tabs } from '@mantine/core';
 import { IconPackage } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
 
 export default function FinanceProductsPage() {
   const router = useRouter();
@@ -79,8 +80,7 @@ export default function FinanceProductsPage() {
           </Tabs.List>
         </Tabs>
 
-        <Card withBorder mt="sm">
-          <Group mb="sm">
+          <Group mb="sm" mt="sm">
             <SegmentedControl
               value={prodView}
               onChange={(v: any) => setProdView(v)}
@@ -93,22 +93,16 @@ export default function FinanceProductsPage() {
             />
           </Group>
           <Card withBorder>
-            <Table verticalSpacing="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th>Type</Table.Th>
-                  <Table.Th>Prices</Table.Th>
-                  <Table.Th>Description</Table.Th>
-                  <Table.Th></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {filteredProducts.map((p: any) => {
+            {(() => {
+              const columns: Column<any>[] = [
+                { key: 'name', header: 'Name', render: (p: any) => p.name || '—' },
+                { key: 'status', header: 'Status', width: 120, render: (p: any) => (<Badge variant="light" color={p.active ? 'green' : 'gray'}>{p.active ? 'Active' : 'Inactive'}</Badge>) },
+                { key: 'type', header: 'Type', width: 120, render: (p: any) => {
                   const hasOne = Array.isArray(p.prices) && p.prices.some((pr: any) => pr.type === 'one_time');
                   const hasRec = Array.isArray(p.prices) && p.prices.some((pr: any) => pr.type === 'recurring');
-                  const kind = hasOne && hasRec ? 'Mixed' : hasRec ? 'Recurring' : hasOne ? 'One-time' : '—';
+                  return hasOne && hasRec ? 'Mixed' : hasRec ? 'Recurring' : hasOne ? 'One-time' : '—';
+                } },
+                { key: 'prices', header: 'Prices', render: (p: any) => {
                   const onePrices = (p.prices || []).filter((pr: any) => pr.type === 'one_time');
                   const recPrices = (p.prices || []).filter((pr: any) => pr.type === 'recurring');
                   const fmtMoney = (pr: any) => `${pr.currency} ${Number(pr.unitAmount).toFixed(2)}`;
@@ -117,49 +111,34 @@ export default function FinanceProductsPage() {
                     const interval = pr.recurring?.interval || 'month';
                     return `${pr.currency} ${Number(pr.unitAmount).toFixed(2)}/${n > 1 ? `${n} ` : ''}${interval}${n > 1 ? 's' : ''}`;
                   };
-                  if (p.deletedAt) return null;
                   return (
-                    <Table.Tr key={p.id}>
-                      <Table.Td>{p.name}</Table.Td>
-                      <Table.Td><Badge variant="light" color={p.active ? 'green' : 'gray'}>{p.active ? 'Active' : 'Inactive'}</Badge></Table.Td>
-                      <Table.Td>
-                        <Text>{kind}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {onePrices.length > 0 && (
-                          <Text size="sm">One-time: {onePrices.map(fmtMoney).join(', ')}</Text>
-                        )}
-                        {recPrices.length > 0 && (
-                          <Text size="sm">Recurring: {recPrices.map(fmtRec).join(', ')}</Text>
-                        )}
-                        {onePrices.length === 0 && recPrices.length === 0 && <Text c="dimmed" size="sm">—</Text>}
-                      </Table.Td>
-                      <Table.Td><Text c="dimmed" size="sm">{p.description || '—'}</Text></Table.Td>
-                      <Table.Td style={{ width: 1 }}>
-                        <Menu shadow="md" width={200}>
-                          <Menu.Target>
-                            <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Item onClick={() => { setProdIdEditing(p.id); setProdName(p.name); setProdDesc(p.description || ''); setProdOpen(true); }}>Edit</Menu.Item>
-                            <Menu.Item onClick={() => { setPriceProdId(p.id); setPriceIdEditing(null); setPriceCurrency(settings.currency); setPriceAmount(''); setPriceType((p.defaultType || 'one_time') as any); setPriceInterval('month'); setPriceIntervalCount('1'); setPriceOpen(true); }}>Add price</Menu.Item>
-                            <Menu.Item color="orange" onClick={() => archiveProduct(p.id)}>Archive</Menu.Item>
-                            <Menu.Item color="red" onClick={() => removeProduct(p.id)}>Remove</Menu.Item>
-                          </Menu.Dropdown>
-                        </Menu>
-                      </Table.Td>
-                    </Table.Tr>
+                    <div>
+                      {onePrices.length > 0 && (<Text size="sm">One-time: {onePrices.map(fmtMoney).join(', ')}</Text>)}
+                      {recPrices.length > 0 && (<Text size="sm">Recurring: {recPrices.map(fmtRec).join(', ')}</Text>)}
+                      {onePrices.length === 0 && recPrices.length === 0 && <Text c="dimmed" size="sm">—</Text>}
+                    </div>
                   );
-                })}
-                {filteredProducts.length === 0 && (
-                  <Table.Tr>
-                    <Table.Td colSpan={6}><Text c="dimmed">No products</Text></Table.Td>
-                  </Table.Tr>
-                )}
-              </Table.Tbody>
-            </Table>
+                } },
+                { key: 'description', header: 'Description', render: (p: any) => (<Text size="sm" c="dimmed">{p.description || '—'}</Text>) },
+                { key: 'actions', header: '', width: 1, render: (p: any) => (
+                  <Menu shadow="md" width={200}>
+                    <Menu.Target>
+                      <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item onClick={() => { setProdIdEditing(p.id); setProdName(p.name); setProdDesc(p.description || ''); setProdOpen(true); }}>Edit</Menu.Item>
+                      <Menu.Item onClick={() => { setPriceProdId(p.id); setPriceIdEditing(null); setPriceCurrency(settings.currency); setPriceAmount(''); setPriceType((p.defaultType || 'one_time') as any); setPriceInterval('month'); setPriceIntervalCount('1'); setPriceOpen(true); }}>Add price</Menu.Item>
+                      <Menu.Item color="orange" onClick={() => archiveProduct(p.id)}>Archive</Menu.Item>
+                      <Menu.Item color="red" onClick={() => removeProduct(p.id)}>Remove</Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                ) },
+              ];
+              const rows = filteredProducts.filter((p: any) => !p.deletedAt);
+              return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
+            })()}
           </Card>
-        </Card>
+        
 
         <Modal opened={prodOpen} onClose={() => { setProdOpen(false); setProdIdEditing(null); }} title={prodIdEditing ? 'Edit product' : 'New product'} centered>
           <Stack>

@@ -2,9 +2,10 @@
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
-import { ActionIcon, Button, Card, Group, Menu, Stack, Table, Tabs, Text, Title } from '@mantine/core';
+import { ActionIcon, Button, Card, Group, Menu, Stack, Tabs, Text, Title } from '@mantine/core';
 import { IconPackage } from '@tabler/icons-react';
 import { useFinanceStore } from '@/state/financeStore';
+import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
 
 export default function FinanceProductsArchivePage() {
   const router = useRouter();
@@ -41,39 +42,25 @@ export default function FinanceProductsArchivePage() {
         </Tabs>
 
         <Card withBorder mt="sm">
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Description</Table.Th>
-                <Table.Th></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {archived.map((p: any) => (
-                <Table.Tr key={p.id}>
-                  <Table.Td>{p.name}</Table.Td>
-                  <Table.Td><Text c="dimmed" size="sm">{p.description || '—'}</Text></Table.Td>
-                  <Table.Td style={{ width: 1 }}>
-                    <Menu shadow="md" width={180}>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item onClick={() => restoreProduct(p.id)}>Restore</Menu.Item>
-                        <Menu.Item color="red" onClick={() => removeProduct(p.id)}>Remove</Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {archived.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={3}><Text c="dimmed">No archived products</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+          {(() => {
+            const columns: Column<any>[] = [
+              { key: 'name', header: 'Name', render: (p: any) => p.name || '—' },
+              { key: 'description', header: 'Description', render: (p: any) => (<Text size="sm" c="dimmed">{p.description || '—'}</Text>) },
+              { key: 'actions', header: '', width: 1, render: (p: any) => (
+                <Menu shadow="md" width={180}>
+                  <Menu.Target>
+                    <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item onClick={() => restoreProduct(p.id)}>Restore</Menu.Item>
+                    <Menu.Item color="red" onClick={() => removeProduct(p.id)}>Remove</Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              ) },
+            ];
+            const rows = archived;
+            return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
+          })()}
         </Card>
       </Stack>
     </EmployerAuthGate>
