@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { RouteTabs } from '@/components/RouteTabs';
 import { useRouter } from 'next/navigation';
-import { type Contact } from '@/state/crmStore';
+import { type Contact } from '@/services/crm/types';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { restoreCRMRecord, deleteCRMRecord } from '@/services/crm';
 

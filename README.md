@@ -2,20 +2,16 @@
 
 - Next.js App Router with multiple layouts: marketing, account, portal
 - Firebase Auth (Google + Email/Password)
-- Robust state system using Zustand + Immer with event origins for user/ai/remote
+- State managed via lightweight services and Firestore where applicable
 
 **Architecture**
 
-- State Core: `state/store.ts`, `state/events.ts`, `state/selectors.ts`
-  - Single source of truth per session: text, cursor, mode, aiEnabled
-  - Actions carry origin: user | ai | remote
--  - Reducer applies actions (no session sync as requested)
--  - Extensible for permissions/control actions (request/grant/release)
+- Service layer: business logic under `services/*`
 - Firebase: `lib/firebase/*`
   - `client.ts` initializes app, auth, and db
   - `auth.ts` exposes `useAuthUser()`, `signInWithGoogle()`, `signOut()`
   - `firestore.ts` session helpers: create/listen/update
-- UI: `app/` pages grouped by layouts, `components/` (AuthGate, PatternTypingCanvas, MarketingHeader, PortalHeader)
+- UI: `app/` pages grouped by layouts, `components/` (AuthGate, MarketingHeader, PortalHeader)
 
 **Routing & Layouts**
 
@@ -72,13 +68,9 @@ Open `http://localhost:3000`.
 - components/MarketingHeader.tsx
 - components/PortalHeader.tsx
 - components/AuthGate.tsx
-- components/PatternTypingCanvas.tsx
 - lib/firebase/client.ts
 - lib/firebase/auth.ts
 - lib/firebase/firestore.ts
-- state/events.ts
-- state/store.ts
-- state/selectors.ts
 - services/presence.ts
 
 Pattern Typing Web (Next.js + Firebase)

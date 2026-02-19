@@ -1,12 +1,10 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useWebsiteStore } from '@/state/websiteStore';
 import { Title, Text, Card, Stack, Group, Button, Alert, Switch, ActionIcon, Divider, Modal } from '@mantine/core';
 import { IconBell } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { WebContentEditor } from '@/components/WebContentEditor';
-import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { Newsbar } from '@/components/Newsbar';
 import { listenNewsbar, saveNewsbarDoc } from '@/services/website/newsbar';
 import { useAuth } from '@/lib/firebase/auth';
@@ -14,24 +12,14 @@ import { useToast } from '@/components/ToastProvider';
 
 export default function NewsbarSettingsPage() {
   const router = useRouter();
-  const newsbar = useWebsiteStore((s) => s.newsbar);
-  const updateNewsbar = useWebsiteStore((s) => s.updateNewsbar);
-
-  const [enabled, setEnabled] = useState(!!newsbar.enabled);
-  const [primaryHtml, setPrimaryHtml] = useState<string>(newsbar.primaryHtml || '');
-  const [secondaryHtml, setSecondaryHtml] = useState<string>(newsbar.secondaryHtml || '');
+  const [enabled, setEnabled] = useState(false);
+  const [primaryHtml, setPrimaryHtml] = useState<string>('');
+  const [secondaryHtml, setSecondaryHtml] = useState<string>('');
   const [status, setStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
   const { user } = useAuth();
   const toast = useToast();
-
-  useEffect(() => {
-    setEnabled(!!newsbar.enabled);
-    setPrimaryHtml(newsbar.primaryHtml || '');
-    setSecondaryHtml(newsbar.secondaryHtml || '');
-  }, [newsbar.enabled, newsbar.primaryHtml, newsbar.secondaryHtml]);
 
   // Live sync from Firestore (starter integration)
   useEffect(() => {
@@ -48,7 +36,6 @@ export default function NewsbarSettingsPage() {
     setError(null);
     setStatus('saving');
     try {
-      updateNewsbar({ enabled, primaryHtml: (primaryHtml || '').trim(), secondaryHtml: (secondaryHtml || '').trim() });
       // Persist to Firestore
       saveNewsbarDoc({ enabled, primaryHtml, secondaryHtml, updatedBy: user?.uid }).catch(() => {/* ignore */});
       setStatus('idle');

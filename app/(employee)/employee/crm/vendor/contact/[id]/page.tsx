@@ -1,6 +1,6 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { type Note, type Contact, type Phone, type Email, type Address } from '@/state/crmStore';
+import { type Note, type Contact, type Phone, type Email, type Address } from '@/services/crm/types';
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Title, Text, Group, Badge, Button, Stack, Tabs, ActionIcon, Avatar, Textarea, Modal, Anchor, TextInput, Table, Select, Radio, Menu, CopyButton, Switch, Divider, Alert, Center, Loader, MultiSelect } from '@mantine/core';

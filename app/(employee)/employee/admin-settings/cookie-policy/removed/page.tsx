@@ -5,7 +5,6 @@ import { Title, Text, Card, Stack, Group, ActionIcon, Tabs, Menu, Modal, Button,
 import { IconCookie } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import { useAppSettingsStore } from '@/state/appSettingsStore';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { listenCookiePolicyEnabled, restoreCookiePolicy, deleteCookiePolicy } from '@/services/admin-settings/cookie-policy';

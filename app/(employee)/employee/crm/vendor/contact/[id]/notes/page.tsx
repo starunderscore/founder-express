@@ -10,7 +10,7 @@ import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import type { Note, Contact } from '@/state/crmStore';
+import type { Note, Contact } from '@/services/crm/types';
 import { addVendorContactNote, removeVendorContactNote, updateVendorContactNote } from '@/services/crm/vendor-contacts';
 
 export default function VendorContactNotesPage({ params }: { params: { id: string } }) {

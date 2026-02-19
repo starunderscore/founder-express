@@ -8,7 +8,7 @@ import { useToast } from '@/components/ToastProvider';
 import VendorContactHeader from '@/components/crm/VendorContactHeader';
 import { db } from '@/lib/firebase/client';
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import type { Contact } from '@/state/crmStore';
+import type { Contact } from '@/services/crm/types';
 import { setVendorContactDoNotContact, unarchiveVendorContact } from '@/services/crm/vendor-contacts';
 
 export default function VendorContactActionsPage({ params }: { params: { id: string } }) {

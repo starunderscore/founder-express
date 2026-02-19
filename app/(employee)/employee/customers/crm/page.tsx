@@ -5,7 +5,7 @@ import { Title, Text, Card, TextInput, Group, Button, Select, Table, Badge, Text
 import { useToast } from '@/components/ToastProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type LeadSource, type Note } from '@/state/crmStore';
+import { type LeadSource, type Note } from '@/services/crm/types';
 import { db } from '@/lib/firebase/client';
 import { collection, addDoc, onSnapshot } from 'firebase/firestore';
 // Employees list from Firestore (no Zustand persistence)

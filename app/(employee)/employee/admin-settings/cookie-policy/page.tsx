@@ -10,7 +10,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { ensureDefaultCookiePolicy, listenCookiePolicies, listenCookiePolicyEnabled, setCookiePolicyEnabled, archiveCookiePolicy, removeCookiePolicy, setActiveCookiePolicy, type CookiePolicy as CookiePolicyRow } from '@/services/admin-settings/cookie-policy';
 import { db } from '@/lib/firebase/client';
-import { useAppSettingsStore } from '@/state/appSettingsStore';
 
 type CookiePolicy = { id: string; title: string; bodyHtml?: string; createdAt?: number; updatedAt?: number; deletedAt?: number; isActive?: boolean };
 

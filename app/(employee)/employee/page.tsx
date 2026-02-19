@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchUserCountsSummary, fetchUserSignupsByWeek } from '@/lib/firebase/analytics';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { useSubscriptionsStore } from '@/state/subscriptionsStore';
+import { listNewsletters } from '@/services/email-subscriptions/newsletters';
 import { useFinanceStore } from '@/state/financeStore';
 
 export default function EmployerDashboardPage() {
@@ -13,11 +13,15 @@ export default function EmployerDashboardPage() {
   const [summary, setSummary] = useState<{ total: number; dau: number; wau: number; mau: number } | null>(null);
   const [series, setSeries] = useState<{ week: string; signups: number }[] | null>(null);
 
-  const email = useSubscriptionsStore((s) => ({
-    waitlists: s.waitlists.length,
-    subscribers: s.emailList.length,
-    newslettersSent: s.newsletters.filter((n) => n.status === 'Sent').length,
-  }));
+  const [newslettersSent, setNewslettersSent] = useState(0);
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await listNewsletters();
+        setNewslettersSent(rows.filter((n) => n.status === 'Sent').length);
+      } catch {}
+    })();
+  }, []);
 
   const finance = useFinanceStore((s) => ({ invoicesCount: s.invoices.length }));
 
@@ -109,8 +113,8 @@ export default function EmployerDashboardPage() {
           <Card withBorder>
             <Stack gap={2}>
               <Text c="dimmed" size="sm">Email subscribers</Text>
-              <Title order={3}>{email.subscribers}</Title>
-              <Text size="sm" c="dimmed">Waitlists: {email.waitlists} · Newsletters sent: {email.newslettersSent}</Text>
+              <Title order={3}>—</Title>
+              <Text size="sm" c="dimmed">Waitlists: — · Newsletters sent: {newslettersSent}</Text>
               <Group gap={6}>
                 <Button component={Link as any} href="/employee/email-subscriptions" variant="light" size="xs">Open email</Button>
               </Group>

@@ -1,7 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { useCRMStore } from '@/state/crmStore';
+import { listCRM } from '@/services/crm/firestore';
 import { Card, Group, SimpleGrid, Text, Title } from '@mantine/core';
 import { IconChartBar } from '@tabler/icons-react';
 
@@ -18,7 +18,8 @@ function StatCard({ label, value }: { label: string; value: string }) {
 export default function FinanceOverviewPage() {
   const invoices = useFinanceStore((s) => s.invoices);
   const settings = useFinanceStore((s) => s.settings);
-  const customers = useCRMStore((s) => s.customers);
+  const [customersCount, setCustomersCount] = React.useState(0);
+  React.useEffect(() => { (async () => { const rows = await listCRM('active'); setCustomersCount(rows.filter((r:any)=>r.type==='customer').length); })(); }, []);
 
   const today = new Date();
   const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
@@ -48,7 +49,7 @@ export default function FinanceOverviewPage() {
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} mb="md">
-        <StatCard label="Total customers" value={String(customers.length)} />
+        <StatCard label="Total customers" value={String(customersCount)} />
         <StatCard label="Total paid" value={toMoney(totalPaid)} />
         <StatCard label="Outstanding" value={toMoney(totalUnpaid)} />
         <StatCard label={`Late (>${settings.gracePeriodDays}d)`} value={toMoney(totalLate)} />

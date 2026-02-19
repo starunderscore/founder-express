@@ -1,6 +1,6 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { type LeadSource, type Note, type Phone } from '@/state/crmStore';
+import { type LeadSource, type Note, type Phone } from '@/services/crm/types';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';

@@ -1,8 +1,8 @@
 "use client";
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { useCRMStore } from '@/state/crmStore';
+import { listCRM } from '@/services/crm/firestore';
 import { Button, Card, Group, Select, Table, Text, TextInput, Title, Stack } from '@mantine/core';
 import { IconFileInvoice } from '@tabler/icons-react';
 
@@ -13,7 +13,8 @@ export default function FinanceInvoicesPage() {
   const updateInvoice = useFinanceStore((s) => s.updateInvoice);
   const removeInvoice = useFinanceStore((s) => s.removeInvoice);
   const markPaid = useFinanceStore((s) => s.markPaid);
-  const customers = useCRMStore((s) => s.customers);
+  const [customers, setCustomers] = useState<any[]>([]);
+  useEffect(() => { (async () => { const rows = await listCRM('active'); setCustomers(rows.filter((r:any)=>r.type==='customer')); })(); }, []);
 
   const [customerId, setCustomerId] = useState<string | null>(customers[0]?.id || null);
   const [amount, setAmount] = useState('');
@@ -22,12 +23,12 @@ export default function FinanceInvoicesPage() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Unpaid'>('All');
 
-  const customerOptions = customers.map((c) => ({ value: c.id, label: `${c.name} · ${c.email}` }));
+  const customerOptions = customers.map((c: any) => ({ value: c.id, label: `${c.name} · ${c.email || ''}` }));
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return invoices.filter((i) => {
-      const cust = customers.find((c) => c.id === i.customerId);
+      const cust = customers.find((c: any) => c.id === i.customerId);
       const text = `${cust?.name || ''} ${cust?.email || ''}`.toLowerCase();
       const matchesQuery = !q || text.includes(q);
       const matchesStatus = statusFilter === 'All' || i.status === statusFilter;
@@ -78,7 +79,7 @@ export default function FinanceInvoicesPage() {
           </Table.Thead>
           <Table.Tbody>
             {filtered.map((i) => {
-              const cust = customers.find((c) => c.id === i.customerId);
+              const cust = customers.find((c: any) => c.id === i.customerId);
               const isLate = i.status === 'Unpaid' && new Date(i.dueDate) < today;
               return (
                 <Table.Tr key={i.id}>

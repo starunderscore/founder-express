@@ -3,11 +3,20 @@ import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Group, Stack, Badge, Button } from '@mantine/core';
 import { IconGlobe, IconBell, IconFileText } from '@tabler/icons-react';
-import { useWebsiteStore } from '@/state/websiteStore';
+import { listenNewsbar } from '@/services/website/newsbar';
+import { useEffect, useState } from 'react';
 
 export default function EmployerWebsitePage() {
-  const newsbar = useWebsiteStore((s) => s.newsbar);
-  const preview = newsbar.enabled ? stripHtml(newsbar.primaryHtml || '') : '';
+  const [enabled, setEnabled] = useState(false);
+  const [primaryHtml, setPrimaryHtml] = useState('');
+  useEffect(() => {
+    const unsub = listenNewsbar((doc) => {
+      setEnabled(!!doc?.enabled);
+      setPrimaryHtml(doc?.primaryHtml || '');
+    });
+    return () => unsub();
+  }, []);
+  const preview = enabled ? stripHtml(primaryHtml || '') : '';
 
   return (
     <EmployerAuthGate>
@@ -26,7 +35,7 @@ export default function EmployerWebsitePage() {
               <Group gap={8} align="center">
                 <IconBell size={18} />
                 <Title order={4} style={{ lineHeight: 1 }}>News Bar</Title>
-                <Badge variant="light" color={newsbar.enabled ? 'green' : 'gray'}>{newsbar.enabled ? 'On' : 'Off'}</Badge>
+                <Badge variant="light" color={enabled ? 'green' : 'gray'}>{enabled ? 'On' : 'Off'}</Badge>
               </Group>
               <Text size="sm" c="dimmed" mt={4}>
                 {preview ? `“${preview}”` : 'Configure a primary and secondary line shown at the top of your site.'}

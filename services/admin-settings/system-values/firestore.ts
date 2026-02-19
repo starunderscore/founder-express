@@ -1,6 +1,6 @@
 import { doc, getDoc, onSnapshot, setDoc, updateDoc, type DocumentData, type Firestore, type Unsubscribe } from 'firebase/firestore';
 import { db as defaultDb } from '@/lib/firebase/client';
-import type { AppSettings } from '@/state/appSettingsStore';
+import type { AppSettings } from './types';
 import { rowsFromSettings } from './helpers';
 import type { SystemValueRow } from './types';
 

@@ -6,8 +6,7 @@ import Link from 'next/link';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { IconFileText } from '@tabler/icons-react';
 import { RouteTabs } from '@/components/RouteTabs';
-import { useWebsiteStore } from '@/state/websiteStore';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 function slugify(input: string): string {
@@ -22,15 +21,7 @@ function slugify(input: string): string {
 export default function WebsiteBlogsDraftsPage() {
   const router = useRouter();
   const toast = useToast();
-  const blogs = useWebsiteStore((s) => s.blogs);
-  const updateBlog = useWebsiteStore((s) => s.updateBlog);
-  const removeBlog = useWebsiteStore((s) => s.removeBlog);
-  const setBlogArchived = useWebsiteStore((s) => s.setBlogArchived);
-
-  const activeDrafts = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived && !b.published), [blogs]);
-  const total = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived).length, [blogs]);
-  const publishedCount = useMemo(() => blogs.filter((b) => !b.deletedAt && !b.isArchived && b.published).length, [blogs]);
-  const draftsCount = total - publishedCount;
+  // Local Store removed — all actions go directly to Firestore
 
   const openEdit = (id: string) => router.push(`/employee/website/blogs/new?edit=${encodeURIComponent(id)}`);
   const [target, setTarget] = useState<({ id: string } & import('@/lib/firebase/blogs').BlogDoc) | null>(null);

@@ -1,20 +1,22 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
-import { useCRMStore } from '@/state/crmStore';
+import { listCRM } from '@/services/crm/firestore';
 import { ActionIcon, Button, Card, Group, Select, Stack, Text, TextInput, Title, Table, MultiSelect, NumberInput } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 export default function FinanceNewInvoicePage() {
   const router = useRouter();
-  const customers = useCRMStore((s) => s.customers);
+  const [customers, setCustomers] = useState<any[]>([]);
+  useEffect(() => { (async () => { const rows = await listCRM('active'); setCustomers(rows.filter((r:any)=>r.type==='customer')); })(); }, []);
   const addInvoice = useFinanceStore((s) => s.addInvoice);
   const financeSettings = useFinanceStore((s) => s.settings);
 
-  const customerOptions = useMemo(() => customers.map((c) => ({ value: c.id, label: `${c.name} · ${c.email}` })), [customers]);
+  const customerOptions = useMemo(() => customers.map((c:any) => ({ value: c.id, label: `${c.name} · ${c.email || ''}` })), [customers]);
 
-  const [customerId, setCustomerId] = useState<string | null>(customers[0]?.id || null);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  useEffect(() => { if (!customerId && customers.length) setCustomerId(customers[0].id); }, [customers]);
   const [currency, setCurrency] = useState(financeSettings.currency);
   const [dueDate, setDueDate] = useState<string>('');
   const [error, setError] = useState<string | null>(null);

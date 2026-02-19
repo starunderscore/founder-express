@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { listenNewsletters, type Newsletter as NewsletterRow } from '@/services/email-subscriptions/newsletters';
 import Link from 'next/link';
 // RouteTabs removed per new design
-import { useAppSettingsStore } from '@/state/appSettingsStore';
+import { readAdminSettings, updateBuiltinSystemValue } from '@/services/admin-settings/system-values/firestore';
 import { useToast } from '@/components/ToastProvider';
 import { useRouter } from 'next/navigation';
 
@@ -16,12 +16,11 @@ type Newsletter = NewsletterRow;
 export default function EmployerEmailNewslettersPage() {
   const router = useRouter();
   const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
-  const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
-  const setWebsiteUrl = useAppSettingsStore((s) => s.setWebsiteUrl);
+  const [websiteUrl, setWebsiteUrlState] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   const toast = useToast();
-  useEffect(() => { setUrlInput(websiteUrl || ''); }, [websiteUrl]);
+  useEffect(() => { (async () => { try { const s = await readAdminSettings(); setWebsiteUrlState(s.websiteUrl || ''); setUrlInput(s.websiteUrl || ''); } catch {} })(); }, []);
 
   const validUrl = (u: string) => {
     try {
@@ -33,8 +32,13 @@ export default function EmployerEmailNewslettersPage() {
     const v = urlInput.trim();
     if (!validUrl(v)) { setUrlError('Enter a valid URL, e.g. https://www.example.com'); return; }
     setUrlError(null);
-    setWebsiteUrl(v);
-    toast.show({ title: 'Saved', message: 'WEBSITE_URL updated.' });
+    try {
+      await updateBuiltinSystemValue('WEBSITE_URL', v);
+      setWebsiteUrlState(v);
+      toast.show({ title: 'Saved', message: 'WEBSITE_URL updated.' });
+    } catch (e: any) {
+      toast.show({ title: 'Save failed', message: String(e?.message || e || 'Unknown error'), color: 'red' });
+    }
   };
   useEffect(() => {
     const off = listenNewsletters((rows) => setNewsletters(rows));

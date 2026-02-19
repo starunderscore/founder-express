@@ -8,7 +8,7 @@ import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 import { RouteTabs } from '@/components/RouteTabs';
-import { type Contact } from '@/state/crmStore';
+import { type Contact } from '@/services/crm/types';
 
 export default function CRMRemovedPage() {
   const toast = useToast();

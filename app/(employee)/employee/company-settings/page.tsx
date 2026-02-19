@@ -3,10 +3,8 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button } from '@mantine/core';
 import { IconBuilding, IconMail } from '@tabler/icons-react';
 import Link from 'next/link';
-import { useAppSettingsStore } from '@/state/appSettingsStore';
 
 export default function AppSettingsPage() {
-  const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl);
 
   return (
     <EmployerAuthGate>

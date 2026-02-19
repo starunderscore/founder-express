@@ -68,3 +68,72 @@ export type RawCRMDoc = DocumentData & {
   isArchived?: any;
   deletedAt?: any;
 };
+
+// Extended CRM shapes used in UI (migrated from state/crmStore)
+export type LeadSource =
+  | 'no-source'
+  | 'Website'
+  | 'Referral'
+  | 'Paid Ads'
+  | 'Social'
+  | 'Event'
+  | 'Import'
+  | 'Waiting List'
+  | 'Other';
+
+export type Note = {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: number;
+  createdByName?: string;
+  createdByEmail?: string;
+  createdByPhotoURL?: string;
+};
+
+export type Email = {
+  id: string;
+  email: string;
+  label?: string;
+  kind?: 'Personal' | 'Work';
+  notes?: Note[];
+};
+
+export type Phone = {
+  id: string;
+  number: string;
+  label?: string;
+  ext?: string;
+  addressId?: string;
+  kind?: 'Personal' | 'Work';
+  notes?: Note[];
+};
+
+export type Address = {
+  id: string;
+  label?: string;
+  line1: string;
+  line2?: string;
+  city?: string;
+  region?: string;
+  postal?: string;
+  country?: string;
+  isHQ?: boolean;
+  phones?: Phone[];
+};
+
+export type Contact = {
+  id: string;
+  name: string;
+  title?: string;
+  createdAt?: number;
+  deletedAt?: number;
+  tags?: string[];
+  emails?: Email[];
+  phones?: Phone[];
+  addresses?: Address[];
+  notes?: Note[];
+  isBlocked?: boolean;
+  isArchived?: boolean;
+  doNotContact?: boolean;
+};

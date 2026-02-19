@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, TextInput, ActionIcon, Modal, Switch, Alert } from '@mantine/core';
-import { useAppSettingsStore } from '@/state/appSettingsStore';
+import { readAdminSettings } from '@/services/admin-settings/system-values/firestore';
 import { WebContentEditor } from '@/components/WebContentEditor';
 import { createBlog, updateBlog, getBlog } from '@/lib/firebase/blogs';
 
@@ -21,7 +21,8 @@ export default function NewBlogPostPage() {
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
   // Persist directly to Firestore; Zustand store is not used here
-  const websiteUrl = useAppSettingsStore((s) => s.settings.websiteUrl || '');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  useEffect(() => { (async () => { try { const s = await readAdminSettings(); setWebsiteUrl(s.websiteUrl || ''); } catch {} })(); }, []);
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
