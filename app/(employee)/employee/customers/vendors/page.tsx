@@ -1,12 +1,15 @@
 "use client";
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { ActionIcon, Card, Group, Stack, Tabs, Text, Title, Button, TextInput, Table, Badge, Menu } from '@mantine/core';
+import { ActionIcon, Card, Group, Stack, Tabs, Text, Title, Button, TextInput, Menu, Modal, CopyButton } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import VendorAddModal from '@/components/crm/vendor/VendorAddModal';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import { archiveCRMRecord, removeCRMRecord } from '@/services/crm';
+import { useToast } from '@/components/ToastProvider';
 
 type Vendor = { id: string; name: string; email?: string; isArchived?: boolean; deletedAt?: number };
 
@@ -15,6 +18,11 @@ export default function VendorsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const toast = useToast();
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [target, setTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeInput, setRemoveInput] = useState('');
 
   useEffect(() => {
     const q = query(collection(db(), 'crm_customers'));
@@ -67,48 +75,70 @@ export default function VendorsPage() {
         </Tabs>
 
         <Card withBorder>
-          <Group mb="sm" align="center" grow>
-            <TextInput placeholder="Search vendors" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
-          </Group>
-          <Table verticalSpacing="xs" highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Email</Table.Th>
-                <Table.Th style={{ width: 1 }}></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {filtered.map((v) => (
-                <Table.Tr key={v.id}>
-                  <Table.Td>
-                    <Link href={`/employee/customers/vendors/${v.id}`} style={{ textDecoration: 'none' }}>{v.name}</Link>
-                  </Table.Td>
-                  <Table.Td><Text size="sm">{v.email || '—'}</Text></Table.Td>
-                  <Table.Td>
-                    <Group justify="flex-end">
-                      <Menu shadow="md" width={180}>
-                        <Menu.Target>
-                          <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                        </Menu.Target>
+          <div style={{ padding: '12px 0' }}>
+            <TextInput placeholder="Search vendors" value={search} onChange={(e) => setSearch(e.currentTarget.value)} style={{ width: '100%' }} />
+          </div>
+          <FirestoreDataTable
+            collectionPath="crm_customers"
+            columns={([
+              { key: 'name', header: 'Name', render: (r: any) => (<Link href={`/employee/customers/vendors/${r.id}`} style={{ textDecoration: 'none' }}>{r.name || '—'}</Link>) },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (r: any) => (
+                  <Group justify="flex-end">
+                    <Menu shadow="md" width={180}>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" aria-label="Actions">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                          </svg>
+                        </ActionIcon>
+                      </Menu.Target>
                         <Menu.Dropdown>
-                          <Menu.Item component={Link as any} href={`/employee/customers/vendors/${v.id}`}>View</Menu.Item>
-                          <Menu.Item onClick={async () => { await updateDoc(doc(db(), 'crm_customers', v.id), { isArchived: true }); }}>Archive</Menu.Item>
-                          <Menu.Item color="red" onClick={async () => { await updateDoc(doc(db(), 'crm_customers', v.id), { deletedAt: Date.now() }); }}>Remove</Menu.Item>
+                          <Menu.Item component={Link as any} href={`/employee/customers/vendors/${r.id}`}>View</Menu.Item>
+                          <Menu.Item onClick={async () => { await archiveCRMRecord(r.id); setRefreshKey((k) => k + 1); toast.show({ title: 'Archived vendor', message: r.name, color: 'orange' }); }}>Archive</Menu.Item>
+                          <Menu.Item color="red" onClick={() => { setTarget({ id: r.id, name: r.name }); setRemoveInput(''); setRemoveOpen(true); }}>Remove</Menu.Item>
                         </Menu.Dropdown>
-                      </Menu>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-              {filtered.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={3}><Text c="dimmed">No vendors found</Text></Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+                    </Menu>
+                  </Group>
+                )
+              },
+            ]) as Column<any>[]}
+            initialSort={{ field: 'name', direction: 'asc' }}
+            clientFilter={(r: any) => {
+              const q = (search || '').toLowerCase();
+              const t = r?.type === 'vendor' ? 'vendor' : 'customer';
+              const matches = !q || String(r.name || '').toLowerCase().includes(q);
+              return t === 'vendor' && !r.isArchived && !r.deletedAt && matches;
+            }}
+            defaultPageSize={25}
+            enableSelection={false}
+            refreshKey={refreshKey}
+          />
         </Card>
+        <Modal opened={removeOpen} onClose={() => setRemoveOpen(false)} centered>
+          <Stack>
+            <Text>Move this vendor to Removed? You can restore it later or delete permanently from the Removed tab.</Text>
+            <Group align="end" gap="sm">
+              <TextInput label="Vendor name" value={target?.name || ''} readOnly style={{ flex: 1 }} />
+              <CopyButton value={target?.name || ''}>{({ copied, copy }) => (<Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>)}</CopyButton>
+            </Group>
+            <TextInput label="Type here to confirm" placeholder="Paste or type vendor name" value={removeInput} onChange={(e) => setRemoveInput(e.currentTarget.value)} />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setRemoveOpen(false)}>Cancel</Button>
+              <Button color="red" disabled={(target?.name?.length || 0) > 0 && removeInput !== (target?.name || '')} onClick={async () => {
+                if (!target) return;
+                await removeCRMRecord(target.id);
+                setRemoveOpen(false);
+                setTarget(null);
+                setRefreshKey((k) => k + 1);
+                toast.show({ title: 'Removed vendor', message: removeInput, color: 'orange' });
+              }}>Remove</Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
       <VendorAddModal opened={addOpen} onClose={() => setAddOpen(false)} basePath="/employee/customers/vendors" />
     </EmployerAuthGate>

@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Title, Text, Group, Badge, Button, Stack, Tabs, ActionIcon, Avatar, Textarea, Modal, Center, Loader } from '@mantine/core';
 import { RouteTabs } from '@/components/RouteTabs';
+import VendorContactHeader from '@/components/crm/VendorContactHeader';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
-import { collection, doc, onSnapshot, query, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import type { Note, Contact } from '@/state/crmStore';
+import { addVendorContactNote, removeVendorContactNote, updateVendorContactNote } from '@/services/crm/vendor-contacts';
 
 export default function VendorContactNotesPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -49,19 +51,6 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
   const [deleteNoteSnippet, setDeleteNoteSnippet] = useState('');
   const [deleteNoteInput, setDeleteNoteInput] = useState('');
 
-  const prune = (val: any): any => {
-    if (Array.isArray(val)) return val.map(prune);
-    if (val && typeof val === 'object') {
-      const out: any = {};
-      for (const [k, v] of Object.entries(val)) {
-        const pv = prune(v);
-        if (pv !== undefined) out[k] = pv;
-      }
-      return out;
-    }
-    return val === undefined ? undefined : val;
-  };
-
   const deriveTitleFromMarkdown = (body: string): string => {
     const text = (body || '').trim();
     if (!text) return 'Note';
@@ -69,6 +58,8 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
     const cleaned = firstNonEmpty.replace(/^#+\s*/, '').trim();
     return cleaned.slice(0, 60) || 'Note';
   };
+
+  const getDb = () => db();
 
   const addNote = async () => {
     if (!vendor || !contact) return;
@@ -83,8 +74,7 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
       createdByEmail: authUser?.email || undefined,
       createdByPhotoURL: authUser?.photoURL || undefined,
     };
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, notes: [newNote, ...(c.notes || [])] } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: prune(contacts) } as any);
+    await addVendorContactNote(vendor.id, contact.id, newNote, { getDb });
     setNoteBody('');
     setNoteOpen(false);
   };
@@ -101,8 +91,7 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
     if (!vendor || !contact || !editNoteId) return;
     const body = editNoteBody.trim();
     const title = deriveTitleFromMarkdown(body);
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, notes: (contact.notes || []).map((n: Note) => (n.id === editNoteId ? { ...n, body, title } : n)) } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: prune(contacts) } as any);
+    await updateVendorContactNote(vendor.id, contact.id, editNoteId, { body, title }, { getDb });
     setEditNoteOpen(false);
   };
 
@@ -121,8 +110,7 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
     if (!vendor || !contact || !deleteNoteId) return;
     const required = deleteNoteSnippet;
     if (required.length > 0 && deleteNoteInput !== required) return;
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, notes: (contact.notes || []).filter((n: Note) => n.id !== deleteNoteId) } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: prune(contacts) } as any);
+    await removeVendorContactNote(vendor.id, contact.id, deleteNoteId, { getDb });
     setDeleteNoteOpen(false);
   };
 
@@ -136,52 +124,17 @@ export default function VendorContactNotesPage({ params }: { params: { id: strin
 
   return (
     <EmployerAuthGate>
-      {/* Vendor header row */}
-      <Group justify="space-between" mb="xs">
-        <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`${baseVendor}/${vendor.id}/contacts`)}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-            </svg>
-          </ActionIcon>
-          <Group>
-            <Title order={4}>{vendor.name}</Title>
-            <Badge color="orange" variant="filled">Vendor</Badge>
-          </Group>
-        </Group>
-      </Group>
-
-      {/* Contact header row */}
-      <Group justify="space-between" mb="md" align="flex-end">
-        <div>
-          <Group gap="xs" align="center">
-            <Title order={2} style={{ lineHeight: 1 }}>{contact.name}</Title>
-            <Badge color="grape" variant="filled">Contact</Badge>
-            {contact.doNotContact && <Badge color="yellow" variant="filled">Do Not Contact</Badge>}
-          </Group>
-        </div>
-        <Group gap="xs">
-          {(contact.emails?.length || 0) > 0 && <Badge variant="light">{contact.emails!.length} email{contact.emails!.length === 1 ? '' : 's'}</Badge>}
-          {(contact.phones?.length || 0) > 0 && <Badge variant="light">{contact.phones!.length} phone{contact.phones!.length === 1 ? '' : 's'}</Badge>}
-          {(contact.addresses?.length || 0) > 0 && <Badge variant="light">{contact.addresses!.length} address{contact.addresses!.length === 1 ? '' : 'es'}</Badge>}
-        </Group>
-      </Group>
-
-      <RouteTabs
-        value={"notes"}
-        mb="md"
-        tabs={[
-          { value: 'overview', label: 'Overview', href: `${baseContact}/${contact.id}` },
-          { value: 'notes', label: 'Notes', href: `${baseContact}/${contact.id}/notes` },
-          { value: 'actions', label: 'Actions', href: `${baseContact}/${contact.id}/actions` },
-        ]}
+      <VendorContactHeader
+        vendorId={vendor.id}
+        vendorName={vendor.name}
+        contact={contact}
+        current="notes"
+        baseContact={baseContact}
+        backHref={`${baseVendor}/${vendor.id}/contacts`}
+        rightSlot={<Button variant="light" onClick={() => setNoteOpen(true)}>Add note</Button>}
       />
 
       <Card withBorder radius="md" padding={0}>
-        <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Title order={4} m={0} style={{ color: 'inherit' }}>Notes</Title>
-          <Button variant="default" onClick={() => setNoteOpen(true)}>Add note</Button>
-        </div>
         <div style={{ padding: '12px 16px' }}>
           {Array.isArray(contact.notes) && contact.notes.length > 0 ? (
             <Stack>

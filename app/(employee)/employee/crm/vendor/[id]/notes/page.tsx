@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Title, Text, Group, Badge, Button, Stack, Modal, Textarea, ActionIcon, Menu, Avatar, Tabs, Center, Loader } from '@mantine/core';
 import { RouteTabs } from '@/components/RouteTabs';
+import VendorHeader from '@/components/crm/VendorHeader';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { updateCRMRecord } from '@/services/crm';
 
 export default function VendorNotesPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -68,7 +70,7 @@ export default function VendorNotesPage({ params }: { params: { id: string } }) 
       createdByPhotoURL: authUser?.photoURL || undefined,
     };
     const notes = Array.isArray(vendor.notes) ? [newNote, ...vendor.notes] : [newNote];
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { notes: prune(notes) } as any);
+    await updateCRMRecord(vendor.id, { notes: prune(notes) } as any);
     setNoteBody('');
     setNoteOpen(false);
   };
@@ -86,7 +88,7 @@ export default function VendorNotesPage({ params }: { params: { id: string } }) 
     const body = editNoteBody.trim();
     const title = deriveTitleFromMarkdown(body);
     const notes = (vendor.notes || []).map((n: any) => (n.id === editNoteId ? { ...n, body, title } : n));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { notes: prune(notes) } as any);
+    await updateCRMRecord(vendor.id, { notes: prune(notes) } as any);
     setEditNoteOpen(false);
   };
 
@@ -106,7 +108,7 @@ export default function VendorNotesPage({ params }: { params: { id: string } }) 
     const required = deleteNoteSnippet;
     if (required.length > 0 && deleteNoteInput !== required) return;
     const notes = (vendor.notes || []).filter((n: any) => n.id !== deleteNoteId);
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { notes: prune(notes) } as any);
+    await updateCRMRecord(vendor.id, { notes: prune(notes) } as any);
     setDeleteNoteOpen(false);
   };
 
@@ -120,36 +122,15 @@ export default function VendorNotesPage({ params }: { params: { id: string } }) 
 
   return (
     <EmployerAuthGate>
-      <Group justify="space-between" mb="md">
-        <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(isVendorsSection ? '/employee/customers/vendors' : '/employee/crm')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-            </svg>
-          </ActionIcon>
-          <Group>
-            <Title order={2}>{vendor.name}</Title>
-            <Badge color="orange" variant="filled">Vendor</Badge>
-          </Group>
-        </Group>
-      </Group>
-
-      <RouteTabs
-        value={"notes"}
-        mb="md"
-        tabs={[
-          { value: 'overview', label: 'Overview', href: `${baseVendor}/${vendor.id}` },
-          { value: 'notes', label: 'Notes', href: `${baseVendor}/${vendor.id}/notes` },
-          { value: 'contacts', label: 'Contacts', href: `${baseVendor}/${vendor.id}/contacts` },
-          { value: 'actions', label: 'Actions', href: `${baseVendor}/${vendor.id}/actions` },
-        ]}
+      <VendorHeader
+        vendor={vendor}
+        current="notes"
+        baseVendor={baseVendor}
+        backBase={isVendorsSection ? '/employee/customers/vendors' : '/employee/crm'}
+        rightSlot={<Button variant="light" onClick={() => setNoteOpen(true)}>Add note</Button>}
       />
 
       <Card withBorder radius="md" padding={0}>
-        <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Title order={4} m={0} style={{ color: 'inherit' }}>Notes</Title>
-          <Button variant="default" onClick={() => setNoteOpen(true)}>Add note</Button>
-        </div>
         <div style={{ padding: '12px 16px' }}>
           {Array.isArray(vendor.notes) && vendor.notes.length > 0 ? (
             <Stack>

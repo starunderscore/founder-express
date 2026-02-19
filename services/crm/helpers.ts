@@ -96,6 +96,8 @@ export function buildCRMPatchObject(input: CRMPatchInput): Record<string, any> {
   // Pass-through arrays (assumed already validated by caller)
   if (Array.isArray((input as any).notes)) (out as any).notes = (input as any).notes;
   if (Array.isArray((input as any).phones)) (out as any).phones = (input as any).phones;
+  if (Array.isArray((input as any).emails)) (out as any).emails = (input as any).emails;
+  if (Array.isArray((input as any).addresses)) (out as any).addresses = (input as any).addresses;
   return out;
 }
 

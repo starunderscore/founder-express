@@ -3,10 +3,12 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Title, Text, Card, Stack, Group, Button, Tabs, TextInput, Table, Badge, Anchor, Menu, ActionIcon, Modal, Center, Loader } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Tabs, TextInput, Badge, Anchor, Menu, ActionIcon, Modal, Center, Loader } from '@mantine/core';
 import { RouteTabs } from '@/components/RouteTabs';
+import VendorHeader from '@/components/crm/VendorHeader';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import LocalDataTable, { type Column as LocalColumn } from '@/components/data-table/LocalDataTable';
 
 type Contact = {
   id: string;
@@ -61,7 +63,9 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
     const nm = name.trim();
     if (!nm) return;
     const id = `ct-${Date.now()}`;
-    const c: Contact = { id, name: nm, title: titleText.trim() || undefined, createdAt: Date.now(), emails: [], phones: [], addresses: [], notes: [] };
+    const t = titleText.trim();
+    const c: any = { id, name: nm, createdAt: Date.now(), emails: [], phones: [], addresses: [], notes: [] };
+    if (t) c.title = t;
     const next = Array.isArray(vendor.contacts) ? [c, ...vendor.contacts] : [c];
     await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: next } as any);
     setName(''); setTitleText(''); setAddOpen(false);
@@ -84,68 +88,35 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
 
   return (
     <EmployerAuthGate>
-      <Group justify="space-between" mb="md">
-        <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(isVendorsSection ? '/employee/customers/vendors' : '/employee/crm')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-            </svg>
-          </ActionIcon>
-          <Group>
-            <Title order={2}>{vendor.name}</Title>
-            <Badge color="orange" variant="filled">Vendor</Badge>
-          </Group>
-        </Group>
-      </Group>
-
-      <RouteTabs
-        value={"contacts"}
-        mb="md"
-        tabs={[
-          { value: 'overview', label: 'Overview', href: `${baseVendor}/${vendor.id}` },
-          { value: 'notes', label: 'Notes', href: `${baseVendor}/${vendor.id}/notes` },
-          { value: 'contacts', label: 'Contacts', href: `${baseVendor}/${vendor.id}/contacts` },
-          { value: 'actions', label: 'Actions', href: `${baseVendor}/${vendor.id}/actions` },
-        ]}
+      <VendorHeader
+        vendor={vendor}
+        current="contacts"
+        baseVendor={baseVendor}
+        backBase={isVendorsSection ? '/employee/customers/vendors' : '/employee/crm'}
+        rightSlot={<Button variant="light" onClick={() => setAddOpen(true)}>Add contact</Button>}
       />
 
       <Card withBorder radius="md" padding={0}>
-        <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Title order={4} m={0} style={{ color: 'inherit' }}>Contacts</Title>
-          <Button variant="default" onClick={() => setAddOpen(true)}>Add contact</Button>
-        </div>
         <div style={{ padding: '12px 16px' }}>
           <TextInput placeholder="Search contacts (name, title, email, phone)" value={queryText} onChange={(e) => setQueryText(e.currentTarget.value)} />
         </div>
-        <Table verticalSpacing="sm" highlightOnHover striped>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Title</Table.Th>
-              <Table.Th></Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {contacts.map((c) => (
-              <Table.Tr key={c.id}>
-                <Table.Td>
-                  <Anchor component={Link as any} href={`${baseContact}/${c.id}`} underline="hover">{c.name}</Anchor>
-                </Table.Td>
-                <Table.Td>{c.title || '—'}</Table.Td>
-                <Table.Td style={{ width: 1, whiteSpace: 'nowrap' }}>
+        <div style={{ padding: '0 16px 12px 16px' }}>
+          <LocalDataTable
+            rows={contacts}
+            columns={([
+              { key: 'name', header: 'Name', render: (c: any) => (<Anchor component={Link as any} href={`${baseContact}/${c.id}`} underline="hover">{c.name}</Anchor>) },
+              { key: 'title', header: 'Title', render: (c: any) => (c.title || '—') },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (c: any) => (
                   <Group gap="xs" justify="flex-end" wrap="nowrap">
-                    <ActionIcon variant="subtle" aria-label="View" component={Link as any} href={`${baseContact}/${c.id}` as any}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" fill="currentColor"/>
-                      </svg>
-                    </ActionIcon>
                     <Menu withinPortal position="bottom-end" shadow="md" width={160}>
                       <Menu.Target>
                         <ActionIcon variant="subtle" aria-label="Contact actions">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="12" cy="5" r="2" fill="currentColor"/>
+                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
                             <circle cx="12" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="12" cy="19" r="2" fill="currentColor"/>
+                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
                           </svg>
                         </ActionIcon>
                       </Menu.Target>
@@ -155,16 +126,13 @@ export default function VendorContactsPage({ params }: { params: { id: string } 
                       </Menu.Dropdown>
                     </Menu>
                   </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            {contacts.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={3}><Text c="dimmed">No contacts</Text></Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+                )
+              },
+            ]) as LocalColumn<any>[]}
+            defaultPageSize={25}
+            enableSelection={false}
+          />
+        </div>
       </Card>
 
       <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="Add contact" closeOnClickOutside={false} closeOnEscape={false} centered size="lg">

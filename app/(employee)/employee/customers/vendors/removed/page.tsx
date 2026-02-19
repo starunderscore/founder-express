@@ -1,17 +1,22 @@
 "use client";
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { ActionIcon, Card, Group, Stack, Tabs, Text, Title, Table, Menu, TextInput, SegmentedControl } from '@mantine/core';
+import { ActionIcon, Card, Group, Stack, Tabs, Text, Title, Table, Menu, TextInput, SegmentedControl, Modal, Button } from '@mantine/core';
 import { IconBuilding } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import { restoreCRMRecord, deleteCRMRecord } from '@/services/crm';
+import { restoreVendorContact } from '@/services/crm/vendor-contacts';
+import { useToast } from '@/components/ToastProvider';
 
 type Vendor = { id: string; name: string; email?: string; isArchived?: boolean; deletedAt?: number; contacts?: any[] };
 
 export default function VendorsRemovedPage() {
   const router = useRouter();
+  const getDb = () => db();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'vendors' | 'contacts'>('vendors');
@@ -29,6 +34,12 @@ export default function VendorsRemovedPage() {
   }, []);
 
   const removed = useMemo(() => vendors.filter((v) => !!v.deletedAt), [vendors]);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [target, setTarget] = useState<{ id: string; name: string } | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const toast = useToast();
 
   return (
     <EmployerAuthGate>
@@ -72,46 +83,46 @@ export default function VendorsRemovedPage() {
           </div>
 
           {view === 'vendors' ? (
-            <Table verticalSpacing="xs" highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th style={{ width: 1 }}></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {removed.filter((v) => {
-                  const q = search.trim().toLowerCase();
-                  if (!q) return true;
-                  return (v.name || '').toLowerCase().includes(q);
-                }).map((v) => (
-                  <Table.Tr key={v.id}>
-                    <Table.Td><Link href={`/employee/customers/vendors/${v.id}`} style={{ textDecoration: 'none' }}>{v.name}</Link></Table.Td>
-                    <Table.Td>
-                      <Group justify="flex-end">
-                        <Menu shadow="md" width={180}>
-                          <Menu.Target>
-                            <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Item onClick={async () => { await updateDoc(doc(db(), 'crm_customers', v.id), { deletedAt: undefined, isArchived: false }); }}>Restore</Menu.Item>
-                          </Menu.Dropdown>
-                        </Menu>
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-                {removed.filter((v) => {
-                  const q = search.trim().toLowerCase();
-                  if (!q) return true;
-                  return (v.name || '').toLowerCase().includes(q);
-                }).length === 0 && (
-                  <Table.Tr>
-                    <Table.Td colSpan={2}><Text c="dimmed">No removed vendors</Text></Table.Td>
-                  </Table.Tr>
-                )}
-              </Table.Tbody>
-            </Table>
+            <div style={{ padding: '0 16px 12px 16px' }}>
+            <FirestoreDataTable
+              collectionPath="crm_customers"
+              columns={([
+                { key: 'name', header: 'Name', render: (r: any) => (<Link href={`/employee/customers/vendors/${r.id}`} style={{ textDecoration: 'none' }}>{r.name || '—'}</Link>) },
+                {
+                  key: 'actions', header: '', width: 1,
+                  render: (r: any) => (
+                    <Group justify="flex-end">
+                      <Menu shadow="md" width={180}>
+                        <Menu.Target>
+                          <ActionIcon variant="subtle" aria-label="Actions">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                              <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                              <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                            </svg>
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item onClick={() => { setTarget({ id: r.id, name: r.name }); setRestoreOpen(true); }}>Restore</Menu.Item>
+                          <Menu.Item color="red" onClick={() => { setTarget({ id: r.id, name: r.name }); setDeleteInput(''); setDeleteOpen(true); }}>Delete permanently</Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Group>
+                  )
+                },
+              ]) as Column<any>[]}
+              initialSort={{ field: 'name', direction: 'asc' }}
+              clientFilter={(r: any) => {
+                const q = (search || '').toLowerCase();
+                const t = r?.type === 'vendor' ? 'vendor' : 'customer';
+                const matches = !q || String(r.name || '').toLowerCase().includes(q);
+                return t === 'vendor' && !!r.deletedAt && matches;
+              }}
+              defaultPageSize={25}
+              enableSelection={false}
+              refreshKey={refreshKey}
+            />
+            </div>
           ) : (
             <Table verticalSpacing="xs" highlightOnHover>
               <Table.Thead>
@@ -136,13 +147,16 @@ export default function VendorsRemovedPage() {
                       <Group justify="flex-end">
                         <Menu shadow="md" width={200}>
                           <Menu.Target>
-                            <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
+                            <ActionIcon variant="subtle" aria-label="Actions">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                                <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                                <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                              </svg>
+                            </ActionIcon>
                           </Menu.Target>
                           <Menu.Dropdown>
-                            <Menu.Item onClick={async () => {
-                              const updated = (vendor.contacts || []).map((ct: any) => ct.id === contact.id ? { ...ct, deletedAt: undefined, isArchived: false } : ct);
-                              await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts: updated });
-                            }}>Restore</Menu.Item>
+                            <Menu.Item onClick={async () => { await restoreVendorContact(vendor.id, contact.id, { getDb }); }}>Restore</Menu.Item>
                           </Menu.Dropdown>
                         </Menu>
                       </Group>
@@ -158,6 +172,39 @@ export default function VendorsRemovedPage() {
             </Table>
           )}
         </Card>
+
+        <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} centered>
+          <Stack>
+            <Text>Restore this vendor back to the Database view?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
+              <Button onClick={async () => { if (!target) return; await restoreCRMRecord(target.id); setRestoreOpen(false); setTarget(null); setRefreshKey((k)=>k+1); toast.show({ title: 'Restored vendor', message: target.name, color: 'green' }); }}>Restore</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <Modal opened={deleteOpen} onClose={() => setDeleteOpen(false)} centered>
+          <Stack>
+            <Text color="red">This action permanently deletes the vendor and cannot be undone.</Text>
+            <Text c="dimmed">To confirm, type the full vendor name.</Text>
+            <Group align="end" gap="sm">
+              <TextInput label="Vendor name" value={target?.name || ''} readOnly style={{ flex: 1 }} />
+              <Button variant="light" onClick={() => navigator.clipboard.writeText(target?.name || '')}>Copy</Button>
+            </Group>
+            <TextInput label="Type here to confirm" placeholder="Paste or type vendor name" value={deleteInput} onChange={(e) => setDeleteInput(e.currentTarget.value)} />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+              <Button color="red" disabled={(target?.name?.length || 0) > 0 && deleteInput !== (target?.name || '')} onClick={async () => {
+                if (!target) return;
+                await deleteCRMRecord(target.id);
+                setDeleteOpen(false);
+                setTarget(null);
+                setRefreshKey((k)=>k+1);
+                toast.show({ title: 'Deleted vendor', message: deleteInput, color: 'red' });
+              }}>Delete permanently</Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </EmployerAuthGate>
   );

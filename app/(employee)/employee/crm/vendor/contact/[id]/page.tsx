@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation';
 import { Card, Title, Text, Group, Badge, Button, Stack, Tabs, ActionIcon, Avatar, Textarea, Modal, Anchor, TextInput, Table, Select, Radio, Menu, CopyButton, Switch, Divider, Alert, Center, Loader, MultiSelect } from '@mantine/core';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
+import VendorContactHeader from '@/components/crm/VendorContactHeader';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
-import { collection, doc, onSnapshot, updateDoc, query } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { addVendorContactNote, archiveVendorContact, deleteVendorContact, removeVendorContact, restoreVendorContact, unarchiveVendorContact, updateVendorContact } from '@/services/crm/vendor-contacts';
 
 export default function VendorContactDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -115,6 +117,8 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
     );
   }
 
+  const getDb = () => db();
+
   const addNote = async () => {
     const body = noteBody.trim();
     if (!body) return;
@@ -127,15 +131,13 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
       createdByEmail: authUser?.email || undefined,
       createdByPhotoURL: authUser?.photoURL || undefined,
     };
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, notes: [newNote, ...(c.notes || [])] } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+    await addVendorContactNote(vendor.id, contact.id, newNote, { getDb });
     setNoteBody('');
     setNoteOpen(false);
   };
 
   const saveOverview = async () => {
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, name: cName.trim() || c.name, title: cTitle.trim() || undefined, tags: cTags } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+    await updateVendorContact(vendor.id, contact.id, { name: cName.trim() || contact.name, title: cTitle.trim() || undefined, tags: cTags }, { getDb });
   };
 
   const deriveTitleFromMarkdown = (body: string): string => {
@@ -155,8 +157,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
     } else {
       phones = [{ id: `ph-${Date.now()}`, number, ext: cPhoneExt.trim() || undefined, label: cPhoneLabel.trim() || undefined, kind: cPhoneKind }, ...phones];
     }
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, phones } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+    await updateVendorContact(vendor.id, contact.id, { phones }, { getDb });
     setCPhoneNumber(''); setCPhoneExt(''); setCPhoneLabel(''); setCPhoneKind('Work'); setEditingPhoneId(null); setEditPhonesOpen(false);
   };
 
@@ -169,8 +170,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
     } else {
       emails = [{ id: `em-${Date.now()}`, email, label: cEmailLabel.trim() || undefined, kind: cEmailKind }, ...emails];
     }
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, emails } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+    await updateVendorContact(vendor.id, contact.id, { emails }, { getDb });
     setCEmailValue(''); setCEmailLabel(''); setCEmailKind('Work'); setEditingEmailId(null); setEditEmailsOpen(false);
   };
 
@@ -184,54 +184,19 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
       const a = { id: `addr-${Date.now()}`, label: cAddr.label?.trim() || undefined, line1, line2: cAddr.line2?.trim() || undefined, city: cAddr.city?.trim() || undefined, region: cAddr.region?.trim() || undefined, postal: cAddr.postal?.trim() || undefined, country: cAddr.country?.trim() || undefined, isHQ: !!cAddr.isHQ };
       addresses = [a, ...addresses];
     }
-    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, addresses } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+    await updateVendorContact(vendor.id, contact.id, { addresses }, { getDb });
     setCAddr({}); setEditingAddressId(null); setEditAddressesOpen(false);
   };
 
   return (
     <EmployerAuthGate>
-      <Group justify="space-between" mb="md">
-        <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(`${baseVendor}/${vendor.id}/contacts`)}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-            </svg>
-          </ActionIcon>
-          <Group>
-            <Title order={4}>
-              {vendor.name}
-            </Title>
-            <Badge color="orange" variant="filled">Vendor</Badge>
-          </Group>
-        </Group>
-      </Group>
-
-      <Group justify="space-between" mb="md" align="flex-end">
-        <div>
-          <Group gap="xs" align="center">
-            <Title order={2} style={{ lineHeight: 1 }}>{contact.name}</Title>
-            <Badge color="grape" variant="filled">Contact</Badge>
-            {contact.doNotContact && <Badge color="yellow" variant="filled">Do Not Contact</Badge>}
-          </Group>
-          {contact.title && (
-            <Text size="sm" c="dimmed" style={{ marginTop: 4 }}>{contact.title}</Text>
-          )}
-        </div>
-        <Group gap="xs">
-          {(contact.emails?.length || 0) > 0 && <Badge variant="light">{contact.emails!.length} email{contact.emails!.length === 1 ? '' : 's'}</Badge>}
-          {(contact.phones?.length || 0) > 0 && <Badge variant="light">{contact.phones!.length} phone{contact.phones!.length === 1 ? '' : 's'}</Badge>}
-          {(contact.addresses?.length || 0) > 0 && <Badge variant="light">{contact.addresses!.length} address{contact.addresses!.length === 1 ? '' : 'es'}</Badge>}
-        </Group>
-      </Group>
-
-      <RouteTabs
-        value={"overview"}
-        tabs={[
-          { value: 'overview', label: 'Overview', href: `${baseContact}/${contact.id}` },
-          { value: 'notes', label: 'Notes', href: `${baseContact}/${contact.id}/notes` },
-          { value: 'actions', label: 'Actions', href: `${baseContact}/${contact.id}/actions` },
-        ]}
+      <VendorContactHeader
+        vendorId={vendor.id}
+        vendorName={vendor.name}
+        contact={contact}
+        current="overview"
+        baseContact={baseContact}
+        backHref={`${baseVendor}/${vendor.id}/contacts`}
       />
 
       <div style={{ paddingTop: 'var(--mantine-spacing-md)' }}>
@@ -241,8 +206,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
                 <Text>This contact is removed and appears in the Removed tab.</Text>
                 <Group gap="xs">
                   <Button variant="light" onClick={async () => {
-                    const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, deletedAt: undefined } : c));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+                    await restoreVendorContact(vendor.id, contact.id, { getDb });
                     toast.show({ title: 'Contact restored', message: 'Contact is back in Database.' });
                   }}>Restore</Button>
                   <Button variant="subtle" color="red" onClick={() => { setPermDeleteInput(''); setPermDeleteOpen(true); }}>Permanently delete</Button>
@@ -259,7 +223,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
             <Alert color="gray" variant="light" mb="md" title="Archived">
               <Group justify="space-between" align="center">
                 <Text>This contact is archived and hidden from active workflows.</Text>
-                <Button variant="light" onClick={async () => { const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, isArchived: false } : c)); await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any); }}>Unarchive</Button>
+                <Button variant="light" onClick={async () => { await unarchiveVendorContact(vendor.id, contact.id, { getDb }); }}>Unarchive</Button>
               </Group>
             </Alert>
           )}
@@ -293,9 +257,9 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
           </Card>
 
           <Card withBorder radius="md" mb="md" padding={0}>
-            <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title order={4} m={0} style={{ color: 'inherit' }}>Phones</Title>
-              <Button variant="default" onClick={() => { setEditActiveTab('phone'); setEditPhonesOpen(true); }}>Edit</Button>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--mantine-color-gray-3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Title order={4} m={0}>Phones</Title>
+              <Button variant="light" onClick={() => { setEditActiveTab('phone'); setEditPhonesOpen(true); }}>Edit</Button>
             </div>
             <Table verticalSpacing="sm" highlightOnHover striped>
               <Table.Thead>
@@ -345,9 +309,9 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
           </Card>
 
           <Card withBorder radius="md" mb="md" padding={0}>
-            <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title order={4} m={0} style={{ color: 'inherit' }}>Emails</Title>
-              <Button variant="default" onClick={() => { setEditActiveTab('email'); setEditEmailsOpen(true); }}>Edit</Button>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--mantine-color-gray-3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Title order={4} m={0}>Emails</Title>
+              <Button variant="light" onClick={() => { setEditActiveTab('email'); setEditEmailsOpen(true); }}>Edit</Button>
             </div>
             <Table verticalSpacing="sm" highlightOnHover striped>
               <Table.Thead>
@@ -395,9 +359,9 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
           </Card>
 
           <Card withBorder radius="md" padding={0}>
-            <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title order={4} m={0} style={{ color: 'inherit' }}>Addresses</Title>
-              <Button variant="default" onClick={() => { setEditActiveTab('address'); setEditAddressesOpen(true); }}>Edit</Button>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--mantine-color-gray-3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Title order={4} m={0}>Addresses</Title>
+              <Button variant="light" onClick={() => { setEditActiveTab('address'); setEditAddressesOpen(true); }}>Edit</Button>
             </div>
             <Table verticalSpacing="sm" highlightOnHover striped>
               <Table.Thead>
@@ -475,8 +439,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
             <Button variant="default" onClick={() => setPermDeleteOpen(false)}>Cancel</Button>
             <Button color="red" disabled={(contact?.name?.length || 0) > 0 && permDeleteInput !== (contact?.name || '')} onClick={async () => {
               if (!vendor || !contact) return;
-              const contacts = (vendor.contacts || []).filter((c: Contact) => c.id !== contact.id);
-              await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+              await deleteVendorContact(vendor.id, contact.id, { getDb });
               setPermDeleteOpen(false);
               toast.show({ title: 'Contact deleted', message: 'Permanently deleted.' });
               router.push(`/employee/crm/vendor/${vendor.id}`);
@@ -498,8 +461,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
             <Button variant="default" onClick={() => setDeleteContactOpen(false)}>Cancel</Button>
             <Button color="red" disabled={deleteContactSnippet.length > 0 && deleteContactInput !== deleteContactSnippet} onClick={async () => {
               if (!vendor || !contact) return;
-              const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, deletedAt: Date.now() } : c));
-              await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+              await removeVendorContact(vendor.id, contact.id, { getDb });
               setDeleteContactOpen(false);
               toast.show({ title: 'Contact removed', message: 'Moved to Removed. You can restore or permanently delete it from the Removed tab.' });
               router.push(`/employee/crm/vendor/${vendor.id}`);
@@ -521,8 +483,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
             <Button variant="default" onClick={() => setArchiveContactOpen(false)}>Cancel</Button>
             <Button color="orange" disabled={(contact?.name?.length || 0) > 0 && archiveContactInput !== (contact?.name || '')} onClick={async () => {
               if (!vendor || !contact) return;
-              const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, isArchived: true } : c));
-              await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+              await archiveVendorContact(vendor.id, contact.id, { getDb });
               setArchiveContactOpen(false);
               toast.show({ title: 'Contact archived', message: 'Moved to Archive.' });
             }}>Archive</Button>
@@ -544,8 +505,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
             <Button color="red" disabled={deletePhoneSnippet.length > 0 && deletePhoneInput !== deletePhoneSnippet} onClick={async () => {
               if (!deletePhoneId) return;
               const phones = (contact.phones || []).filter((p: Phone) => p.id !== deletePhoneId);
-              const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, phones } : c));
-              await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+              await updateVendorContact(vendor.id, contact.id, { phones }, { getDb });
               setDeletePhoneOpen(false);
             }}>Delete</Button>
           </Group>
@@ -566,8 +526,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
             <Button color="red" disabled={deleteEmailSnippet.length > 0 && deleteEmailInput !== deleteEmailSnippet} onClick={async () => {
               if (!deleteEmailId) return;
               const emails = (contact.emails || []).filter((em: Email) => em.id !== deleteEmailId);
-              const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, emails } : c));
-              await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+              await updateVendorContact(vendor.id, contact.id, { emails }, { getDb });
               setDeleteEmailOpen(false);
             }}>Delete</Button>
           </Group>
@@ -588,8 +547,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
             <Button color="red" disabled={deleteAddressSnippet.length > 0 && deleteAddressInput !== deleteAddressSnippet} onClick={async () => {
               if (!deleteAddressId) return;
               const addresses = (contact.addresses || []).filter((ad: Address) => ad.id !== deleteAddressId);
-              const contacts = (vendor.contacts || []).map((c: Contact) => (c.id === contact.id ? { ...c, addresses } : c));
-              await updateDoc(doc(db(), 'crm_customers', vendor.id), { contacts } as any);
+              await updateVendorContact(vendor.id, contact.id, { addresses }, { getDb });
               setDeleteAddressOpen(false);
             }}>Delete</Button>
           </Group>

@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Title, Text, Card, Stack, Group, Button, Tabs, Alert, Switch, Modal, TextInput, CopyButton, ActionIcon, Badge, Center, Loader } from '@mantine/core';
 import { useToast } from '@/components/ToastProvider';
+import VendorHeader from '@/components/crm/VendorHeader';
 import { db } from '@/lib/firebase/client';
-import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { updateCRMRecord, archiveCRMRecord, removeCRMRecord, deleteCRMRecord } from '@/services/crm';
 
 export default function VendorActionsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -37,49 +39,15 @@ export default function VendorActionsPage({ params }: { params: { id: string } }
 
   return (
     <EmployerAuthGate>
-      <Group justify="space-between" mb="md">
-        <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(isVendorsSection ? '/employee/customers/vendors' : '/employee/crm')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-            </svg>
-          </ActionIcon>
-          <Group>
-            <Title order={2}>{vendor.name}</Title>
-            <Badge color="orange" variant="filled">Vendor</Badge>
-          </Group>
-        </Group>
-      </Group>
+      <VendorHeader vendor={vendor} current="actions" baseVendor={baseVendor} backBase={isVendorsSection ? '/employee/customers/vendors' : '/employee/crm'} />
 
-      <RouteTabs
-        value={"actions"}
-        mb="md"
-        tabs={[
-          { value: 'overview', label: 'Overview', href: `${baseVendor}/${vendor.id}` },
-          { value: 'notes', label: 'Notes', href: `${baseVendor}/${vendor.id}/notes` },
-          { value: 'contacts', label: 'Contacts', href: `${baseVendor}/${vendor.id}/contacts` },
-          { value: 'actions', label: 'Actions', href: `${baseVendor}/${vendor.id}/actions` },
-        ]}
-      />
-
-      {vendor.isArchived && (
-        <Alert color="gray" variant="light" mb="md" title="Archived">
-          <Group justify="space-between" align="center">
-            <Text>This vendor is archived and hidden from the Database view.</Text>
-            <Button variant="light" onClick={async () => { await updateDoc(doc(db(), 'crm_customers', vendor.id), { isArchived: false } as any); }}>Unarchive</Button>
-          </Group>
-        </Alert>
-      )}
+      {/* Archived alert moved to shared header */}
 
       <Card withBorder radius="md" mb="md">
         <Stack>
           <Title order={4}>Account controls</Title>
           <Group>
-            <Switch
-              checked={!!vendor.doNotContact}
-              onChange={async (e) => { await updateDoc(doc(db(), 'crm_customers', vendor.id), { doNotContact: e.currentTarget.checked } as any); }}
-              label="Do not contact"
-            />
+            <Switch checked={!!vendor.doNotContact} onChange={async (e) => { await updateCRMRecord(vendor.id, { doNotContact: e.currentTarget.checked } as any); }} label="Do not contact" />
           </Group>
         </Stack>
       </Card>
@@ -116,7 +84,7 @@ export default function VendorActionsPage({ params }: { params: { id: string } }
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setDeleteVendorOpen(false)}>Cancel</Button>
             <Button color="red" disabled={(vendor.name?.length || 0) > 0 && deleteVendorInput !== (vendor.name || '')} onClick={async () => {
-              await updateDoc(doc(db(), 'crm_customers', vendor.id), { deletedAt: Date.now() } as any);
+              await removeCRMRecord(vendor.id);
               setDeleteVendorOpen(false);
               toast.show({ title: 'Vendor removed', message: 'Moved to Removed. You can restore or permanently delete it from the Removed tab.' });
             }}>Remove</Button>
@@ -136,10 +104,10 @@ export default function VendorActionsPage({ params }: { params: { id: string } }
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setPermDeleteOpen(false)}>Cancel</Button>
             <Button color="red" disabled={(vendor.name?.length || 0) > 0 && permDeleteInput !== (vendor.name || '')} onClick={async () => {
-              await deleteDoc(doc(db(), 'crm_customers', vendor.id));
+              await deleteCRMRecord(vendor.id);
               setPermDeleteOpen(false);
               toast.show({ title: 'Vendor deleted', message: 'Permanently deleted.' });
-              router.push('/employee/crm');
+              router.push(isVendorsSection ? '/employee/customers/vendors' : '/employee/crm');
             }}>Delete</Button>
           </Group>
         </Stack>
@@ -157,7 +125,7 @@ export default function VendorActionsPage({ params }: { params: { id: string } }
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setArchiveVendorOpen(false)}>Cancel</Button>
             <Button color="orange" disabled={(vendor.name?.length || 0) > 0 && archiveVendorInput !== (vendor.name || '')} onClick={async () => {
-              await updateDoc(doc(db(), 'crm_customers', vendor.id), { isArchived: true } as any);
+              await archiveCRMRecord(vendor.id);
               setArchiveVendorOpen(false);
               toast.show({ title: 'Vendor archived', message: 'Moved to Archive.' });
             }}>Archive</Button>

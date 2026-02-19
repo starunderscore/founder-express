@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Title, Text, Group, Badge, Button, Stack, Divider, Modal, TextInput, Select, TagsInput, Textarea, Radio, Tabs, ActionIcon, Avatar, Menu, CopyButton, Anchor, Table, Switch, Alert } from '@mantine/core';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
+import VendorHeader from '@/components/crm/VendorHeader';
 import VendorEditModal from '@/components/crm/vendor/VendorEditModal';
 import VendorRemoveModal from '@/components/crm/vendor/VendorRemoveModal';
 import VendorDeleteModal from '@/components/crm/vendor/VendorDeleteModal';
@@ -17,7 +18,8 @@ import VendorAddressModal from '@/components/crm/vendor/VendorAddressModal';
 import { useAuthUser } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
-import { doc, onSnapshot, updateDoc, deleteDoc, collection } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection } from 'firebase/firestore';
+import { updateCRMRecord, removeCRMRecord, deleteCRMRecord, archiveCRMRecord } from '@/services/crm';
 
 export default function VendorDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -107,7 +109,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
   };
 
   const saveEdit = async () => {
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { name: (vName || vendor.name).trim(), email: email.trim(), company: company.trim() || undefined, phone: phone.trim() || undefined, source, sourceDetail: source === 'Other' ? (sourceDetail.trim() || undefined) : undefined, tags, ownerId: ownerId || undefined } as any);
+    await updateCRMRecord(vendor.id, { name: (vName || vendor.name).trim(), email: email.trim(), company: company.trim() || undefined, phone: phone.trim() || undefined, source, sourceDetail: source === 'Other' ? (sourceDetail.trim() || undefined) : undefined, tags, ownerId: ownerId || undefined } as any);
     setEditOpen(false);
   };
 
@@ -118,7 +120,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     if (!addr) return;
     const e: Email = { id: `em-${Date.now()}`, email: addr, label: orgEmailLabel.trim() || undefined, notes: [] };
     const emails = Array.isArray(vendor.emails) ? [e, ...vendor.emails] : [e];
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { emails } as any);
+    await updateCRMRecord(vendor.id, { emails } as any);
     setOrgEmailValue(''); setOrgEmailLabel(''); setOrgEmailOpen(false);
   };
 
@@ -127,7 +129,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     if (!num) return;
     const p: Phone = { id: `ph-${Date.now()}`, number: num, label: orgPhoneLabel.trim() || undefined, ext: orgPhoneExt.trim() || undefined, notes: [] };
     const phones = Array.isArray(vendor.phones) ? [p, ...vendor.phones] : [p];
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { phones } as any);
+    await updateCRMRecord(vendor.id, { phones } as any);
     setOrgPhoneValue(''); setOrgPhoneLabel(''); setOrgPhoneExt(''); setOrgPhoneOpen(false);
   };
 
@@ -152,10 +154,10 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     };
     if (noteItemKind === 'email') {
       const emails = (vendor.emails || []).map((e: Email) => (e.id === noteItemId ? { ...e, notes: [...(e.notes || []), note] } : e));
-      await updateDoc(doc(db(), 'crm_customers', vendor.id), { emails } as any);
+      await updateCRMRecord(vendor.id, { emails } as any);
     } else {
       const phones = (vendor.phones || []).map((p: Phone) => (p.id === noteItemId ? { ...p, notes: [...(p.notes || []), note] } : p));
-      await updateDoc(doc(db(), 'crm_customers', vendor.id), { phones } as any);
+      await updateCRMRecord(vendor.id, { phones } as any);
     }
     setNoteItemOpen(false);
   };
@@ -178,18 +180,18 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     // If setting HQ, unset others
     if (a.isHQ) addresses = addresses.map((x: Address) => ({ ...x, isHQ: false }));
     addresses = [a, ...addresses];
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { addresses } as any);
+    await updateCRMRecord(vendor.id, { addresses } as any);
     setAddr({}); setAddrPhone(''); setAddrOpen(false);
   };
 
   const setHQ = async (id: string) => {
     const addresses = (vendor.addresses || []).map((x: Address) => ({ ...x, isHQ: x.id === id }));
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { addresses } as any);
+    await updateCRMRecord(vendor.id, { addresses } as any);
   };
 
   const deleteAddress = async (id: string) => {
     const addresses = (vendor.addresses || []).filter((x: Address) => x.id !== id);
-    await updateDoc(doc(db(), 'crm_customers', vendor.id), { addresses } as any);
+    await updateCRMRecord(vendor.id, { addresses } as any);
   };
 
   // Contact creation/editing handled on dedicated pages
@@ -215,53 +217,10 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
 
   return (
     <EmployerAuthGate>
-      <Group justify="space-between" mb="md">
-        <Group>
-          <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(baseList)}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-            </svg>
-          </ActionIcon>
-          <Group>
-            <Title order={2}>
-              {vendor.name}
-            </Title>
-            <Badge color="orange" variant="filled">Vendor</Badge>
-            {vendor.doNotContact && <Badge color="yellow" variant="filled">Do Not Contact</Badge>}
-          </Group>
-        </Group>
-      </Group>
-
-      <RouteTabs
-        value={"overview"}
-        tabs={[
-          { value: 'overview', label: 'Overview', href: `${baseVendor}/${vendor.id}` },
-          { value: 'notes', label: 'Notes', href: `${baseVendor}/${vendor.id}/notes` },
-          { value: 'contacts', label: 'Contacts', href: `${baseVendor}/${vendor.id}/contacts` },
-          { value: 'actions', label: 'Actions', href: `${baseVendor}/${vendor.id}/actions` },
-        ]}
-      />
+      <VendorHeader vendor={vendor} current="overview" baseVendor={baseVendor} backBase={baseList} />
 
       <div style={{ paddingTop: 'var(--mantine-spacing-md)' }}>
-          {vendor?.deletedAt && (
-            <Alert color="red" variant="light" mb="md" title="Removed">
-              <Group justify="space-between" align="center">
-                <Text>This vendor is removed and appears in the Removed tab.</Text>
-                <Group gap="xs">
-                  <Button variant="light" onClick={async () => { await updateDoc(doc(db(), 'crm_customers', vendor.id), { deletedAt: undefined } as any); toast.show({ title: 'Vendor restored', message: 'Vendor is back in Database.' }); }}>Restore</Button>
-                  <Button variant="subtle" color="red" onClick={() => { setPermDeleteInput(''); setPermDeleteOpen(true); }}>Permanently delete</Button>
-                </Group>
-              </Group>
-            </Alert>
-          )}
-          {vendor.isArchived && (
-            <Alert color="gray" variant="light" mb="md" title="Archived">
-              <Group justify="space-between" align="center">
-                <Text>This vendor is archived and hidden from the Database view.</Text>
-                <Button variant="light" onClick={async () => { await updateDoc(doc(db(), 'crm_customers', vendor.id), { isArchived: false } as any); }}>Unarchive</Button>
-              </Group>
-            </Alert>
-          )}
+          {/* Removed/Archived alerts moved to shared header */}
           {vendor.doNotContact && (
             <Alert color="yellow" variant="light" mb="md" title="Do not contact">
               This vendor is marked as Do Not Contact.
@@ -311,9 +270,9 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
       </Card>
 
           <Card id="overview-org-emails" withBorder radius="md" mt="md" padding={0}>
-            <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title order={4} m={0} style={{ color: 'inherit' }}>Organization Emails</Title>
-              <Button variant="default" onClick={() => { setOrgEmailTab('general'); setOrgEmailOpen(true); }}>Add email</Button>
+            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+              <Title order={4} m={0}>Organization Emails</Title>
+              <Button variant="light" onClick={() => { setOrgEmailTab('general'); setOrgEmailOpen(true); }}>Add email</Button>
             </div>
             <div style={{ padding: '12px 16px' }}>
             <Stack>
@@ -341,9 +300,9 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
           </Card>
 
           <Card id="overview-org-addresses" withBorder radius="md" mt="md" padding={0}>
-            <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title order={4} m={0} style={{ color: 'inherit' }}>Organization Addresses</Title>
-              <Button variant="default" onClick={() => { setAddr({}); setAddrPhone(''); setAddrTab('general'); setAddrOpen(true); }}>Add address</Button>
+            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+              <Title order={4} m={0}>Organization Addresses</Title>
+              <Button variant="light" onClick={() => { setAddr({}); setAddrPhone(''); setAddrTab('general'); setAddrOpen(true); }}>Add address</Button>
             </div>
             <div style={{ padding: '12px 16px' }}>
             <Stack>
@@ -376,9 +335,9 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
           </Card>
 
           <Card id="overview-org-phones" withBorder radius="md" mt="md" padding={0}>
-            <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title order={4} m={0} style={{ color: 'inherit' }}>Organization Phones</Title>
-              <Button variant="default" onClick={() => { setOrgPhoneTab('general'); setOrgPhoneOpen(true); }}>Add phone</Button>
+            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+              <Title order={4} m={0}>Organization Phones</Title>
+              <Button variant="light" onClick={() => { setOrgPhoneTab('general'); setOrgPhoneOpen(true); }}>Add phone</Button>
             </div>
             <div style={{ padding: '12px 16px' }}>
             <Stack>
@@ -422,7 +381,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         employees={employees}
         onSave={async (patch: { name: string; source: string; sourceDetail?: string; tags: string[]; ownerId?: string | null; }) => {
           if (!vendor) return;
-          await updateDoc(doc(db(), 'crm_customers', vendor.id), patch as any);
+          await updateCRMRecord(vendor.id, patch as any);
           toast.show({ title: 'Saved', message: 'Vendor updated.', color: 'green' });
         }}
       />
@@ -432,7 +391,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         vendorName={vendor?.name || ''}
         onConfirm={async () => {
           if (!vendor) return;
-          await updateDoc(doc(db(), 'crm_customers', vendor.id), { deletedAt: Date.now() } as any);
+          await removeCRMRecord(vendor.id);
           setDeleteVendorOpen(false);
           toast.show({ title: 'Vendor removed', message: 'Moved to Removed. You can restore or permanently delete it from the Removed tab.' });
         }}
@@ -443,10 +402,10 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         vendorName={vendor?.name || ''}
         onDelete={async () => {
           if (!vendor) return;
-          await deleteDoc(doc(db(), 'crm_customers', vendor.id));
+          await deleteCRMRecord(vendor.id);
           setPermDeleteOpen(false);
           toast.show({ title: 'Vendor deleted', message: 'Permanently deleted.' });
-          router.push('/employee/crm');
+          router.push(baseList);
         }}
       />
       </>
@@ -458,7 +417,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         vendorName={vendor?.name || ''}
         onArchive={async () => {
           if (!vendor) return;
-          await updateDoc(doc(db(), 'crm_customers', vendor.id), { isArchived: true } as any);
+          await archiveCRMRecord(vendor.id);
           setArchiveVendorOpen(false);
           toast.show({ title: 'Vendor archived', message: 'Moved to Archive.' });
         }}
@@ -475,7 +434,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
           if (!vendor) return;
           const e: Email = { id: `em-${Date.now()}`, email, label: label || undefined, notes: [] };
           const emails = Array.isArray(vendor.emails) ? [e, ...vendor.emails] : [e];
-          await updateDoc(doc(db(), 'crm_customers', vendor.id), { emails } as any);
+          await updateCRMRecord(vendor.id, { emails } as any);
         }}
       />
 
@@ -486,7 +445,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
           if (!vendor) return;
           const p: Phone = { id: `ph-${Date.now()}`, number, ext: ext || undefined, label: label || undefined, notes: [] } as any;
           const phones = Array.isArray(vendor.phones) ? [p, ...vendor.phones] : [p];
-          await updateDoc(doc(db(), 'crm_customers', vendor.id), { phones } as any);
+          await updateCRMRecord(vendor.id, { phones } as any);
         }}
       />
 
@@ -519,7 +478,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
           let addresses = Array.isArray(vendor.addresses) ? [...vendor.addresses] : [];
           if (a.isHQ) addresses = addresses.map((x: Address) => ({ ...x, isHQ: false }));
           addresses = [a, ...addresses];
-          await updateDoc(doc(db(), 'crm_customers', vendor.id), { addresses } as any);
+          await updateCRMRecord(vendor.id, { addresses } as any);
         }}
       />
 

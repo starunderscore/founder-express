@@ -42,6 +42,8 @@ export async function updateCRMRecord(id: string, patch: CRMPatchInput, opts?: O
   if ('deletedAt' in obj) out.deletedAt = obj.deletedAt === null ? deleteField() : obj.deletedAt;
   if ('notes' in obj) (out as any).notes = (obj as any).notes;
   if ('phones' in obj) (out as any).phones = (obj as any).phones;
+  if ('emails' in obj) (out as any).emails = (obj as any).emails;
+  if ('addresses' in obj) (out as any).addresses = (obj as any).addresses;
   await updateDoc(doc(store, 'crm_customers', id), out);
 }
 

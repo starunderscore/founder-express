@@ -50,6 +50,8 @@ export type CRMPatchInput = {
   // complex arrays (pass-through)
   notes?: any[];
   phones?: any[];
+  emails?: any[];
+  addresses?: any[];
 };
 
 export type RawCRMDoc = DocumentData & {
