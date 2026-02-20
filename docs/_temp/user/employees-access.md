@@ -11,11 +11,11 @@ Admin‑only areas
 - Roles: `Employees → Roles`
 - Admin definition:
   - Owner (the UID stored in `meta/owner.ownerUid`), or
-  - A user with an employee document `employees/{uid}` where `isAdmin: true`.
+- A user with an employee document `ep_employees/{uid}` where `isAdmin: true`.
 - Enforcement layers:
   - UI: wrapped with `components/EmployerAdminGate`.
   - Rules: Firestore rules restrict listing/creating/deleting employees to the owner; adjust as we migrate writes.
-- First owner: when the first owner claims, an `employees/{ownerUid}` doc is created with `isAdmin: true` so the owner appears in the list and can manage others.
+- First owner: when the first owner claims, an `ep_employees/{ownerUid}` doc is created with `isAdmin: true` so the owner appears in the list and can manage others.
 
 Permissioned sections (non‑admin)
 - Other sections in the employee portal can be opened based on permissions granted via roles; you can also assign additional (direct) permissions to employees outside of roles. The Permissions Matrix defines resources and actions:

@@ -28,7 +28,7 @@ export function EmployerAdminGate({ children }: { children: ReactNode }) {
           return;
         }
         // Check employee doc for isAdmin
-        const empSnap = await getDoc(doc(db(), 'employees', user.uid));
+        const empSnap = await getDoc(doc(db(), 'ep_employees', user.uid));
         const isAdmin = empSnap.exists() && !!empSnap.data()?.isAdmin;
         if (!cancelled) setAllowed(isAdmin);
       } catch (_e) {
@@ -56,4 +56,3 @@ export function EmployerAdminGate({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
-

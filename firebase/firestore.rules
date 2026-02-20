@@ -12,17 +12,18 @@ service cloud.firestore {
     // Convenience helpers
     function authed() { return request.auth != null; }
 
-    // Active employee: signed in, has employees/{uid} doc, not archived, not removed
+    // Active employee: signed in, has ep_employees/{uid} doc, not archived, not removed
     function isEmployee() {
       return authed()
-        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
-        // Treat missing isArchived as not archived; avoid property access when absent
-        && !(("isArchived" in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data)
-             && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isArchived == true)
-        && !("deletedAt" in get(/databases/$(database)/documents/employees/$(request.auth.uid)).data);
+        && exists(/databases/$(database)/documents/ep_employees/$(request.auth.uid))
+        // Archived when archiveAt is present; Removed when removedAt is present
+        && !(("archiveAt" in get(/databases/$(database)/documents/ep_employees/$(request.auth.uid)).data)
+             && get(/databases/$(database)/documents/ep_employees/$(request.auth.uid)).data.archiveAt != null)
+        && !(("removedAt" in get(/databases/$(database)/documents/ep_employees/$(request.auth.uid)).data)
+             && get(/databases/$(database)/documents/ep_employees/$(request.auth.uid)).data.removedAt != null);
     }
 
-    // Helper: admin based on employees/{auth.uid}.isAdmin, with owner included
+    // Helper: admin based on ep_employees/{auth.uid}.isAdmin, with owner included
     function isAdmin() {
       return (
         (
@@ -30,13 +31,13 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/meta/owner).data.ownerUid == request.auth.uid
         ) || (
           isEmployee()
-          && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isAdmin == true
+          && get(/databases/$(database)/documents/ep_employees/$(request.auth.uid)).data.isAdmin == true
         )
       );
     }
 
     // Helpers to read employee and roles
-    function empDoc() { return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data; }
+    function empDoc() { return get(/databases/$(database)/documents/ep_employees/$(request.auth.uid)).data; }
     function hasOwnPermissionId(permId) {
       return isEmployee()
         && ("permissionIds" in empDoc())
@@ -230,7 +231,7 @@ service cloud.firestore {
       let diff = request.resource.data.diff(resource.data);
       return diff.addedKeys().size() == 0 && diff.removedKeys().size() == 0 && diff.changedKeys().hasOnly(['name','dateOfBirth','email','displayName']);
     }
-    match /employees/{uid} {
+    match /ep_employees/{uid} {
       allow get, list: if isAdmin() || (authed() && uid == request.auth.uid);
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (authed() && (uid == request.auth.uid || resource.data.userId == request.auth.uid) && ownerEmployeeUpdate());

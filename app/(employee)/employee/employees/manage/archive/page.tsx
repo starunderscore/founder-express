@@ -1,16 +1,40 @@
 "use client";
 import Link from 'next/link';
+import { useState } from 'react';
 import { Button, Card, Group, Stack, Text, Title, Badge, Menu, ActionIcon, Tabs } from '@mantine/core';
 import { IconUsers } from '@tabler/icons-react';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { useRouter } from 'next/navigation';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { archiveEmployeeDoc, softRemoveEmployeeDoc, type Employee } from '@/services/employees';
+import EmployeeRestoreModal from '@/components/employees/EmployeeRestoreModal';
+import EmployeeRemoveModal from '@/components/employees/EmployeeRemoveModal';
+import { useToast } from '@/components/ToastProvider';
 
 type EmployeeDoc = Employee;
 
 export default function EmployerEmployeesArchivePage() {
   const router = useRouter();
+  const toast = useToast();
+  const [target, setTarget] = useState<EmployeeDoc | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const onConfirmRestore = async () => {
+    if (!target) return;
+    await archiveEmployeeDoc(target.id, false);
+    setConfirmRestore(false); setTarget(null);
+    setRefreshKey((k) => k + 1);
+    toast.show({ title: 'Restored', message: 'Moved to Active', color: 'green' });
+  };
+  const onConfirmRemove = async () => {
+    if (!target) return;
+    await softRemoveEmployeeDoc(target.id);
+    setConfirmRemove(false); setTarget(null);
+    setRefreshKey((k) => k + 1);
+    toast.show({ title: 'Removed', message: 'Moved to Removed', color: 'orange' });
+  };
 
   return (
     <EmployerAdminGate>
@@ -26,7 +50,7 @@ export default function EmployerEmployeesArchivePage() {
             <IconUsers size={20} />
             <div>
               <Title order={2} mb={4}>Employee management</Title>
-              <Text c="dimmed">Assign roles and permissions to employees.</Text>
+              <Text c="dimmed">Manage employees.</Text>
             </div>
           </Group>
         </Group>
@@ -42,32 +66,37 @@ export default function EmployerEmployeesArchivePage() {
 
       <Card withBorder>
         <FirestoreDataTable
-          collectionPath="employees"
+          collectionPath="ep_employees"
           columns={[
-            { key: 'name', header: 'Name', render: (r: EmployeeDoc) => (r.name || '—') },
+            { key: 'name', header: 'Name', render: (r: EmployeeDoc) => (<Link href={`/employee/employees/manage/${r.id}/edit`} style={{ textDecoration: 'none' }}>{r.name || '—'}</Link>) },
             { key: 'email', header: 'Email', render: (r: EmployeeDoc) => (r.email || '—') },
             { key: 'isAdmin', header: 'Admin', width: 100, render: (r: EmployeeDoc) => (r.isAdmin ? <Badge size="xs" variant="light" color="indigo">admin</Badge> : '—') },
-            { key: 'roleIds', header: 'Roles', render: (r: EmployeeDoc) => (Array.isArray(r.roleIds) ? r.roleIds.length : 0) },
+            
             { key: 'actions', header: '', width: 1, render: (r: EmployeeDoc) => (
               <Group justify="flex-end">
-                <Menu shadow="md" width={180}>
+                <Menu shadow="md" width={200}>
                   <Menu.Target>
                     <ActionIcon variant="subtle" aria-label="More actions">⋯</ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={async () => { await archiveEmployeeDoc(r.id, false); }}>Restore</Menu.Item>
-                    <Menu.Item color="red" onClick={async () => { await softRemoveEmployeeDoc(r.id); }}>Remove</Menu.Item>
+                    <Menu.Item component={Link as any} href={`/employee/employees/manage/${r.id}/edit`}>Edit</Menu.Item>
+                    <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
+                    <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmRemove(true); }}>Remove</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               </Group>
             ) }
           ] as Column<EmployeeDoc>[]}
           initialSort={{ field: 'name', direction: 'asc' }}
-          clientFilter={(r: any) => !!r.isArchived && !r.deletedAt}
+          clientFilter={(r: any) => !!r.archiveAt && !r.removedAt}
           defaultPageSize={25}
           enableSelection={false}
+          refreshKey={refreshKey}
         />
       </Card>
+
+      <EmployeeRestoreModal opened={confirmRestore} onClose={() => setConfirmRestore(false)} employeeName={target?.name || ''} onConfirm={onConfirmRestore} />
+      <EmployeeRemoveModal opened={confirmRemove} onClose={() => setConfirmRemove(false)} employeeName={target?.name || ''} onConfirm={onConfirmRemove} />
     </Stack>
     </EmployerAdminGate>
   );

@@ -40,7 +40,7 @@ export default function EmployerCRMPage() {
   const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   useEffect(() => {
-    const unsub = onSnapshot(collection(db(), 'employees'), (snap) => {
+    const unsub = onSnapshot(collection(db(), 'ep_employees'), (snap) => {
       const rows: Array<{ id: string; name: string }> = [];
       snap.forEach((d) => {
         const data = d.data() as any;

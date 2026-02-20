@@ -5,7 +5,7 @@ import type { Employee, EmployeeCreateInput, EmployeePatchInput } from './types'
 
 type Options = { getDb?: () => Firestore };
 
-const COL = 'employees';
+const COL = 'ep_employees';
 const colRef = (store: Firestore) => collection(store, COL);
 
 export async function listEmployees(opts?: Options): Promise<Employee[]> {
@@ -50,19 +50,24 @@ export async function updateEmployeeDoc(id: string, patch: EmployeePatchInput, o
 export async function archiveEmployeeDoc(id: string, flag: boolean, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, COL, id), { isArchived: flag, updatedAt: Date.now() } as any);
+  const now = Date.now();
+  const payload: any = { archiveAt: flag ? now : null, updatedAt: now };
+  if (flag) payload.removedAt = null; // do not include undefined fields
+  await updateDoc(doc(store, COL, id), payload);
 }
 
 export async function softRemoveEmployeeDoc(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, COL, id), { deletedAt: Date.now(), updatedAt: Date.now() } as any);
+  const now = Date.now();
+  await updateDoc(doc(store, COL, id), { removedAt: now, updatedAt: now } as any);
 }
 
 export async function restoreEmployeeDoc(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, COL, id), { deletedAt: null, isArchived: false, updatedAt: Date.now() } as any);
+  const now = Date.now();
+  await updateDoc(doc(store, COL, id), { removedAt: null, archiveAt: null, updatedAt: now } as any);
 }
 
 export async function deleteEmployeeDoc(id: string, opts?: Options): Promise<void> {
@@ -70,4 +75,3 @@ export async function deleteEmployeeDoc(id: string, opts?: Options): Promise<voi
   const store = getDb();
   await deleteDoc(doc(store, COL, id));
 }
-

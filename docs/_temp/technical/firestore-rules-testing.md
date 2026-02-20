@@ -59,8 +59,8 @@ const anonDb  = testEnv.unauthenticatedContext().firestore();
 await testEnv.withSecurityRulesDisabled(async (ctx) => {
   const admin = ctx.firestore();
   await setDoc(doc(admin, 'meta/owner'), { ownerUid: 'owner-uid' });
-  await setDoc(doc(admin, 'employees', 'admin-uid'), { isAdmin: true });
-  await setDoc(doc(admin, 'employees', 'user-uid'), { isAdmin: false });
+  await setDoc(doc(admin, 'ep_employees', 'admin-uid'), { isAdmin: true });
+  await setDoc(doc(admin, 'ep_employees', 'user-uid'), { isAdmin: false });
 });
 ```
 
@@ -87,7 +87,7 @@ beforeEach(async () => { await testEnv.clearFirestore(); });
 
 ## Writing effective rule tests
 
-- Seed only what the rule path depends on (e.g., `meta/owner`, `employees/{uid}`)
+- Seed only what the rule path depends on (e.g., `meta/owner`, `ep_employees/{uid}`)
 - Use minimal documents to reach the rule code path
 - Keep each test focused on a single allow/deny
 - Clear Firestore state between tests (fast, avoids bleed‑through)

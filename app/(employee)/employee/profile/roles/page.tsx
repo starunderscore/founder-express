@@ -14,7 +14,7 @@ export default function EmployeeRolesPage() {
   const [empLoaded, setEmpLoaded] = useState(false);
   useEffect(() => {
     if (!user?.email) { setEmployee(null); setEmpLoaded(true); return; }
-    const q = query(collection(db(), 'employees'), where('email', '==', user.email));
+    const q = query(collection(db(), 'ep_employees'), where('email', '==', user.email));
     const unsub = onSnapshot(q, (snap) => {
       let found: any | null = null;
       snap.forEach((d) => { if (!found) found = { id: d.id, ...(d.data() as any) }; });

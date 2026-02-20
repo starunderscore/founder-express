@@ -8,8 +8,13 @@ export function normalizeEmployee(id: string, raw: any): Employee {
     roleIds: Array.isArray(raw?.roleIds) ? raw.roleIds as string[] : [],
     permissionIds: Array.isArray(raw?.permissionIds) ? raw.permissionIds as string[] : [],
     isAdmin: !!raw?.isAdmin,
-    isArchived: raw?.isArchived ?? null,
-    deletedAt: typeof raw?.deletedAt === 'number' ? raw.deletedAt as number : (raw?.deletedAt ? Date.now() : null),
+    // Prefer new lifecycle fields; keep a light compatibility shim
+    archiveAt: typeof raw?.archiveAt === 'number'
+      ? (raw.archiveAt as number)
+      : (raw?.isArchived ? (typeof raw?.updatedAt === 'number' ? raw.updatedAt : (typeof raw?.createdAt === 'number' ? raw.createdAt : null)) : null),
+    removedAt: typeof raw?.removedAt === 'number'
+      ? (raw.removedAt as number)
+      : (typeof raw?.deletedAt === 'number' ? (raw.deletedAt as number) : null),
     createdAt: typeof raw?.createdAt === 'number' ? raw.createdAt as number : undefined,
     updatedAt: typeof raw?.updatedAt === 'number' ? raw.updatedAt as number : undefined,
   };
@@ -29,8 +34,8 @@ export function buildEmployeeCreate(input: EmployeeCreateInput): Record<string, 
     roleIds,
     permissionIds,
     isAdmin: !!input.isAdmin,
-    isArchived: false,
-    deletedAt: null,
+    archiveAt: null,
+    removedAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -51,9 +56,8 @@ export function buildEmployeePatch(input: EmployeePatchInput): Record<string, an
   if (input.roleIds) out.roleIds = Array.isArray(input.roleIds) ? input.roleIds : [];
   if (input.permissionIds) out.permissionIds = Array.isArray(input.permissionIds) ? input.permissionIds : [];
   if ('isAdmin' in (input as any)) out.isAdmin = !!(input as any).isAdmin;
-  if ('isArchived' in (input as any)) out.isArchived = (input as any).isArchived ?? null;
-  if ('deletedAt' in (input as any)) out.deletedAt = (input as any).deletedAt ?? null;
+  if ('archiveAt' in (input as any)) out.archiveAt = (input as any).archiveAt ?? null;
+  if ('removedAt' in (input as any)) out.removedAt = (input as any).removedAt ?? null;
   // updatedAt applied at write time
   return out;
 }
-

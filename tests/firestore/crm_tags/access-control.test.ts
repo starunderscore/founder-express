@@ -39,8 +39,8 @@ describe('ep_tags rules — admin-only access', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const adminDb = ctx.firestore();
       await setDoc(doc(adminDb, 'meta/owner'), { ownerUid: 'owner' });
-      await setDoc(doc(adminDb, 'employees', 'admin-1'), { name: 'Admin', email: 'a@example.com', isAdmin: true, isArchived: false });
-      await setDoc(doc(adminDb, 'employees', 'emp-1'), { name: 'User', email: 'u@example.com', isAdmin: false, isArchived: false });
+      await setDoc(doc(adminDb, 'ep_employees', 'admin-1'), { name: 'Admin', email: 'a@example.com', isAdmin: true, isArchived: false });
+      await setDoc(doc(adminDb, 'ep_employees', 'emp-1'), { name: 'User', email: 'u@example.com', isAdmin: false, isArchived: false });
     });
 
     const owner = ownerDb();

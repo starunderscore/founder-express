@@ -34,7 +34,7 @@ export default function EmployerSignInPage() {
 
       let hasEmployees: boolean | null = null;
       try {
-        const anyEmployeeSnap = await getDocs(query(collection(db(), 'employees'), limit(1)));
+        const anyEmployeeSnap = await getDocs(query(collection(db(), 'ep_employees'), limit(1)));
         hasEmployees = anyEmployeeSnap.size > 0;
       } catch (e) {
         console.warn('[employee/signin] employees list check failed (likely rules)', e);

@@ -26,7 +26,7 @@ export default function VendorAddModal({ opened, onClose, basePath = '/employee/
   const authUser = useAuthUser();
   const [employees, setEmployees] = useState<Array<{ value: string; label: string }>>([]);
   useEffect(() => {
-    const unsub = onSnapshot(collection(db(), 'employees'), (snap) => {
+    const unsub = onSnapshot(collection(db(), 'ep_employees'), (snap) => {
       const rows: Array<{ value: string; label: string }> = [];
       snap.forEach((d) => { const data = d.data() as any; rows.push({ value: d.id, label: data.name || '' }); });
       setEmployees(rows);

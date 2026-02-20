@@ -34,7 +34,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
   }, [params.id]);
   const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
   useEffect(() => {
-    const unsub = onSnapshot(collection(db(), 'employees'), (snap: any) => {
+    const unsub = onSnapshot(collection(db(), 'ep_employees'), (snap: any) => {
       const rows: Array<{ id: string; name: string }> = [];
       snap.forEach((d: any) => {
         const data = d.data() as any;

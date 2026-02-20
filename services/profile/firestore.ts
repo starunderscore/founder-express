@@ -5,7 +5,7 @@ import type { EmployeeProfilePatch, EmployeeProfile } from './types';
 
 type Options = { getDb?: () => Firestore };
 
-const employeesDoc = (store: Firestore, uid: string) => doc(store, 'employees', uid);
+const employeesDoc = (store: Firestore, uid: string) => doc(store, 'ep_employees', uid);
 
 export function listenEmployeeByUserId(uid: string, cb: (row: EmployeeProfile | null) => void, opts?: Options): Unsubscribe {
   const getDb = opts?.getDb || defaultDb;
@@ -32,7 +32,7 @@ export function listenEmployeeForUser(user: { uid: string; email?: string | null
         cb(normalizeEmployee(s.id, s.data() as any));
       });
     } else if (user.email) {
-      const q = query(collection(store, 'employees'), where('email', '==', user.email));
+      const q = query(collection(store, 'ep_employees'), where('email', '==', user.email));
       innerUnsub = onSnapshot(q, (qs) => {
         const d = qs.docs[0];
         cb(d ? normalizeEmployee(d.id, d.data() as any) : null);

@@ -26,7 +26,7 @@ export function useIsAdmin() {
           return;
         }
         // Employee admin flag
-        const empSnap = await getDoc(doc(db(), 'employees', user.uid));
+        const empSnap = await getDoc(doc(db(), 'ep_employees', user.uid));
         const admin = empSnap.exists() && !!empSnap.data()?.isAdmin;
         if (!cancelled) { setIsAdmin(admin); setChecking(false); }
       } catch {
@@ -38,4 +38,3 @@ export function useIsAdmin() {
 
   return { isAdmin, loading: checking } as const;
 }
-

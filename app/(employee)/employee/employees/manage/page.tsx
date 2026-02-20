@@ -5,24 +5,39 @@ import { Button, Card, Group, Stack, Text, Title, Badge, Menu, ActionIcon, Tabs 
 import { IconUsers } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { archiveEmployeeDoc, softRemoveEmployeeDoc, type Employee } from '@/services/employees';
-import { listRoles } from '@/services/roles';
+import EmployeeArchiveModal from '@/components/employees/EmployeeArchiveModal';
+import EmployeeRemoveModal from '@/components/employees/EmployeeRemoveModal';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import { useToast } from '@/components/ToastProvider';
 
 type EmployeeDoc = Employee;
 
 export default function EmployerEmployeesManagePage() {
   const router = useRouter();
-  const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
-  useEffect(() => {
-    (async () => {
-      const rows = await listRoles('active');
-      setRoles(rows.map(r => ({ id: r.id, name: r.name })));
-    })();
-  }, []);
-
-  const roleName = (rid: string) => roles.find((r) => r.id === rid)?.name || null;
   const [refreshKey, setRefreshKey] = useState(0);
+  const [target, setTarget] = useState<EmployeeDoc | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const toast = useToast();
+
+  const openArchive = (row: EmployeeDoc) => { setTarget(row); setConfirmArchive(true); };
+  const openRemove = (row: EmployeeDoc) => { setTarget(row); setConfirmRemove(true); };
+
+  const onConfirmArchive = async () => {
+    if (!target) return;
+    await archiveEmployeeDoc(target.id, true);
+    setConfirmArchive(false); setTarget(null);
+    setRefreshKey((k) => k + 1);
+    toast.show({ title: 'Archived', message: 'Moved to Archive', color: 'green' });
+  };
+  const onConfirmRemove = async () => {
+    if (!target) return;
+    await softRemoveEmployeeDoc(target.id);
+    setConfirmRemove(false); setTarget(null);
+    setRefreshKey((k) => k + 1);
+    toast.show({ title: 'Removed', message: 'Moved to Removed', color: 'orange' });
+  };
 
   return (
     <EmployerAdminGate>
@@ -38,7 +53,7 @@ export default function EmployerEmployeesManagePage() {
             <IconUsers size={20} />
             <div>
               <Title order={2} mb={4}>Employee management</Title>
-              <Text c="dimmed">Assign roles and permissions to employees.</Text>
+              <Text c="dimmed">Manage employees.</Text>
             </div>
           </Group>
         </Group>
@@ -55,7 +70,7 @@ export default function EmployerEmployeesManagePage() {
 
       <Card withBorder>
         <FirestoreDataTable
-          collectionPath="employees"
+          collectionPath="ep_employees"
           columns={[
             {
               key: 'name',
@@ -64,17 +79,7 @@ export default function EmployerEmployeesManagePage() {
             },
             { key: 'email', header: 'Email', accessor: (r: EmployeeDoc) => r.email || '—' },
             { key: 'isAdmin', header: 'Admin', width: 100, render: (r: EmployeeDoc) => (r.isAdmin ? <Badge size="xs" variant="light" color="indigo">admin</Badge> : '—') },
-            {
-              key: 'roleIds', header: 'Roles', render: (r: EmployeeDoc) => (
-                <Group gap={6}>
-                  {Array.isArray(r.roleIds) && r.roleIds.length > 0 ? r.roleIds.map((rid) => {
-                    const rn = roleName(rid);
-                    return rn ? <Badge key={rid} variant="light">{rn}</Badge> : null;
-                  }) : <Text c="dimmed">—</Text>}
-                </Group>
-              ),
-            },
-            { key: 'permissionIds', header: 'Additional permissions', width: 180, accessor: (r: EmployeeDoc) => Array.isArray(r.permissionIds) ? r.permissionIds.length : 0 },
+            
             {
               key: 'actions', header: '', width: 1, render: (r: EmployeeDoc) => (
                 <Group justify="flex-end">
@@ -90,8 +95,8 @@ export default function EmployerEmployeesManagePage() {
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item component={Link as any} href={`/employee/employees/manage/${r.id}/edit`}>Edit</Menu.Item>
-                      <Menu.Item onClick={async () => { await archiveEmployeeDoc(r.id, true); setRefreshKey((k) => k + 1); }}>Archive</Menu.Item>
-                      <Menu.Item color="red" onClick={async () => { await softRemoveEmployeeDoc(r.id); setRefreshKey((k) => k + 1); }}>Remove</Menu.Item>
+                      <Menu.Item onClick={() => openArchive(r)}>Archive</Menu.Item>
+                      <Menu.Item color="red" onClick={() => openRemove(r)}>Remove</Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
                 </Group>
@@ -99,12 +104,15 @@ export default function EmployerEmployeesManagePage() {
             }
           ] as Column<EmployeeDoc>[]}
           initialSort={{ field: 'name', direction: 'asc' }}
-          clientFilter={(r: any) => r.isArchived !== true && !r.deletedAt}
+          clientFilter={(r: any) => !r.archiveAt && !r.removedAt}
           defaultPageSize={25}
           enableSelection={false}
           refreshKey={refreshKey}
         />
       </Card>
+
+      <EmployeeArchiveModal opened={confirmArchive} onClose={() => setConfirmArchive(false)} employeeName={target?.name || ''} onConfirm={onConfirmArchive} />
+      <EmployeeRemoveModal opened={confirmRemove} onClose={() => setConfirmRemove(false)} employeeName={target?.name || ''} onConfirm={onConfirmRemove} />
     </Stack>
     </EmployerAdminGate>
   );

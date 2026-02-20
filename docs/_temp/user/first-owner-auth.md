@@ -12,7 +12,7 @@ Data model (Firestore)
 - `meta/owner` (singleton)
   - `ownerUid` string (immutable once set)
   - `claimedAt` number (server timestamp)
-- `employees/{uid}`
+- `ep_employees/{uid}`
   - `name` string, `email` string
   - `roleIds` string[] (assigned by owner)
   - `permissionIds` string[] (optional extras)
@@ -25,26 +25,26 @@ Client‑side gating (recommended)
 - On employee portal routes, gate access with this logic:
   1) If no `meta/owner` exists: the Employee sign‑in page at `/employee/signin` shows a subtle Help button in the bottom‑right that links to `/employee/first-owner`. If the employees list cannot be read due to rules, the Help button still appears (first‑run guidance).
   2) The First Owner page at `/employee/first-owner` lets you claim ownership in one step:
-     - If you are not signed in, enter Your name + Email + Password, click “Create account & claim”. The page creates a Firebase Auth account, sets your display name, writes `meta/owner`, and creates `employees/{uid}` with admin privileges.
-     - If you are signed in, enter Your name and click “Claim ownership”. The page writes `meta/owner` and creates/updates `employees/{uid}` accordingly.
+     - If you are not signed in, enter Your name + Email + Password, click “Create account & claim”. The page creates a Firebase Auth account, sets your display name, writes `meta/owner`, and creates `ep_employees/{uid}` with admin privileges.
+     - If you are signed in, enter Your name and click “Claim ownership”. The page writes `meta/owner` and creates/updates `ep_employees/{uid}` accordingly.
      - If an owner already exists, it redirects back to `/employee/signin` (page is not navigable afterward).
-  3) If `meta/owner` exists: allow employee portal access only if the current UID is `ownerUid`, or if an `employees/{uid}` document exists.
+ 3) If `meta/owner` exists: allow employee portal access only if the current UID is `ownerUid`, or if an `ep_employees/{uid}` document exists.
 - Owner flow: After claim, the owner lands on Employee management to add employees.
-  - The claim process also creates `employees/{ownerUid}` with:
+  - The claim process also creates `ep_employees/{ownerUid}` with:
     - `name` from the claim form (fallback to the authenticated user display name)
     - `email` from the authenticated user
     - `roleIds: []`, `permissionIds: []`
     - `isAdmin: true`
     - `createdAt: serverTimestamp()`
   - This ensures the owner appears in the employees list and can manage others.
-- Non‑owner flow: Show “Ask your owner to add you” if no `employees/{uid}`.
+- Non‑owner flow: Show “Ask your owner to add you” if no `ep_employees/{uid}`.
 
 Example claim UI flow
 - Visit `/employee/signin`. When no owner exists, you’ll see a Help button → click to open `/employee/first-owner`.
 - On `/employee/first-owner`:
   - Option A: Not signed in → enter Your name, Email, Password → “Create account & claim”.
   - Option B: Signed in → enter Your name → “Claim ownership”.
-- Internals: `setDoc(doc(db, 'meta', 'owner'), { ownerUid, claimedAt: serverTimestamp() })` then `setDoc(doc(db, 'employees', ownerUid), { name, email, isAdmin: true, roleIds: [], permissionIds: [], createdAt })`.
+- Internals: `setDoc(doc(db, 'meta', 'owner'), { ownerUid, claimedAt: serverTimestamp() })` then `setDoc(doc(db, 'ep_employees', ownerUid), { name, email, isAdmin: true, roleIds: [], permissionIds: [], createdAt })`.
 - Redirects to `/employee/employees/manage` after claim.
 
 Admin flag
@@ -54,7 +54,7 @@ Admin flag
 Roll‑out plan
 - Deploy rules first (they’re deny‑by‑default apart from the explicit allow blocks).
 - Ship claim screen and portal gating next.
-- Migrate any legacy employees list into `employees/{uid}`.
+- Migrate any legacy employees list into `ep_employees/{uid}`.
 - Test race: open two sessions, click “Claim” simultaneously; rules ensure only the first succeeds.
 
 Notes on enforcement
@@ -68,7 +68,7 @@ FAQ
 
 ---
 
-If you keep roles/permissions in client state (Zustand) for now, you still benefit from owner gating via `meta/owner` and `employees/{uid}`. Move the rest server‑side when ready.
+If you keep roles/permissions in client state (Zustand) for now, you still benefit from owner gating via `meta/owner` and `ep_employees/{uid}`. Move the rest server‑side when ready.
 
 Deploying the rules with Firebase CLI
 - Follow docs/firebase-cli-setup.md to install the CLI, log in, and deploy `firebase/firestore.rules`.

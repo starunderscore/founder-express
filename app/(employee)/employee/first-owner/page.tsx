@@ -71,7 +71,7 @@ export default function FirstOwnerPage() {
       // Create an employee record for the owner so they appear in the employees table
       const ownerName = name.trim() || user?.displayName || 'Owner';
       const ownerEmail = (email.trim() || user?.email || '');
-      await setDoc(doc(db(), 'employees', uid), {
+      await setDoc(doc(db(), 'ep_employees', uid), {
         name: ownerName,
         email: ownerEmail,
         roleIds: [],

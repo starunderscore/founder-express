@@ -5,8 +5,8 @@ export type Employee = {
   roleIds: string[];
   permissionIds: string[];
   isAdmin?: boolean;
-  isArchived?: boolean | null;
-  deletedAt?: number | null;
+  archiveAt?: number | null;
+  removedAt?: number | null;
   createdAt?: number;
   updatedAt?: number;
 };
@@ -20,4 +20,3 @@ export type EmployeeCreateInput = {
 };
 
 export type EmployeePatchInput = Partial<Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>>;
-

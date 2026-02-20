@@ -28,7 +28,7 @@ export default function EmployerEmailNewslettersPage() {
       return !!x.protocol && !!x.host;
     } catch { return false; }
   };
-  const onSaveUrl = () => {
+  const onSaveUrl = async () => {
     const v = urlInput.trim();
     if (!validUrl(v)) { setUrlError('Enter a valid URL, e.g. https://www.example.com'); return; }
     setUrlError(null);

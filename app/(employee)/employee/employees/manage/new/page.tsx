@@ -76,7 +76,6 @@ export default function NewEmployeePage() {
           <Text c="dimmed">Create a user, assign roles, and fine-tune permissions.</Text>
         </div>
         <Group gap="xs" ml="auto">
-          <Button variant="light" onClick={() => router.push('/employee/employees/manage')}>Cancel</Button>
           <Button onClick={onCreate} disabled={!name.trim() || !email.trim()}>Create employee</Button>
         </Group>
       </Group>
