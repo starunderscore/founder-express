@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button, Badge, ActionIcon } from '@mantine/core';
+import EmailPreviewModal from '@/components/email/EmailPreviewModal';
 import { IconMail } from '@tabler/icons-react';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -13,8 +14,9 @@ type Newsletter = { id: string; subject: string; status: 'Draft'|'Scheduled'|'Se
 export default function NewsletterDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [nl, setNl] = useState<Newsletter | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   useEffect(() => {
-    const ref = doc(db(), 'newsletters', params.id);
+    const ref = doc(db(), 'ep_newsletters', params.id);
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) { setNl(null); return; }
       const d = snap.data() as any;
@@ -54,6 +56,9 @@ export default function NewsletterDetailPage({ params }: { params: { id: string 
               </div>
             </Group>
           </Group>
+          <Group gap="xs">
+            <Button variant="light" onClick={() => setPreviewOpen(true)}>Preview</Button>
+          </Group>
         </Group>
 
         <Card withBorder>
@@ -84,6 +89,8 @@ export default function NewsletterDetailPage({ params }: { params: { id: string 
           <div dangerouslySetInnerHTML={{ __html: nl.body || '<em>No content</em>' }} />
         </Card>
       </Stack>
+
+      <EmailPreviewModal opened={previewOpen} onClose={() => setPreviewOpen(false)} subject={nl.subject || ''} html={nl.body || ''} />
     </EmployerAuthGate>
   );
 }

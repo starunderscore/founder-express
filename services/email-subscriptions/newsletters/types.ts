@@ -6,6 +6,7 @@ export type Newsletter = {
   body: string;
   status: NewsletterStatus;
   recipients: number;
+  draftedAt?: number | null;
   scheduledAt?: number | null;
   sentAt?: number | null;
   createdAt?: number;
@@ -21,4 +22,3 @@ export type NewsletterCreateInput = {
 export type NewsletterPatchInput = Partial<Omit<Newsletter, 'id' | 'createdAt' | 'updatedAt' | 'recipients'>> & {
   recipients?: number;
 };
-

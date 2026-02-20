@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, TextInput, Badge, ActionIcon, Modal, Select } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, TextInput, Badge, ActionIcon, Select } from '@mantine/core';
 import { useToast } from '@/components/ToastProvider';
 import { IconMail } from '@tabler/icons-react';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
@@ -11,6 +11,7 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { listenEmailVars, type EmailVar } from '@/services/company-settings/email-variables';
 import { getNewsletterDoc, updateNewsletterDoc, createNewsletter, markNewsletterSent } from '@/services/email-subscriptions/newsletters';
+import EmailPreviewModal from '@/components/email/EmailPreviewModal';
 
 export default function NewsletterComposePage() {
   const router = useRouter();
@@ -71,9 +72,9 @@ export default function NewsletterComposePage() {
     if (!subject.trim()) { setError('Subject required'); return; }
     const bodyHtml = html;
     if (editId) {
-      await updateNewsletterDoc(editId, { subject: subject.trim(), body: bodyHtml, recipients: recipientCount });
+      await updateNewsletterDoc(editId, { subject: subject.trim(), body: bodyHtml, recipients: recipientCount, draftedAt: Date.now(), status: 'Draft' as any });
     } else {
-      await createNewsletter({ subject: subject.trim(), body: bodyHtml });
+      await createNewsletter({ subject: subject.trim(), body: bodyHtml, status: 'Draft' as any });
     }
     toast.show({ title: 'Draft saved', message: subject.trim(), color: 'green' });
     router.push('/employee/email-subscriptions/newsletters/drafts');
@@ -156,22 +157,12 @@ export default function NewsletterComposePage() {
           </Stack>
         </Card>
 
-        <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title="Preview" size="lg" centered>
-          <Stack>
-            <Group justify="space-between">
-              <Title order={4} style={{ margin: 0 }}>{subject || '(No subject)'}</Title>
-              <Badge variant="light">Recipients: {recipientCount}</Badge>
-            </Group>
-            <Card withBorder>
-              <div dangerouslySetInnerHTML={{ __html: html || '<em>No content</em>' }} />
-            </Card>
-          </Stack>
-        </Modal>
+        <EmailPreviewModal opened={previewOpen} onClose={() => setPreviewOpen(false)} subject={subject || ''} html={html || ''} />
 
         <Card withBorder>
           <Stack gap={8}>
             <Text fw={500}>Body <span style={{ color: 'var(--mantine-color-red-filled)' }}>*</span></Text>
-            <RichEmailEditor placeholder="Write your message…" onChangeHTML={setHtml} />
+            <RichEmailEditor placeholder="Write your message…" initialHTML={html} onChangeHTML={setHtml} />
           </Stack>
         </Card>
       </Stack>

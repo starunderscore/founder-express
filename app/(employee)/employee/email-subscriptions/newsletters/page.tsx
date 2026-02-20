@@ -107,12 +107,11 @@ export default function EmployerEmailNewslettersPage() {
               { key: 'subject', header: 'Subject', render: (r) => (
                 <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/${r.id}`} underline="hover">{r.subject || '(Untitled)'}</Anchor>
               ) },
-              { key: 'recipients', header: 'Recipients', render: (r) => (r.recipients ?? 0) },
-              { key: 'sentAt', header: 'Sent', render: (r) => (r.sentAt ? new Date(r.sentAt).toLocaleString() : '—') },
+              { key: 'sentAt', header: 'Sent on', render: (r) => (r.sentAt ? new Date(r.sentAt).toLocaleString() : '—') },
             ];
             return (
               <FirestoreDataTable
-                collectionPath="newsletters"
+                collectionPath="ep_newsletters"
                 columns={columns}
                 initialSort={{ field: 'sentAt', direction: 'desc' }}
                 clientFilter={(r: any) => r.status !== 'Draft'}

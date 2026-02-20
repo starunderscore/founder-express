@@ -1,6 +1,6 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, Anchor, ActionIcon, Tabs } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, Anchor, ActionIcon, Tabs, Menu } from '@mantine/core';
 import { IconMail } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -45,12 +45,36 @@ export default function EmployerEmailNewslettersDraftsPage() {
               { key: 'subject', header: 'Subject', render: (r) => (
                 <Anchor component={Link as any} href={`/employee/email-subscriptions/newsletters/new?edit=${encodeURIComponent(r.id)}`} underline="hover">{r.subject || '(Untitled draft)'}</Anchor>
               ) },
-              { key: 'recipients', header: 'Recipients', render: (r) => (r.recipients ?? 0) },
-              { key: 'sentAt', header: 'Sent', render: (_r) => '—' },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (r) => (
+                  <Group justify="flex-end">
+                    <Menu withinPortal position="bottom-end" shadow="md" width={200}>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" aria-label="More actions">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                          </svg>
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item component={Link as any} href={`/employee/email-subscriptions/newsletters/new?edit=${encodeURIComponent(r.id)}`}>Edit</Menu.Item>
+                        <Menu.Item>Preview</Menu.Item>
+                        <Menu.Item>Schedule</Menu.Item>
+                        <Menu.Item>Send test</Menu.Item>
+                        <Menu.Item>Duplicate</Menu.Item>
+                        <Menu.Item color="red">Remove</Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  </Group>
+                )
+              }
             ];
             return (
               <FirestoreDataTable
-                collectionPath="newsletters"
+                collectionPath="ep_newsletters"
                 columns={columns}
                 initialSort={{ field: 'createdAt', direction: 'desc' }}
                 clientFilter={(r: any) => r.status === 'Draft'}

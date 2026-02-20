@@ -7,6 +7,7 @@ export function normalizeNewsletter(id: string, raw: any): Newsletter {
     body: String(raw?.body || ''),
     status: (raw?.status as any) || 'Draft',
     recipients: typeof raw?.recipients === 'number' ? raw.recipients : Number(raw?.recipients || 0),
+    draftedAt: typeof raw?.draftedAt === 'number' ? (raw.draftedAt as number) : (raw?.draftedAt ? Date.now() : null),
     scheduledAt: typeof raw?.scheduledAt === 'number' ? (raw.scheduledAt as number) : (raw?.scheduledAt ? Date.now() : null),
     sentAt: typeof raw?.sentAt === 'number' ? (raw.sentAt as number) : (raw?.sentAt ? Date.now() : null),
     createdAt: typeof raw?.createdAt === 'number' ? raw.createdAt as number : undefined,
@@ -24,6 +25,7 @@ export function buildNewsletterCreate(input: NewsletterCreateInput): Record<stri
     body,
     status: (input.status || 'Draft') as any,
     recipients: 0,
+    draftedAt: now,
     scheduledAt: null,
     sentAt: null,
     createdAt: now,
@@ -41,8 +43,8 @@ export function buildNewsletterPatch(input: NewsletterPatchInput): Record<string
   if (typeof input.body === 'string') out.body = input.body;
   if (typeof input.status === 'string') out.status = input.status;
   if (typeof input.recipients === 'number') out.recipients = input.recipients;
+  if ('draftedAt' in (input as any)) out.draftedAt = (input as any).draftedAt ?? null;
   if ('scheduledAt' in (input as any)) out.scheduledAt = (input as any).scheduledAt ?? null;
   if ('sentAt' in (input as any)) out.sentAt = (input as any).sentAt ?? null;
   return out;
 }
-

@@ -5,7 +5,7 @@ import type { Newsletter, NewsletterCreateInput, NewsletterPatchInput } from './
 
 type Options = { getDb?: () => Firestore };
 
-const COL = 'newsletters';
+const COL = 'ep_newsletters';
 const colRef = (store: Firestore) => collection(store, COL);
 
 export async function listNewsletters(opts?: Options): Promise<Newsletter[]> {
@@ -64,4 +64,3 @@ export async function deleteNewsletterDoc(id: string, opts?: Options): Promise<v
   const store = getDb();
   await deleteDoc(doc(store, COL, id));
 }
-

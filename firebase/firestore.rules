@@ -295,7 +295,7 @@ service cloud.firestore {
       );
     }
 
-    match /newsletters/{id} {
+    match /ep_newsletters/{id} {
       // Read/list requires admin or newsletter read permission
       allow get, list: if isAdmin() || hasPermissionId('perm-email_newsletter-read');
       // Create/update requires admin or newsletter edit permission and valid fields

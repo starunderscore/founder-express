@@ -1,10 +1,10 @@
 "use client";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, TextInput, Modal, ActionIcon, Select } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, TextInput, ActionIcon, Select } from '@mantine/core';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
-import { EmailPreviewWindow } from '@/components/EmailPreviewWindow';
+import EmailPreviewModal from '@/components/email/EmailPreviewModal';
 import { listenEmailVars, type EmailVar } from '@/lib/firebase/emailSettings';
 import { createEmailTemplate, updateEmailTemplateDoc, getEmailTemplateDoc } from '@/services/company-settings/email-templates';
 
@@ -160,9 +160,7 @@ export default function NewEmailTemplatePage() {
           </Stack>
         </Card>
 
-        <Modal opened={previewOpen} onClose={() => setPreviewOpen(false)} title="Preview" size="xl" centered>
-          <EmailPreviewWindow subject={renderedSubject} html={renderedHtml} />
-        </Modal>
+        <EmailPreviewModal opened={previewOpen} onClose={() => setPreviewOpen(false)} subject={renderedSubject} html={renderedHtml} />
       </Stack>
     </EmployerAuthGate>
   );

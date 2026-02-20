@@ -18,6 +18,7 @@ Sections
     - ep_employees/{uid}: admin-only CRUD.
     - admin_settings/**: admin-only CRUD.
     - ep_tags/{id}, crm_customers/{id}: admin-only CRUD.
+    - ep_newsletters/{id}: newsletters (employee portal)
     - website/newsbar: public read, admin-only writes.
     - blogs/{id}: public read when published; admin-only writes.
     - ep_employee_roles/{id}: admin-only CRUD.
