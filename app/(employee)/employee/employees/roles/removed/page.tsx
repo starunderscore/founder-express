@@ -92,14 +92,14 @@ export default function EmployerRolesRemovedPage() {
             collectionPath="ep_employee_roles"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
-            clientFilter={(r: any) => !!r.deletedAt}
+            clientFilter={(r: any) => !!r.removedAt}
             defaultPageSize={25}
             enableSelection={false}
             refreshKey={refreshKey}
           />
         </Card>
 
-        <Modal opened={confirmRestore} onClose={() => setConfirmRestore(false)} title="Restore role" centered>
+        <Modal opened={confirmRestore} onClose={() => setConfirmRestore(false)} withCloseButton={false} centered>
           <Stack>
             <Text>Restore this role back to Active?</Text>
             <Group justify="flex-end">

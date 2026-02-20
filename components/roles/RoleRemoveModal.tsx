@@ -7,7 +7,7 @@ export function RoleRemoveModal({ opened, onClose, roleName, onConfirm }: { open
   useEffect(() => { if (opened) setInput(''); }, [opened, roleName]);
   const canRemove = !!roleName && input === roleName;
   return (
-    <Modal opened={opened} onClose={onClose} title="Remove role" centered>
+    <Modal opened={opened} onClose={onClose} withCloseButton={false} centered>
       <Stack>
         <Text>This will move the role to Removed. You can restore it later or permanently delete from there.</Text>
         <Text c="dimmed">To confirm removal, type the full role name.</Text>
@@ -28,4 +28,3 @@ export function RoleRemoveModal({ opened, onClose, roleName, onConfirm }: { open
 }
 
 export default RoleRemoveModal;
-

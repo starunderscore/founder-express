@@ -4,19 +4,23 @@ export function normalizeRole(id: string, raw: RawRoleDoc): Role {
   const name = String(raw?.name || '');
   const description = typeof raw?.description === 'string' && raw.description.trim().length > 0 ? raw.description : undefined;
   const permissionIds = Array.isArray(raw?.permissionIds) ? (raw.permissionIds as any[]).filter(Boolean) as string[] : [];
-  const isArchived = !!raw?.isArchived;
-  const deletedAt = typeof raw?.deletedAt === 'number' ? (raw.deletedAt as number) : undefined;
+  const archiveAt = typeof raw?.archiveAt === 'number'
+    ? (raw.archiveAt as number)
+    : (raw?.isArchived ? ((raw as any)?.updatedAt || (raw as any)?.createdAt || Date.now()) : null);
+  const removedAt = typeof raw?.removedAt === 'number'
+    ? (raw.removedAt as number)
+    : (typeof raw?.deletedAt === 'number' ? (raw.deletedAt as number) : null);
   const createdAt = typeof raw?.createdAt === 'number' ? (raw.createdAt as number) : undefined;
-  return { id, name, description, permissionIds, isArchived, deletedAt, createdAt };
+  return { id, name, description, permissionIds, archiveAt: archiveAt ?? null, removedAt: removedAt ?? null, createdAt };
 }
 
-export function roleStatus(role: Pick<Role,'isArchived'|'deletedAt'>): RoleStatus {
-  if (typeof role.deletedAt === 'number') return 'removed';
-  if (role.isArchived) return 'archived';
+export function roleStatus(role: Pick<Role,'archiveAt'|'removedAt'>): RoleStatus {
+  if (typeof role.removedAt === 'number' && role.removedAt != null) return 'removed';
+  if (typeof role.archiveAt === 'number' && role.archiveAt != null) return 'archived';
   return 'active';
 }
 
-export function roleBackLink(role: Pick<Role,'isArchived'|'deletedAt'>): string {
+export function roleBackLink(role: Pick<Role,'archiveAt'|'removedAt'>): string {
   const status = roleStatus(role);
   if (status === 'removed') return '/employee/employees/roles/removed';
   if (status === 'archived') return '/employee/employees/roles/archive';
@@ -29,8 +33,8 @@ export function buildRoleCreate(input: RoleCreateInput): Record<string, any> {
   const out: Record<string, any> = {
     name: nm,
     permissionIds: Array.isArray(input.permissionIds) ? input.permissionIds : [],
-    isArchived: false,
-    deletedAt: null, // so falsy checks treat as active; consistent with app
+    archiveAt: null,
+    removedAt: null, // consistent with lifecycle model
     createdAt: Date.now(),
   };
   const desc = (input.description ?? '').trim();
@@ -55,8 +59,8 @@ export function buildRolePatchObject(input: RolePatchInput): Record<string, any>
   return out;
 }
 
-export function filterByStatus<T extends Pick<Role,'isArchived'|'deletedAt'>>(rows: T[], status: RoleStatus): T[] {
-  if (status === 'removed') return rows.filter((r) => typeof r.deletedAt === 'number');
-  if (status === 'archived') return rows.filter((r) => !r.deletedAt && r.isArchived);
-  return rows.filter((r) => !r.deletedAt && !r.isArchived);
+export function filterByStatus<T extends Pick<Role,'archiveAt'|'removedAt'>>(rows: T[], status: RoleStatus): T[] {
+  if (status === 'removed') return rows.filter((r) => !!(r as any).removedAt);
+  if (status === 'archived') return rows.filter((r) => !(r as any).removedAt && !!(r as any).archiveAt);
+  return rows.filter((r) => !(r as any).removedAt && !(r as any).archiveAt);
 }

@@ -103,14 +103,14 @@ export default function EmployerRolesArchivePage() {
           collectionPath="ep_employee_roles"
           columns={columns}
           initialSort={{ field: 'name', direction: 'asc' }}
-          clientFilter={(r: any) => r.isArchived === true && !r.deletedAt}
+          clientFilter={(r: any) => !!r.archiveAt && !r.removedAt}
           defaultPageSize={25}
           enableSelection={false}
           refreshKey={refreshKey}
         />
       </Card>
 
-      <Modal opened={confirmRestore} onClose={() => setConfirmRestore(false)} title="Restore role" centered>
+      <Modal opened={confirmRestore} onClose={() => setConfirmRestore(false)} withCloseButton={false} centered>
         <Stack>
           <Text>Restore this role back to Active?</Text>
           <Group justify="flex-end">

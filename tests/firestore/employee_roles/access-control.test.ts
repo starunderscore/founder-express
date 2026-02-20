@@ -72,7 +72,7 @@ describe('ep_employee_roles rules — access control', () => {
     });
 
     // Create
-    const ref = await assertSucceeds(addDoc(collection(ownerDb, 'ep_employee_roles'), { name: 'Role A', permissionIds: [], isArchived: false, createdAt: Date.now() }));
+    const ref = await assertSucceeds(addDoc(collection(ownerDb, 'ep_employee_roles'), { name: 'Role A', permissionIds: [], archiveAt: null, createdAt: Date.now() }));
     // List
     await assertSucceeds(getDocs(collection(ownerDb, 'ep_employee_roles')));
     // Update
@@ -90,11 +90,11 @@ describe('ep_employee_roles rules — access control', () => {
 
     const owner = ownerCtx('owner');
     // Too long name and description
-    await assertFails(addDoc(collection(owner, 'ep_employee_roles'), { name: 'X'.repeat(41), permissionIds: [], isArchived: false, createdAt: Date.now() }));
-    await assertFails(addDoc(collection(owner, 'ep_employee_roles'), { name: 'Ok', description: 'Y'.repeat(281), permissionIds: [], isArchived: false, createdAt: Date.now() }));
+    await assertFails(addDoc(collection(owner, 'ep_employee_roles'), { name: 'X'.repeat(41), permissionIds: [], archiveAt: null, createdAt: Date.now() }));
+    await assertFails(addDoc(collection(owner, 'ep_employee_roles'), { name: 'Ok', description: 'Y'.repeat(281), permissionIds: [], archiveAt: null, createdAt: Date.now() }));
 
     // Valid create
-    const ref = await assertSucceeds(addDoc(collection(owner, 'ep_employee_roles'), { name: 'Ok', permissionIds: [], isArchived: false, createdAt: Date.now() }));
+    const ref = await assertSucceeds(addDoc(collection(owner, 'ep_employee_roles'), { name: 'Ok', permissionIds: [], archiveAt: null, createdAt: Date.now() }));
     // Too long update
     await assertFails(setDoc(doc(owner, 'ep_employee_roles', (ref as any).id), { name: 'X'.repeat(41) }, { merge: true }));
     await assertFails(setDoc(doc(owner, 'ep_employee_roles', (ref as any).id), { description: 'Y'.repeat(281) }, { merge: true }));
@@ -113,7 +113,7 @@ describe('ep_employee_roles rules — access control', () => {
     const userDb = employeeCtx('emp-1');
 
     // Admin can create and list
-    await assertSucceeds(addDoc(collection(adminDb, 'ep_employee_roles'), { name: 'Role B', permissionIds: [], isArchived: false, createdAt: Date.now() }));
+    await assertSucceeds(addDoc(collection(adminDb, 'ep_employee_roles'), { name: 'Role B', permissionIds: [], archiveAt: null, createdAt: Date.now() }));
     await assertSucceeds(getDocs(collection(adminDb, 'ep_employee_roles')));
 
     // Normal employee denied

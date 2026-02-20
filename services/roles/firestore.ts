@@ -39,20 +39,21 @@ export async function updateRole(id: string, patch: RolePatchInput, opts?: Optio
 export async function archiveRole(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'ep_employee_roles', id), { isArchived: true });
+  const now = Date.now();
+  await updateDoc(doc(store, 'ep_employee_roles', id), { archiveAt: now, removedAt: null });
 }
 
 export async function removeRole(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'ep_employee_roles', id), { deletedAt: Date.now() });
+  await updateDoc(doc(store, 'ep_employee_roles', id), { removedAt: Date.now() });
 }
 
 export async function restoreRole(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  // Clear both flags to be resilient (supports either removed or archived)
-  await updateDoc(doc(store, 'ep_employee_roles', id), { deletedAt: null, isArchived: false });
+  // Clear both markers to Active
+  await updateDoc(doc(store, 'ep_employee_roles', id), { removedAt: null, archiveAt: null });
 }
 
 export async function deleteRole(id: string, opts?: Options): Promise<void> {

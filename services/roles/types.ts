@@ -5,8 +5,8 @@ export type Role = {
   name: string;
   description?: string;
   permissionIds: string[];
-  isArchived?: boolean;
-  deletedAt?: number;
+  archiveAt?: number | null;
+  removedAt?: number | null;
   createdAt?: number;
 };
 
@@ -28,8 +28,9 @@ export type RawRoleDoc = DocumentData & {
   name?: string;
   description?: string;
   permissionIds?: any;
-  isArchived?: any;
-  deletedAt?: any;
+  isArchived?: any; // legacy
+  deletedAt?: any;  // legacy
+  archiveAt?: any;
+  removedAt?: any;
   createdAt?: any;
 };
-

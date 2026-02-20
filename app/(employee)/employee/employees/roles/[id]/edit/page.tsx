@@ -14,14 +14,14 @@ import { idsToNames, namesToIds } from '@/lib/permissions';
 export default function EditRolePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const toast = useToast();
-  const [role, setRole] = useState<{ id: string; name: string; description?: string; permissionIds: string[]; isArchived?: boolean; deletedAt?: number } | null>(null);
+  const [role, setRole] = useState<{ id: string; name: string; description?: string; permissionIds: string[]; archiveAt?: number | null; removedAt?: number | null } | null>(null);
   const [loadingDoc, setLoadingDoc] = useState(true);
   useEffect(() => {
     const ref = doc(db(), 'ep_employee_roles', params.id);
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) { setRole(null); setLoadingDoc(false); return; }
       const d = snap.data() as any;
-      setRole({ id: snap.id, name: d.name || '', description: d.description || undefined, permissionIds: Array.isArray(d.permissionIds) ? d.permissionIds : [], isArchived: !!d.isArchived, deletedAt: typeof d.deletedAt === 'number' ? d.deletedAt : undefined });
+      setRole({ id: snap.id, name: d.name || '', description: d.description || undefined, permissionIds: Array.isArray(d.permissionIds) ? d.permissionIds : [], archiveAt: (typeof d.archiveAt === 'number' ? d.archiveAt : (d.isArchived ? (d.updatedAt || d.createdAt || Date.now()) : null)), removedAt: (typeof d.removedAt === 'number' ? d.removedAt : (typeof d.deletedAt === 'number' ? d.deletedAt : null)) });
       setLoadingDoc(false);
     });
     return () => unsub();
@@ -61,9 +61,9 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
     if (!nm) return;
     const ids = namesToIds(selectedNames);
     await updateRole(role.id, { name: nm, permissionIds: ids, description });
-    const href = (role?.deletedAt
+    const href = (role?.removedAt
       ? '/employee/employees/roles/removed'
-      : role?.isArchived
+      : role?.archiveAt
         ? '/employee/employees/roles/archive'
         : '/employee/employees/roles') as Route;
     toast.show({ title: 'Role saved', message: nm, color: 'green' });
@@ -79,8 +79,8 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
           size="lg"
           aria-label="Back"
           onClick={() => {
-            if (role?.deletedAt) router.push('/employee/employees/roles/removed');
-            else if (role?.isArchived) router.push('/employee/employees/roles/archive');
+            if (role?.removedAt) router.push('/employee/employees/roles/removed');
+            else if (role?.archiveAt) router.push('/employee/employees/roles/archive');
             else router.push('/employee/employees/roles');
           }}
         >
@@ -93,17 +93,16 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
           <Text c="dimmed">Rename, describe, and adjust permissions.</Text>
         </div>
         <Group gap="xs" ml="auto">
-          <Button variant="light" onClick={() => router.push('/employee/employees/roles')}>Cancel</Button>
           <Button onClick={onSave} disabled={!name.trim()}>Save changes</Button>
         </Group>
       </Group>
 
-      {role.deletedAt && (
+      {role.removedAt && (
         <Alert color="red" variant="light" mb="md" title="Removed">
           This role is removed and appears in the Removed tab.
         </Alert>
       )}
-      {!role.deletedAt && role.isArchived && (
+      {!role.removedAt && role.archiveAt && (
         <Alert color="gray" variant="light" mb="md" title="Archived">
           This role is archived and hidden from the Active list.
         </Alert>

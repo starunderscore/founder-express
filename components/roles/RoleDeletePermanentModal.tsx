@@ -7,7 +7,7 @@ export function RoleDeletePermanentModal({ opened, onClose, roleName, onConfirm 
   useEffect(() => { if (opened) setInput(''); }, [opened, roleName]);
   const canDelete = !!roleName && input === roleName;
   return (
-    <Modal opened={opened} onClose={onClose} title="Permanently delete role" centered>
+    <Modal opened={opened} onClose={onClose} withCloseButton={false} centered>
       <Stack>
         <Text color="red">This action permanently deletes the role and cannot be undone.</Text>
         <Text c="dimmed">To confirm, type the full role name.</Text>
@@ -28,4 +28,3 @@ export function RoleDeletePermanentModal({ opened, onClose, roleName, onConfirm 
 }
 
 export default RoleDeletePermanentModal;
-
