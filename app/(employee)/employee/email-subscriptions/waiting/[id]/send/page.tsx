@@ -20,7 +20,7 @@ export default function SendEmailPage({ params }: { params: { id: string } }) {
   const [selectedId, setSelectedId] = useState(params.id);
   const list = useMemo(() => lists.find((b) => b.id === selectedId) || null, [lists, selectedId]);
   useEffect(() => {
-    const qW = query(collection(db(), 'waitlists'));
+    const qW = query(collection(db(), 'ep_waitlists'));
     const unsub = onSnapshot(qW, (snap) => {
       const rows: Waitlist[] = [];
       snap.forEach((d) => { const data = d.data() as any; rows.push({ id: d.id, name: data.name || '', entriesCount: Number(data.entriesCount || 0) }); });
@@ -31,7 +31,7 @@ export default function SendEmailPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (!selectedId) return;
-    const unsub = onSnapshot(collection(db(), 'waitlists', selectedId, 'entries'), (snap) => {
+    const unsub = onSnapshot(collection(db(), 'ep_waitlists', selectedId, 'entries'), (snap) => {
       const rows: Entry[] = [];
       snap.forEach((d) => { const x = d.data() as any; rows.push({ id: d.id, email: x.email || '', name: x.name || undefined, createdAt: Number(x.createdAt || Date.now()) }); });
       setRecipients(rows);
@@ -65,8 +65,8 @@ export default function SendEmailPage({ params }: { params: { id: string } }) {
   const onSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !html.trim()) { setError('Subject and message required'); return; }
-    await addDoc(collection(db(), 'waitlists', list.id, 'sent'), { subject: subject.trim(), body: html, sentAt: Date.now(), recipients: recipients.length });
-    await updateDoc(doc(db(), 'waitlists', list.id), { sentCount: increment(1) });
+    await addDoc(collection(db(), 'ep_waitlists', list.id, 'sent'), { subject: subject.trim(), body: html, sentAt: Date.now(), recipients: recipients.length });
+    await updateDoc(doc(db(), 'ep_waitlists', list.id), { sentCount: increment(1) });
     toast.show({ title: 'Sent', message: `Newsletter queued to ${recipients.length} recipients.` });
     router.push(`/employee/email-subscriptions/waiting/${list.id}`);
   };
@@ -93,7 +93,7 @@ export default function SendEmailPage({ params }: { params: { id: string } }) {
             </Group>
           </Group>
           <Group gap="xs">
-            <Button variant="light" onClick={async () => { await addDoc(collection(db(), 'waitlists', list.id, 'drafts'), { subject: subject.trim(), body: html, updatedAt: Date.now() }); await updateDoc(doc(db(), 'waitlists', list.id), { draftsCount: increment(1) }); toast.show({ title: 'Saved', message: 'Draft saved.' }); }}>Save draft</Button>
+    <Button variant="light" onClick={async () => { await addDoc(collection(db(), 'ep_waitlists', list.id, 'drafts'), { subject: subject.trim(), body: html, updatedAt: Date.now() }); await updateDoc(doc(db(), 'ep_waitlists', list.id), { draftsCount: increment(1) }); toast.show({ title: 'Saved', message: 'Draft saved.' }); }}>Save draft</Button>
             <Button variant="light" onClick={() => setPreviewOpen(true)}>Preview</Button>
             <Button onClick={onSend}>Send</Button>
           </Group>

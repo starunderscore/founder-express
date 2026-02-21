@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
@@ -10,6 +10,7 @@ import { RichEmailEditor } from '@/components/RichEmailEditor';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { listenEmailVars, type EmailVar } from '@/services/company-settings/email-variables';
+import { readAdminSettings } from '@/services/admin-settings/system-values/firestore';
 import { getNewsletterDoc, updateNewsletterDoc, createNewsletter, markNewsletterSent } from '@/services/email-subscriptions/newsletters';
 import EmailPreviewModal from '@/components/email/EmailPreviewModal';
 
@@ -52,6 +53,8 @@ export default function NewsletterComposePage() {
   const [html, setHtml] = useState('');
   const [vars, setVars] = useState<EmailVar[]>([]);
   const [selectedVar, setSelectedVar] = useState<string | null>(null);
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [websiteName, setWebsiteName] = useState('');
 
   // HTML content is provided by RichEmailEditor via setHtml
 
@@ -67,6 +70,33 @@ export default function NewsletterComposePage() {
     })();
     return () => { mounted = false; };
   }, [editId]);
+
+  // Load system variables (WEBSITE_URL, WEBSITE_NAME) for preview rendering
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await readAdminSettings();
+        setWebsiteUrl(s.websiteUrl || 'https://www.example.com');
+        setWebsiteName(s.websiteName || 'Your Website');
+      } catch {
+        setWebsiteUrl('https://www.example.com');
+        setWebsiteName('Your Website');
+      }
+    })();
+  }, []);
+
+  // Render tokens in subject/body for preview
+  const varMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const v of vars) map[v.key] = v.value ?? '';
+    map.WEBSITE_URL = websiteUrl || 'https://www.example.com';
+    map.WEBSITE_NAME = websiteName || 'Your Website';
+    return map;
+  }, [vars, websiteUrl, websiteName]);
+
+  const renderTokens = (s: string) => (s || '').replace(/\{\{([A-Z0-9_]+)\}\}/g, (_m, key: string) => (varMap[key] ?? `{{${key}}}`));
+  const renderedSubject = useMemo(() => renderTokens(subject), [subject, varMap]);
+  const renderedHtml = useMemo(() => renderTokens(html), [html, varMap]);
 
   const onSave = async () => {
     if (!subject.trim()) { setError('Subject required'); return; }
@@ -157,7 +187,7 @@ export default function NewsletterComposePage() {
           </Stack>
         </Card>
 
-        <EmailPreviewModal opened={previewOpen} onClose={() => setPreviewOpen(false)} subject={subject || ''} html={html || ''} />
+        <EmailPreviewModal opened={previewOpen} onClose={() => setPreviewOpen(false)} subject={renderedSubject || ''} html={renderedHtml || ''} />
 
         <Card withBorder>
           <Stack gap={8}>

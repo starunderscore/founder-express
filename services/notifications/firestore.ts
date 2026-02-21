@@ -51,4 +51,3 @@ export async function deleteNotification(id: string, opts?: Options): Promise<vo
   const store = getDb();
   await deleteDoc(doc(store, 'ep_notifications', id));
 }
-

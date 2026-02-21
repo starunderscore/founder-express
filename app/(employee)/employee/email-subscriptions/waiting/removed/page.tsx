@@ -1,20 +1,27 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Tabs, Anchor, Button, ActionIcon } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Tabs, Anchor, Button, ActionIcon, Menu } from '@mantine/core';
 import { IconClockHour4 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useRouter } from 'next/navigation';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import WaitlistRestoreModal from '@/components/waitlists/WaitlistRestoreModal';
+import WaitlistDeletePermanentModal from '@/components/waitlists/WaitlistDeletePermanentModal';
 
 type Waitlist = { id: string; name: string; deletedAt?: number; isArchived?: boolean };
 
 export default function WaitingListsRemovedPage() {
   const router = useRouter();
   const [removed, setRemoved] = useState<Waitlist[]>([]);
+  const [target, setTarget] = useState<Waitlist | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
-    const qW = query(collection(db(), 'waitlists'));
+    const qW = query(collection(db(), 'ep_waitlists'));
     const unsub = onSnapshot(qW, (snap) => {
       const arr: Waitlist[] = [];
       snap.forEach((d) => {
@@ -55,23 +62,68 @@ export default function WaitingListsRemovedPage() {
         </Tabs>
 
         <Card withBorder>
-          {removed.length > 0 ? (
-            <Stack>
-              {removed.map((b) => (
-                <Card key={b.id} withBorder>
-                  <Group justify="space-between" align="center">
-                    <Anchor component={Link as any} href={`/employee/email-subscriptions/waiting/${b.id}`} underline="hover">
-                      <Text fw={600}>{b.name}</Text>
-                    </Anchor>
-                    <Button size="xs" variant="light" onClick={async () => { await updateDoc(doc(db(), 'waitlists', b.id), { deletedAt: undefined, isArchived: false }); }}>Restore</Button>
+          {(() => {
+            const columns: Column<Waitlist>[] = [
+              {
+                key: 'name', header: 'Name',
+                render: (r) => (
+                  <Anchor component={Link as any} href={`/employee/email-subscriptions/waiting/${r.id}`} underline="hover">{r.name || '—'}</Anchor>
+                ),
+              },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (r) => (
+                  <Group justify="flex-end">
+                    <Menu withinPortal position="bottom-end" shadow="md" width={200}>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" aria-label="More actions">⋯</ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item component={Link as any} href={`/employee/email-subscriptions/waiting/${r.id}`}>View</Menu.Item>
+                        <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
+                        <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmDelete(true); }}>Delete permanently</Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
                   </Group>
-                </Card>
-              ))}
-            </Stack>
-          ) : (
-            <Text c="dimmed">No removed waiting lists</Text>
-          )}
+                ),
+              },
+            ];
+            return (
+              <FirestoreDataTable
+                collectionPath="ep_waitlists"
+                columns={columns}
+                initialSort={{ field: 'createdAt', direction: 'desc' }}
+                clientFilter={(r: any) => !!r.deletedAt}
+                defaultPageSize={25}
+                enableSelection={false}
+                refreshKey={refreshKey}
+              />
+            );
+          })()}
         </Card>
+
+        <WaitlistRestoreModal
+          opened={confirmRestore}
+          onClose={() => setConfirmRestore(false)}
+          listName={target?.name || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await updateDoc(doc(db(), 'ep_waitlists', target.id), { deletedAt: undefined, isArchived: false });
+            setConfirmRestore(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+        <WaitlistDeletePermanentModal
+          opened={confirmDelete}
+          onClose={() => setConfirmDelete(false)}
+          listName={target?.name || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await deleteDoc(doc(db(), 'ep_waitlists', target.id));
+            setConfirmDelete(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
       </Stack>
     </EmployerAuthGate>
   );

@@ -22,26 +22,26 @@ export default function WaitingDetailPage({ params }: { params: { id: string } }
   const [sent, setSent] = useState<SentEmail[]>([]);
   const toast = useToast();
   useEffect(() => {
-    const ref = doc(db(), 'waitlists', params.id);
+    const ref = doc(db(), 'ep_waitlists', params.id);
     const unsubMain = onSnapshot(ref, (snap) => {
       if (!snap.exists()) { setList(null); return; }
       const d = snap.data() as any;
       setList({ id: snap.id, name: d.name || '' });
     });
-    const unsubEntries = onSnapshot(collection(db(), 'waitlists', params.id, 'entries'), (snap) => {
+    const unsubEntries = onSnapshot(collection(db(), 'ep_waitlists', params.id, 'entries'), (snap) => {
       const rows: Entry[] = [];
       snap.forEach((d) => { const x = d.data() as any; rows.push({ id: d.id, email: x.email || '', name: x.name || undefined, createdAt: Number(x.createdAt || Date.now()) }); });
       // Latest first
       rows.sort((a, b) => (b.createdAt - a.createdAt));
       setEntries(rows);
     });
-    const unsubDrafts = onSnapshot(collection(db(), 'waitlists', params.id, 'drafts'), (snap) => {
+    const unsubDrafts = onSnapshot(collection(db(), 'ep_waitlists', params.id, 'drafts'), (snap) => {
       const rows: DraftEmail[] = [];
       snap.forEach((d) => { const x = d.data() as any; rows.push({ id: d.id, subject: x.subject || '', body: x.body || '', updatedAt: Number(x.updatedAt || Date.now()) }); });
       rows.sort((a, b) => (b.updatedAt - a.updatedAt));
       setDrafts(rows);
     });
-    const unsubSent = onSnapshot(collection(db(), 'waitlists', params.id, 'sent'), (snap) => {
+    const unsubSent = onSnapshot(collection(db(), 'ep_waitlists', params.id, 'sent'), (snap) => {
       const rows: SentEmail[] = [];
       snap.forEach((d) => { const x = d.data() as any; rows.push({ id: d.id, subject: x.subject || '', body: x.body || '', sentAt: Number(x.sentAt || Date.now()), recipients: Number(x.recipients || 0) }); });
       rows.sort((a, b) => (b.sentAt - a.sentAt));
@@ -103,8 +103,8 @@ export default function WaitingDetailPage({ params }: { params: { id: string } }
             const exists = entries.some((x) => x.email === addr);
             if (exists) { setError('Already in waiting list'); return; }
             try {
-              await addDoc(collection(db(), 'waitlists', list.id, 'entries'), { email: addr, name: name.trim() || undefined, createdAt: Date.now() });
-              await updateDoc(doc(db(), 'waitlists', list.id), { entriesCount: increment(1) });
+              await addDoc(collection(db(), 'ep_waitlists', list.id, 'entries'), { email: addr, name: name.trim() || undefined, createdAt: Date.now() });
+              await updateDoc(doc(db(), 'ep_waitlists', list.id), { entriesCount: increment(1) });
               toast.show({ title: 'Added', message: 'Entry added to waiting list.' });
               setError(null); setEmail(''); setName(''); setAddOpen(false);
             } catch (err: any) {
@@ -128,8 +128,9 @@ export default function WaitingDetailPage({ params }: { params: { id: string } }
           <Tabs defaultValue="sent">
             <Tabs.List>
               <Tabs.Tab value="sent">Emails sent</Tabs.Tab>
-              <Tabs.Tab value="drafts">Email drafts <Badge ml={6} size="xs" variant="light">{drafts.length}</Badge></Tabs.Tab>
-              <Tabs.Tab value="list">Email list <Badge ml={6} size="xs" variant="light">{entries.length}</Badge></Tabs.Tab>
+              <Tabs.Tab value="drafts"><Link href={`/employee/email-subscriptions/waiting/${list.id}/drafts`}>Email drafts</Link></Tabs.Tab>
+              <Tabs.Tab value="form"><Link href={`/employee/email-subscriptions/waiting/${list.id}/form`}>Copy & paste form</Link></Tabs.Tab>
+              <Tabs.Tab value="settings"><Link href={`/employee/email-subscriptions/waiting/${list.id}/settings`}>List settings</Link></Tabs.Tab>
             </Tabs.List>
 
             <Tabs.Panel value="sent" pt="md">
@@ -197,7 +198,7 @@ export default function WaitingDetailPage({ params }: { params: { id: string } }
                       <Table.Td>{s.name || '—'}</Table.Td>
                       <Table.Td>{new Date(s.createdAt).toLocaleString()}</Table.Td>
                       <Table.Td style={{ width: 1 }}>
-                        <Button size="xs" variant="subtle" color="red" onClick={async () => { await deleteDoc(doc(db(), 'waitlists', list.id, 'entries', s.id)); await updateDoc(doc(db(), 'waitlists', list.id), { entriesCount: increment(-1) }); toast.show({ title: 'Removed', message: 'Entry removed.' }); }}>Remove</Button>
+                        <Button size="xs" variant="subtle" color="red" onClick={async () => { await deleteDoc(doc(db(), 'ep_waitlists', list.id, 'entries', s.id)); await updateDoc(doc(db(), 'ep_waitlists', list.id), { entriesCount: increment(-1) }); toast.show({ title: 'Removed', message: 'Entry removed.' }); }}>Remove</Button>
                       </Table.Td>
                     </Table.Tr>
                   ))}
@@ -219,7 +220,7 @@ export default function WaitingDetailPage({ params }: { params: { id: string } }
               <Text fw={600}>Delete waiting list</Text>
               <Text c="dimmed" size="sm">Deleting this waiting list removes all emails within it. This action cannot be undone.</Text>
             </div>
-            <Button color="red" onClick={async () => { await updateDoc(doc(db(), 'waitlists', list.id), { deletedAt: Date.now() }); toast.show({ title: 'Deleted', message: 'Waiting list removed.' }); router.push('/employee/email-subscriptions/waiting'); }}>Delete waiting list</Button>
+            <Button color="red" onClick={async () => { await updateDoc(doc(db(), 'ep_waitlists', list.id), { deletedAt: Date.now() }); toast.show({ title: 'Deleted', message: 'Waiting list removed.' }); router.push('/employee/email-subscriptions/waiting'); }}>Delete waiting list</Button>
           </Group>
         </Card>
       </Stack>

@@ -432,6 +432,29 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Email Subscriptions — Waiting Lists (employee portal)
+    // Top-level waitlists and their subcollections: entries, drafts, sent
+    match /ep_waitlists/{id} {
+      // Read/list: admin or newsletter read permission
+      allow get, list: if isAdmin() || hasPermissionId('perm-email_newsletter-read');
+      // Writes: admin or newsletter edit permission
+      allow create, update, delete: if isAdmin() || hasPermissionId('perm-email_newsletter-edit');
+
+      // Subcollections
+      match /entries/{entryId} {
+        allow get, list: if isAdmin() || hasPermissionId('perm-email_newsletter-read');
+        allow create, update, delete: if isAdmin() || hasPermissionId('perm-email_newsletter-edit');
+      }
+      match /drafts/{draftId} {
+        allow get, list: if isAdmin() || hasPermissionId('perm-email_newsletter-read');
+        allow create, update, delete: if isAdmin() || hasPermissionId('perm-email_newsletter-edit');
+      }
+      match /sent/{sendId} {
+        allow get, list: if isAdmin() || hasPermissionId('perm-email_newsletter-read');
+        allow create, update, delete: if isAdmin() || hasPermissionId('perm-email_newsletter-edit');
+      }
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;

@@ -21,7 +21,7 @@ export default function AdminEmailSubscriptionsPage() {
       snap.forEach((d) => { const x = d.data() as any; rows.push({ id: d.id, email: x.email || '', name: x.name || undefined, createdAt: Number(x.createdAt || Date.now()), source: x.source || undefined }); });
       setEmailList(rows);
     });
-    const unsub2 = onSnapshot(query(collection(db(), 'waitlists')), (snap) => {
+    const unsub2 = onSnapshot(query(collection(db(), 'ep_waitlists')), (snap) => {
       const rows: Waitlist[] = [];
       snap.forEach((d) => {
         const x = d.data() as any;

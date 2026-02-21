@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, TextInput, Button, Badge, Tabs, Anchor, Modal, ActionIcon } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, TextInput, Button, Badge, Tabs, Anchor, Modal, ActionIcon, Menu } from '@mantine/core';
 import { IconClockHour4 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -11,13 +11,16 @@ import { useToast } from '@/components/ToastProvider';
 import { useRouter } from 'next/navigation';
 
 type Waitlist = { id: string; name: string; createdAt: number; deletedAt?: number; isArchived?: boolean; entriesCount?: number; draftsCount?: number; sentCount?: number };
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import WaitlistArchiveModal from '@/components/waitlists/WaitlistArchiveModal';
+import WaitlistRemoveModal from '@/components/waitlists/WaitlistRemoveModal';
 
 export default function WaitingListsPage() {
   const router = useRouter();
   const [waitlists, setWaitlists] = useState<Waitlist[]>([]);
   const toast = useToast();
   useEffect(() => {
-    const qW = query(collection(db(), 'waitlists'));
+    const qW = query(collection(db(), 'ep_waitlists'));
     const unsub = onSnapshot(qW, (snap) => {
       const rows: Waitlist[] = [];
       snap.forEach((d) => {
@@ -41,13 +44,17 @@ export default function WaitingListsPage() {
   const [listName, setListName] = useState('');
   const [wError, setWError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [target, setTarget] = useState<Waitlist | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const onAddWaitlist = (e: React.FormEvent) => {
     e.preventDefault();
     const nm = (listName || '').trim();
     if (!nm) { setWError('Waiting list name required'); return; }
     (async () => {
-      await addDoc(collection(db(), 'waitlists'), { name: nm, createdAt: Date.now(), entriesCount: 0, draftsCount: 0, sentCount: 0 });
+      await addDoc(collection(db(), 'ep_waitlists'), { name: nm, createdAt: Date.now(), entriesCount: 0, draftsCount: 0, sentCount: 0 });
       toast.show({ title: 'Created', message: 'Waiting list created.' });
       setWError(null); setListName(''); setCreateOpen(false);
     })();
@@ -87,50 +94,93 @@ export default function WaitingListsPage() {
         </Tabs>
 
         <div style={{ paddingTop: 'var(--mantine-spacing-md)' }}>
+          <Card withBorder>
+            {(() => {
+              const columns: Column<Waitlist>[] = [
+                {
+                  key: 'name', header: 'Name',
+                  render: (r) => (
+                    <Anchor component={Link as any} href={`/employee/email-subscriptions/waiting/${r.id}`} underline="hover">
+                      {r.name || '—'}
+                    </Anchor>
+                  ),
+                },
+                {
+                  key: 'actions', header: '', width: 1,
+                  render: (r) => (
+                    <Group justify="flex-end">
+                      <Menu withinPortal position="bottom-end" shadow="md" width={200}>
+                        <Menu.Target>
+                          <ActionIcon variant="subtle" aria-label="More actions">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="5" cy="12" r="2" fill="currentColor"/>
+                              <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                              <circle cx="19" cy="12" r="2" fill="currentColor"/>
+                            </svg>
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item component={Link as any} href={`/employee/email-subscriptions/waiting/${r.id}`}>View</Menu.Item>
+                          <Menu.Item onClick={() => { setTarget(r); setConfirmArchive(true); }}>Archive</Menu.Item>
+                          <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmRemove(true); }}>Remove</Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Group>
+                  ),
+                },
+              ];
+              return (
+                <FirestoreDataTable
+                  collectionPath="ep_waitlists"
+                  columns={columns}
+                  initialSort={{ field: 'createdAt', direction: 'desc' }}
+                  clientFilter={(r: any) => !r.deletedAt && !r.isArchived}
+                  defaultPageSize={25}
+                  enableSelection={false}
+                  refreshKey={refreshKey}
+                />
+              );
+            })()}
+          </Card>
 
-            <Modal opened={createOpen} onClose={() => setCreateOpen(false)} title="Create waiting list" centered>
-              <form onSubmit={onAddWaitlist}>
-                <Stack>
-                  <TextInput label="Waiting list name" placeholder="e.g. Fall Launch Waiting List" value={listName} onChange={(e) => setListName(e.currentTarget.value)} required autoFocus />
-                  {wError && <Text c="red" size="sm">{wError}</Text>}
-                  <Group justify="flex-end" mt="xs">
-                    <Button variant="default" onClick={() => setCreateOpen(false)} type="button">Cancel</Button>
-                    <Button type="submit">Create</Button>
-                  </Group>
-                </Stack>
-              </form>
-            </Modal>
-
-            {waitlists.filter((w:any)=>!w?.deletedAt && !w?.isArchived).length > 0 ? (
+          <Modal opened={createOpen} onClose={() => setCreateOpen(false)} title="Create waiting list" centered>
+            <form onSubmit={onAddWaitlist}>
               <Stack>
-                {waitlists.filter((w:any)=>!w?.deletedAt && !w?.isArchived).map((b) => (
-                  <Card key={b.id} withBorder>
-                    <Stack gap={6} style={{ cursor: 'default' }}>
-                      <Group justify="space-between">
-                        <Anchor component={Link as any} href={`/employee/email-subscriptions/waiting/${b.id}`} underline="hover">
-                          <Text fw={600}>{b.name}</Text>
-                        </Anchor>
-                        <Group gap={6}>
-                          <Badge variant="light" color="indigo">{Number(b.entriesCount || 0)} emails</Badge>
-                          <Badge variant="light" color="gray">drafts {Number(b.draftsCount || 0)}</Badge>
-                          <Badge variant="light" color="green">sent {Number(b.sentCount || 0)}</Badge>
-                        </Group>
-                      </Group>
-                      <Text size="xs" c="dimmed">Created {dateStr(b.createdAt)}</Text>
-                      <Group justify="flex-end" mt="xs">
-                        <Button size="xs" variant="light" component={Link as any} href={`/employee/email-subscriptions/waiting/${b.id}`}>View</Button>
-                        <Button size="xs" variant="subtle" color="red" onClick={async () => { await updateDoc(doc(db(), 'waitlists', b.id), { deletedAt: Date.now() }); toast.show({ title: 'Removed', message: 'Waiting list moved to Removed.' }); }}>Remove</Button>
-                      </Group>
-                  </Stack>
-                </Card>
-              ))}
+                <TextInput label="Waiting list name" placeholder="e.g. Fall Launch Waiting List" value={listName} onChange={(e) => setListName(e.currentTarget.value)} required autoFocus />
+                {wError && <Text c="red" size="sm">{wError}</Text>}
+                <Group justify="flex-end" mt="xs">
+                  <Button variant="default" onClick={() => setCreateOpen(false)} type="button">Cancel</Button>
+                  <Button type="submit">Create</Button>
+                </Group>
               </Stack>
-            ) : (
-              <Card withBorder>
-                <Text c="dimmed">No waiting lists yet</Text>
-              </Card>
-            )}
-          </div>
+            </form>
+          </Modal>
+
+          <WaitlistArchiveModal
+            opened={confirmArchive}
+            onClose={() => setConfirmArchive(false)}
+            listName={target?.name || ''}
+            onConfirm={async () => {
+              if (!target) return;
+              await updateDoc(doc(db(), 'ep_waitlists', target.id), { isArchived: true });
+              setConfirmArchive(false); setTarget(null);
+              toast.show({ title: 'Archived', message: target.name });
+              setRefreshKey((k) => k + 1);
+            }}
+          />
+          <WaitlistRemoveModal
+            opened={confirmRemove}
+            onClose={() => setConfirmRemove(false)}
+            listName={target?.name || ''}
+            onConfirm={async () => {
+              if (!target) return;
+              await updateDoc(doc(db(), 'ep_waitlists', target.id), { deletedAt: Date.now() });
+              setConfirmRemove(false); setTarget(null);
+              toast.show({ title: 'Removed', message: 'Waiting list moved to Removed.' });
+              setRefreshKey((k) => k + 1);
+            }}
+          />
+        </div>
       </Stack>
     </EmployerAuthGate>
   );

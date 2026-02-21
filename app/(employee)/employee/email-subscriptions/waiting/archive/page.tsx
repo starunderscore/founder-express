@@ -1,20 +1,27 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Badge, Tabs, Anchor, Button, ActionIcon } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Tabs, Anchor, Button, ActionIcon, Menu } from '@mantine/core';
 import { IconClockHour4 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { collection, onSnapshot, query, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useRouter } from 'next/navigation';
+import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
+import WaitlistRestoreModal from '@/components/waitlists/WaitlistRestoreModal';
+import WaitlistRemoveModal from '@/components/waitlists/WaitlistRemoveModal';
 
 type Waitlist = { id: string; name: string; deletedAt?: number; isArchived?: boolean };
 
 export default function WaitingListsArchivePage() {
   const router = useRouter();
   const [archived, setArchived] = useState<Waitlist[]>([]);
+  const [target, setTarget] = useState<Waitlist | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
-    const qW = query(collection(db(), 'waitlists'));
+    const qW = query(collection(db(), 'ep_waitlists'));
     const unsub = onSnapshot(qW, (snap) => {
       const arr: Waitlist[] = [];
       snap.forEach((d) => {
@@ -55,29 +62,68 @@ export default function WaitingListsArchivePage() {
         </Tabs>
 
         <Card withBorder>
-          {archived.length > 0 ? (
-            <Stack>
-              {archived.map((b) => (
-                <Card key={b.id} withBorder>
-                  <Group justify="space-between" align="center">
-                    <div>
-                      <Anchor component={Link as any} href={`/employee/email-subscriptions/waiting/${b.id}`} underline="hover">
-                        <Text fw={600}>{b.name}</Text>
-                      </Anchor>
-                      <Badge ml={6} size="xs" variant="light" color="gray">archived</Badge>
-                    </div>
-                    <Group gap="xs">
-                      <Button size="xs" variant="light" onClick={async () => { await updateDoc(doc(db(), 'waitlists', b.id), { isArchived: false }); }}>Restore</Button>
-                      <Button size="xs" variant="subtle" color="red" onClick={async () => { await updateDoc(doc(db(), 'waitlists', b.id), { deletedAt: Date.now() }); }}>Remove</Button>
-                    </Group>
+          {(() => {
+            const columns: Column<Waitlist>[] = [
+              {
+                key: 'name', header: 'Name',
+                render: (r) => (
+                  <Anchor component={Link as any} href={`/employee/email-subscriptions/waiting/${r.id}`} underline="hover">{r.name || '—'}</Anchor>
+                ),
+              },
+              {
+                key: 'actions', header: '', width: 1,
+                render: (r) => (
+                  <Group justify="flex-end">
+                    <Menu withinPortal position="bottom-end" shadow="md" width={200}>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" aria-label="More actions">⋯</ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item component={Link as any} href={`/employee/email-subscriptions/waiting/${r.id}`}>View</Menu.Item>
+                        <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
+                        <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmRemove(true); }}>Remove</Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
                   </Group>
-                </Card>
-              ))}
-            </Stack>
-          ) : (
-            <Text c="dimmed">No archived waiting lists</Text>
-          )}
+                ),
+              },
+            ];
+            return (
+              <FirestoreDataTable
+                collectionPath="ep_waitlists"
+                columns={columns}
+                initialSort={{ field: 'createdAt', direction: 'desc' }}
+                clientFilter={(r: any) => !!r.isArchived && !r.deletedAt}
+                defaultPageSize={25}
+                enableSelection={false}
+                refreshKey={refreshKey}
+              />
+            );
+          })()}
         </Card>
+
+        <WaitlistRestoreModal
+          opened={confirmRestore}
+          onClose={() => setConfirmRestore(false)}
+          listName={target?.name || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await updateDoc(doc(db(), 'ep_waitlists', target.id), { isArchived: false });
+            setConfirmRestore(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+        <WaitlistRemoveModal
+          opened={confirmRemove}
+          onClose={() => setConfirmRemove(false)}
+          listName={target?.name || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await updateDoc(doc(db(), 'ep_waitlists', target.id), { deletedAt: Date.now() });
+            setConfirmRemove(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
       </Stack>
     </EmployerAuthGate>
   );

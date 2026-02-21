@@ -1,17 +1,16 @@
 "use client";
-import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, ActionIcon, Tabs, Alert } from '@mantine/core';
-import { IconMail } from '@tabler/icons-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { EmployerAuthGate } from '@/components/EmployerAuthGate';
+import { Card, Stack, Tabs, Group, Title, Text, Button, Alert } from '@mantine/core';
 import { readAdminSettings } from '@/services/admin-settings/system-values/firestore';
+import WaitlistHeader from '@/components/waitlists/WaitlistHeader';
 
-export default function EmployerEmailNewslettersFormPage() {
-  const router = useRouter();
-  const [websiteUrl, setWebsiteUrl] = useState<string>('');
-  const [websiteName, setWebsiteName] = useState<string>('');
+export default function WaitingFormPage({ params }: { params: { id: string } }) {
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [websiteName, setWebsiteName] = useState('');
   const [loaded, setLoaded] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
@@ -28,46 +27,25 @@ export default function EmployerEmailNewslettersFormPage() {
     try { const x = new URL(u); return !!x.protocol && !!x.host; } catch { return false; }
   };
   const DEFAULT_URL = 'https://www.example.com';
-  const base = useMemo(() => {
-    if (websiteUrl && validUrl(websiteUrl)) return websiteUrl;
-    return DEFAULT_URL;
-  }, [websiteUrl]);
+  const base = useMemo(() => (websiteUrl && validUrl(websiteUrl)) ? websiteUrl : DEFAULT_URL, [websiteUrl]);
   const needsAttention = useMemo(() => !websiteUrl || !validUrl(websiteUrl) || websiteUrl === DEFAULT_URL, [websiteUrl]);
-
-  // Build the snippet once per render based on current WEBSITE_URL
-  const action = `${base}/api/newsletter/subscribe`;
   const nameForHeading = websiteName || 'Your Website';
-  const snippet = `<!-- Newsletter signup form -->\n<h3>${nameForHeading} newsletter</h3>\n<form action="${action}" method="POST">\n  <label>\n    Email\n    <input type=\"email\" name=\"email\" required />\n  </label>\n  <label>\n    Name (optional)\n    <input type=\"text\" name=\"name\" />\n  </label>\n  <!-- Optional: categorize where this submission came from -->\n  <input type=\"hidden\" name=\"list\" value=\"newsletter\" />\n  <button type=\"submit\">Subscribe</button>\n</form>`;
+
+  const action = `${base}/api/waiting-list/subscribe`;
+  const snippet = `<!-- Waiting list signup form -->\n<h3>${nameForHeading} waiting list</h3>\n<form action="${action}" method="POST">\n  <input type=\"hidden\" name=\"waitlistId\" value=\"${params.id}\" />\n  <label>\n    Email\n    <input type=\"email\" name=\"email\" required />\n  </label>\n  <label>\n    Name (optional)\n    <input type=\"text\" name=\"name\" />\n  </label>\n  <button type=\"submit\">Join waiting list</button>\n</form>`;
   const copySnippet = async () => { try { await navigator.clipboard.writeText(snippet); } catch {} };
 
   return (
     <EmployerAuthGate>
       <Stack>
-        <Group justify="space-between" align="flex-start" mb="xs">
-          <Group>
-            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/email-subscriptions/newsletters')}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
-              </svg>
-            </ActionIcon>
-            <Group gap="xs" align="center">
-              <IconMail size={20} />
-              <div>
-                <Title order={2} mb={4}>Copy & paste form</Title>
-                <Text c="dimmed">Embed this HTML newsletter signup form on your website.</Text>
-              </div>
-            </Group>
-          </Group>
-          <Group gap="xs">
-            <Button variant="light" component={Link as any} href="/employee/email-subscriptions/newsletters/new">New newsletter</Button>
-          </Group>
-        </Group>
+        <WaitlistHeader listId={params.id} name={nameForHeading} />
 
-        <Tabs value={'form'} mb="md">
+        <Tabs value={'form'}>
           <Tabs.List>
-            <Tabs.Tab value="sent"><Link href="/employee/email-subscriptions/newsletters">Emails sent</Link></Tabs.Tab>
-            <Tabs.Tab value="drafts"><Link href="/employee/email-subscriptions/newsletters/drafts">Email drafts</Link></Tabs.Tab>
-            <Tabs.Tab value="form"><Link href="/employee/email-subscriptions/newsletters/form">Copy & paste form</Link></Tabs.Tab>
+            <Tabs.Tab value="sent"><Link href={`/employee/email-subscriptions/waiting/${params.id}`}>Emails sent</Link></Tabs.Tab>
+            <Tabs.Tab value="drafts"><Link href={`/employee/email-subscriptions/waiting/${params.id}/drafts`}>Email drafts</Link></Tabs.Tab>
+            <Tabs.Tab value="form"><Link href={`/employee/email-subscriptions/waiting/${params.id}/form`}>Copy & paste form</Link></Tabs.Tab>
+            <Tabs.Tab value="settings"><Link href={`/employee/email-subscriptions/waiting/${params.id}/settings`}>List settings</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
@@ -91,7 +69,7 @@ export default function EmployerEmailNewslettersFormPage() {
             </Group>
             <Group gap={6}>
               <Text size="sm" c="dimmed">Using WEBSITE_NAME:</Text>
-              <Text size="sm" fw={600}>{websiteName || 'Your Website'}</Text>
+              <Text size="sm" fw={600}>{nameForHeading}</Text>
             </Group>
           </Stack>
         </Card>
@@ -112,3 +90,4 @@ export default function EmployerEmailNewslettersFormPage() {
     </EmployerAuthGate>
   );
 }
+
