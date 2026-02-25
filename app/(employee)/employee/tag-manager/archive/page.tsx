@@ -11,7 +11,7 @@ import { restoreTag, removeTag } from '@/services/tags';
 import { DEFAULT_TAG_COLOR } from '@/services/tags/helpers';
  
 
-type TagDoc = { id: string; name: string; description?: string; color?: string; status?: 'active'|'archived'|'removed'; createdAt?: number };
+type TagDoc = { id: string; name: string; description?: string; color?: string; status?: 'active'|'archived'|'removed'; archiveAt?: number | null; removedAt?: number | null; createdAt?: number };
 
 const contrastText = (hex?: string): string => {
   if (!hex || !hex.startsWith('#')) return '#fff';
@@ -105,7 +105,7 @@ export default function TagManagerArchivePage() {
             collectionPath="ep_tags"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
-            clientFilter={(r: any) => (r.status ?? 'active') === 'archived'}
+            clientFilter={(r: any) => !(r.removedAt) && !!(r.archiveAt) || ((r.status ?? 'active') === 'archived')}
             defaultPageSize={25}
             enableSelection={false}
             refreshKey={refreshKey}

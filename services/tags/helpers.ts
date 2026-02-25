@@ -10,8 +10,10 @@ export function normalizeTag(id: string, raw: RawTagDoc): Tag {
   const description = typeof raw?.description === 'string' && raw.description.trim().length > 0 ? raw.description : undefined;
   const color = typeof raw?.color === 'string' && raw.color.trim().length > 0 ? raw.color : undefined;
   const status = (['active', 'archived', 'removed'] as TagStatus[]).includes(raw?.status) ? (raw.status as TagStatus) : undefined;
+  const archiveAt = typeof raw?.archiveAt === 'number' ? (raw.archiveAt as number) : (raw?.isArchived ? (raw?.updatedAt || raw?.createdAt || Date.now()) : null);
+  const removedAt = typeof raw?.removedAt === 'number' ? (raw.removedAt as number) : (typeof (raw as any)?.deletedAt === 'number' ? ((raw as any).deletedAt as number) : null);
   const createdAt = typeof raw?.createdAt === 'number' ? (raw.createdAt as number) : undefined;
-  return { id, name, description, color, status, createdAt };
+  return { id, name, description, color, status, archiveAt: archiveAt ?? null, removedAt: removedAt ?? null, createdAt };
 }
 
 export function buildTagCreate(input: TagCreateInput): Record<string, any> {
@@ -21,6 +23,8 @@ export function buildTagCreate(input: TagCreateInput): Record<string, any> {
   const out: Record<string, any> = {
     name: nm,
     status: 'active' as TagStatus,
+    archiveAt: null,
+    removedAt: null,
     createdAt: Date.now(),
   };
   const desc = (input.description ?? '').trim();
@@ -59,13 +63,26 @@ export function buildTagPatchObject(input: TagPatchInput): Record<string, any> {
   return out;
 }
 
-export function filterByStatus<T extends Pick<Tag, 'status'>>(rows: T[], status: TagStatus): T[] {
-  const normalize = (s?: TagStatus): TagStatus => (s === 'archived' || s === 'removed') ? s : 'active';
-  return rows.filter((r) => normalize(r.status as TagStatus) === status);
+export function filterByStatus<T extends Pick<Tag, 'status' | 'archiveAt' | 'removedAt'>>(rows: T[], status: TagStatus): T[] {
+  const derive = (r: T): TagStatus => {
+    // Prefer canonical lifecycle fields when present
+    const removed = (r as any).removedAt != null;
+    const archived = (r as any).archiveAt != null;
+    if (removed) return 'removed';
+    if (archived) return 'archived';
+    // Fallback to legacy status
+    const s = ((r as any).status ?? 'active') as TagStatus;
+    return (s === 'archived' || s === 'removed') ? s : 'active';
+  };
+  return rows.filter((r) => derive(r) === status);
 }
 
-export function tagBackLink(tag: Pick<Tag,'status'>): string {
-  const s = (tag.status ?? 'active') as TagStatus;
+export function tagBackLink(tag: Pick<Tag,'status'|'archiveAt'|'removedAt'>): string {
+  const removed = (tag as any).removedAt != null;
+  const archived = (tag as any).archiveAt != null;
+  if (removed) return '/employee/tag-manager/removed';
+  if (archived) return '/employee/tag-manager/archive';
+  const s = ((tag as any).status ?? 'active') as TagStatus;
   if (s === 'removed') return '/employee/tag-manager/removed';
   if (s === 'archived') return '/employee/tag-manager/archive';
   return '/employee/tag-manager';

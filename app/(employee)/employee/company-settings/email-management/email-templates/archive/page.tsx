@@ -19,7 +19,11 @@ export default function EmailTemplatesArchivePage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const columns: Column<EmailTemplateItem & { id: string }>[] = [
-    { key: 'name', header: 'Name', render: (r) => (r.name || '—') },
+    { key: 'name', header: 'Name', render: (r) => (
+      <Link href={`/employee/company-settings/email-management/email-templates/new?edit=${encodeURIComponent(r.id)}`} style={{ textDecoration: 'none' }}>
+        {r.name || '—'}
+      </Link>
+    ) },
     { key: 'subject', header: 'Subject', render: (r) => (<Text c="dimmed" size="sm">{r.subject || '—'}</Text>) },
     {
       key: 'actions', header: '', width: 1,
@@ -36,6 +40,7 @@ export default function EmailTemplatesArchivePage() {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
+              <Menu.Item onClick={() => router.push(`/employee/company-settings/email-management/email-templates/new?edit=${encodeURIComponent(r.id)}`)}>Edit</Menu.Item>
               <Menu.Item onClick={() => { setTarget(r); setConfirmRestore(true); }}>Restore</Menu.Item>
               <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmRemove(true); }}>Remove</Menu.Item>
             </Menu.Dropdown>

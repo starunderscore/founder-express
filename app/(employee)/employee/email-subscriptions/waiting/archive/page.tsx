@@ -11,7 +11,7 @@ import FirestoreDataTable, { type Column } from '@/components/data-table/Firesto
 import WaitlistRestoreModal from '@/components/waitlists/WaitlistRestoreModal';
 import WaitlistRemoveModal from '@/components/waitlists/WaitlistRemoveModal';
 
-type Waitlist = { id: string; name: string; deletedAt?: number; isArchived?: boolean };
+type Waitlist = { id: string; name: string; archiveAt?: number | null; removedAt?: number | null };
 
 export default function WaitingListsArchivePage() {
   const router = useRouter();
@@ -26,7 +26,9 @@ export default function WaitingListsArchivePage() {
       const arr: Waitlist[] = [];
       snap.forEach((d) => {
         const data = d.data() as any;
-        if (!!data.isArchived && typeof data.deletedAt !== 'number') arr.push({ id: d.id, name: data.name || '' });
+        const archiveAt = typeof data.archiveAt === 'number' ? data.archiveAt : (data?.isArchived ? (data?.updatedAt || data?.createdAt || Date.now()) : null);
+        const removedAt = typeof data.removedAt === 'number' ? data.removedAt : (typeof data.deletedAt === 'number' ? data.deletedAt : null);
+        if (!removedAt && archiveAt) arr.push({ id: d.id, name: data.name || '', archiveAt, removedAt: null });
       });
       setArchived(arr);
     });
@@ -93,7 +95,7 @@ export default function WaitingListsArchivePage() {
                 collectionPath="ep_waitlists"
                 columns={columns}
                 initialSort={{ field: 'createdAt', direction: 'desc' }}
-                clientFilter={(r: any) => !!r.isArchived && !r.deletedAt}
+                clientFilter={(r: any) => !(r.removedAt ?? r.deletedAt) && !!(r.archiveAt ?? (r.isArchived ? 1 : null))}
                 defaultPageSize={25}
                 enableSelection={false}
                 refreshKey={refreshKey}
@@ -108,7 +110,7 @@ export default function WaitingListsArchivePage() {
           listName={target?.name || ''}
           onConfirm={async () => {
             if (!target) return;
-            await updateDoc(doc(db(), 'ep_waitlists', target.id), { isArchived: false });
+            await updateDoc(doc(db(), 'ep_waitlists', target.id), { archiveAt: null, isArchived: false });
             setConfirmRestore(false); setTarget(null);
             setRefreshKey((k) => k + 1);
           }}
@@ -119,7 +121,7 @@ export default function WaitingListsArchivePage() {
           listName={target?.name || ''}
           onConfirm={async () => {
             if (!target) return;
-            await updateDoc(doc(db(), 'ep_waitlists', target.id), { deletedAt: Date.now() });
+            await updateDoc(doc(db(), 'ep_waitlists', target.id), { removedAt: Date.now() });
             setConfirmRemove(false); setTarget(null);
             setRefreshKey((k) => k + 1);
           }}

@@ -11,7 +11,7 @@ import FirestoreDataTable, { type Column } from '@/components/data-table/Firesto
 import WaitlistRestoreModal from '@/components/waitlists/WaitlistRestoreModal';
 import WaitlistDeletePermanentModal from '@/components/waitlists/WaitlistDeletePermanentModal';
 
-type Waitlist = { id: string; name: string; deletedAt?: number; isArchived?: boolean };
+type Waitlist = { id: string; name: string; archiveAt?: number | null; removedAt?: number | null };
 
 export default function WaitingListsRemovedPage() {
   const router = useRouter();
@@ -26,7 +26,8 @@ export default function WaitingListsRemovedPage() {
       const arr: Waitlist[] = [];
       snap.forEach((d) => {
         const data = d.data() as any;
-        if (typeof data.deletedAt === 'number') arr.push({ id: d.id, name: data.name || '' });
+        const removedAt = typeof data.removedAt === 'number' ? data.removedAt : (typeof data.deletedAt === 'number' ? data.deletedAt : null);
+        if (removedAt) arr.push({ id: d.id, name: data.name || '', removedAt });
       });
       setRemoved(arr);
     });
@@ -93,7 +94,7 @@ export default function WaitingListsRemovedPage() {
                 collectionPath="ep_waitlists"
                 columns={columns}
                 initialSort={{ field: 'createdAt', direction: 'desc' }}
-                clientFilter={(r: any) => !!r.deletedAt}
+                clientFilter={(r: any) => !!(r.removedAt ?? r.deletedAt)}
                 defaultPageSize={25}
                 enableSelection={false}
                 refreshKey={refreshKey}
@@ -108,7 +109,7 @@ export default function WaitingListsRemovedPage() {
           listName={target?.name || ''}
           onConfirm={async () => {
             if (!target) return;
-            await updateDoc(doc(db(), 'ep_waitlists', target.id), { deletedAt: undefined, isArchived: false });
+            await updateDoc(doc(db(), 'ep_waitlists', target.id), { removedAt: null, archiveAt: null, deletedAt: undefined, isArchived: false });
             setConfirmRestore(false); setTarget(null);
             setRefreshKey((k) => k + 1);
           }}

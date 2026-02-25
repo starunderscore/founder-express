@@ -7,7 +7,9 @@ export type Tag = {
   name: string;
   description?: string;
   color?: string;
-  status?: TagStatus; // defaults to 'active'
+  status?: TagStatus; // legacy, defaults to 'active'
+  archiveAt?: number | null; // lifecycle canonical
+  removedAt?: number | null; // lifecycle canonical
   createdAt?: number;
 };
 
@@ -29,6 +31,7 @@ export type RawTagDoc = DocumentData & {
   description?: any;
   color?: any;
   status?: any;
+  archiveAt?: any;
+  removedAt?: any;
   createdAt?: any;
 };
-

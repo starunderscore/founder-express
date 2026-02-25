@@ -10,7 +10,7 @@ import { db } from '@/lib/firebase/client';
 import { useToast } from '@/components/ToastProvider';
 import { useRouter } from 'next/navigation';
 
-type Waitlist = { id: string; name: string; createdAt: number; deletedAt?: number; isArchived?: boolean; entriesCount?: number; draftsCount?: number; sentCount?: number };
+type Waitlist = { id: string; name: string; createdAt: number; archiveAt?: number | null; removedAt?: number | null; entriesCount?: number; draftsCount?: number; sentCount?: number };
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import WaitlistArchiveModal from '@/components/waitlists/WaitlistArchiveModal';
 import WaitlistRemoveModal from '@/components/waitlists/WaitlistRemoveModal';
@@ -29,8 +29,8 @@ export default function WaitingListsPage() {
           id: d.id,
           name: data.name || '',
           createdAt: Number(data.createdAt || Date.now()),
-          deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined,
-          isArchived: !!data.isArchived,
+          archiveAt: typeof data.archiveAt === 'number' ? data.archiveAt : (data?.isArchived ? (data?.updatedAt || data?.createdAt || Date.now()) : null),
+          removedAt: typeof data.removedAt === 'number' ? data.removedAt : (typeof data.deletedAt === 'number' ? data.deletedAt : null),
           entriesCount: Number(data.entriesCount || 0),
           draftsCount: Number(data.draftsCount || 0),
           sentCount: Number(data.sentCount || 0),
@@ -130,15 +130,15 @@ export default function WaitingListsPage() {
                 },
               ];
               return (
-                <FirestoreDataTable
-                  collectionPath="ep_waitlists"
-                  columns={columns}
-                  initialSort={{ field: 'createdAt', direction: 'desc' }}
-                  clientFilter={(r: any) => !r.deletedAt && !r.isArchived}
-                  defaultPageSize={25}
-                  enableSelection={false}
-                  refreshKey={refreshKey}
-                />
+              <FirestoreDataTable
+                collectionPath="ep_waitlists"
+                columns={columns}
+                initialSort={{ field: 'createdAt', direction: 'desc' }}
+                  clientFilter={(r: any) => !(r.removedAt ?? r.deletedAt) && !(r.archiveAt ?? (r.isArchived ? 1 : null))}
+                defaultPageSize={25}
+                enableSelection={false}
+                refreshKey={refreshKey}
+              />
               );
             })()}
           </Card>
@@ -162,7 +162,7 @@ export default function WaitingListsPage() {
             listName={target?.name || ''}
             onConfirm={async () => {
               if (!target) return;
-              await updateDoc(doc(db(), 'ep_waitlists', target.id), { isArchived: true });
+              await updateDoc(doc(db(), 'ep_waitlists', target.id), { archiveAt: Date.now(), removedAt: null, isArchived: true });
               setConfirmArchive(false); setTarget(null);
               toast.show({ title: 'Archived', message: target.name });
               setRefreshKey((k) => k + 1);
@@ -174,7 +174,7 @@ export default function WaitingListsPage() {
             listName={target?.name || ''}
             onConfirm={async () => {
               if (!target) return;
-              await updateDoc(doc(db(), 'ep_waitlists', target.id), { deletedAt: Date.now() });
+              await updateDoc(doc(db(), 'ep_waitlists', target.id), { removedAt: Date.now() });
               setConfirmRemove(false); setTarget(null);
               toast.show({ title: 'Removed', message: 'Waiting list moved to Removed.' });
               setRefreshKey((k) => k + 1);

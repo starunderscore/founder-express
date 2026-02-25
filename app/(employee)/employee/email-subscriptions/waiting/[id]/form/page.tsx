@@ -2,14 +2,19 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Card, Stack, Tabs, Group, Title, Text, Button, Alert } from '@mantine/core';
+import { Card, Stack, Group, Title, Text, Button, Alert } from '@mantine/core';
 import { readAdminSettings } from '@/services/admin-settings/system-values/firestore';
-import WaitlistHeader from '@/components/waitlists/WaitlistHeader';
+import WaitlistHeaderBar from '@/components/waitlists/WaitlistHeaderBar';
+import { db } from '@/lib/firebase/client';
+import { doc, onSnapshot } from 'firebase/firestore';
+
+type Waitlist = { id: string; name: string; archiveAt: number | null; removedAt: number | null };
 
 export default function WaitingFormPage({ params }: { params: { id: string } }) {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [websiteName, setWebsiteName] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [list, setList] = useState<Waitlist | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -22,6 +27,17 @@ export default function WaitingFormPage({ params }: { params: { id: string } }) 
       }
     })();
   }, []);
+  useEffect(() => {
+    const ref = doc(db(), 'ep_waitlists', params.id);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) { setList(null); return; }
+      const d = snap.data() as any;
+      const archiveAt = typeof d.archiveAt === 'number' ? d.archiveAt : (d?.isArchived ? (d?.updatedAt || d?.createdAt || Date.now()) : null);
+      const removedAt = typeof d.removedAt === 'number' ? d.removedAt : (typeof d.deletedAt === 'number' ? d.deletedAt : null);
+      setList({ id: snap.id, name: d.name || '', archiveAt: archiveAt ?? null, removedAt: removedAt ?? null });
+    });
+    return () => unsub();
+  }, [params.id]);
 
   const validUrl = (u: string) => {
     try { const x = new URL(u); return !!x.protocol && !!x.host; } catch { return false; }
@@ -38,16 +54,7 @@ export default function WaitingFormPage({ params }: { params: { id: string } }) 
   return (
     <EmployerAuthGate>
       <Stack>
-        <WaitlistHeader listId={params.id} name={nameForHeading} />
-
-        <Tabs value={'form'}>
-          <Tabs.List>
-            <Tabs.Tab value="sent"><Link href={`/employee/email-subscriptions/waiting/${params.id}`}>Emails sent</Link></Tabs.Tab>
-            <Tabs.Tab value="drafts"><Link href={`/employee/email-subscriptions/waiting/${params.id}/drafts`}>Email drafts</Link></Tabs.Tab>
-            <Tabs.Tab value="form"><Link href={`/employee/email-subscriptions/waiting/${params.id}/form`}>Copy & paste form</Link></Tabs.Tab>
-            <Tabs.Tab value="settings"><Link href={`/employee/email-subscriptions/waiting/${params.id}/settings`}>List settings</Link></Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
+        <WaitlistHeaderBar listId={params.id} name={nameForHeading} current="form" archiveAt={list?.archiveAt ?? null} removedAt={list?.removedAt ?? null} />
 
         {/* System variables preview */}
         <Card withBorder>
@@ -90,4 +97,3 @@ export default function WaitingFormPage({ params }: { params: { id: string } }) 
     </EmployerAuthGate>
   );
 }
-

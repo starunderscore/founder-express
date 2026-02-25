@@ -12,7 +12,7 @@ import { DEFAULT_TAG_COLOR } from '@/services/tags/helpers';
 import type { Route } from 'next';
 
 type TagStatus = 'active' | 'archived' | 'removed';
-type TagDef = { id: string; name: string; color?: string; description?: string; status?: TagStatus; createdAt: number; isArchived?: boolean; deletedAt?: number };
+type TagDef = { id: string; name: string; color?: string; description?: string; status?: TagStatus; createdAt: number; archiveAt?: number | null; removedAt?: number | null; isArchived?: boolean; deletedAt?: number };
 
 const contrastText = (hex?: string): string => {
   if (!hex || !hex.startsWith('#')) return '#fff';
@@ -50,8 +50,8 @@ export default function TagDetailPage({ params }: { params: { id: string } }) {
         description: data.description || undefined,
         status: (data.status as TagStatus) || 'active',
         createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
-        isArchived: !!data.isArchived,
-        deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : undefined,
+        archiveAt: typeof data.archiveAt === 'number' ? data.archiveAt : (data?.isArchived ? (data?.updatedAt || data?.createdAt || Date.now()) : null),
+        removedAt: typeof data.removedAt === 'number' ? data.removedAt : (typeof data.deletedAt === 'number' ? data.deletedAt : null),
       };
       setTag(t);
       setName(t.name);
@@ -75,8 +75,8 @@ export default function TagDetailPage({ params }: { params: { id: string } }) {
   }
 
   const returnHref = (): Route => {
-    if (tag?.status === 'removed' || tag?.deletedAt) return '/employee/tag-manager/removed' as Route;
-    if (tag?.status === 'archived' || tag?.isArchived) return '/employee/tag-manager/archive' as Route;
+    if (tag?.removedAt || tag?.deletedAt) return '/employee/tag-manager/removed' as Route;
+    if (tag?.archiveAt || tag?.isArchived) return '/employee/tag-manager/archive' as Route;
     return '/employee/tag-manager' as Route;
   };
 
@@ -111,12 +111,12 @@ export default function TagDetailPage({ params }: { params: { id: string } }) {
         </Group>
       </Group>
 
-      {tag?.status === 'removed' && (
+      {tag?.removedAt && (
         <Alert color="red" variant="light" mb="md" title="Removed">
           This tag is removed and appears in the Removed tab.
         </Alert>
       )}
-      {tag && tag.status === 'archived' && (
+      {tag && !tag.removedAt && tag.archiveAt && (
         <Alert color="gray" variant="light" mb="md" title="Archived">
           This tag is archived and hidden from the Active list.
         </Alert>

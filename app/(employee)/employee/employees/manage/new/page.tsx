@@ -58,7 +58,8 @@ export default function NewEmployeePage() {
     if (!name.trim() || !email.trim()) return;
     const directIds = isAdmin ? [] : namesToIds(extraNames);
 
-    await createEmployee({ name: name.trim(), email: email.trim(), roleIds: isAdmin ? [] : roleIds, permissionIds: directIds, isAdmin: !!isAdmin });
+    const limitedRoleIds = isAdmin ? [] : roleIds.slice(0, 5);
+    await createEmployee({ name: name.trim(), email: email.trim(), roleIds: limitedRoleIds, permissionIds: directIds, isAdmin: !!isAdmin });
     router.push('/employee/employees/manage');
   };
 
@@ -91,7 +92,17 @@ export default function NewEmployeePage() {
 
             <Stack opacity={isAdmin ? 0.5 : 1}>
               <Text fw={600}>Roles</Text>
-              <MultiSelect data={roleOptions} value={roleIds} onChange={setRoleIds} placeholder="Select roles" searchable nothingFoundMessage="No roles" disabled={isAdmin} />
+              <MultiSelect
+                data={roleOptions}
+                value={roleIds}
+                onChange={setRoleIds}
+                placeholder="Select roles"
+                searchable
+                nothingFoundMessage="No roles"
+                disabled={isAdmin}
+                maxValues={5}
+              />
+              <Text size="sm" c="dimmed">You can assign up to 5 roles per employee.</Text>
 
               <Group justify="space-between" align="center" mt="sm">
                 <Text fw={600}>Permissions</Text>

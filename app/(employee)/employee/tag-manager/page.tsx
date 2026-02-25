@@ -12,7 +12,7 @@ import { useToast } from '@/components/ToastProvider';
 import TagRemoveModal from '@/components/tags/TagRemoveModal';
  
 
-type TagDoc = { id: string; name: string; description?: string; color?: string; status?: 'active'|'archived'|'removed'; createdAt?: number };
+type TagDoc = { id: string; name: string; description?: string; color?: string; status?: 'active'|'archived'|'removed'; archiveAt?: number | null; removedAt?: number | null; createdAt?: number };
 
 const contrastText = (hex?: string): string => {
   if (!hex || !hex.startsWith('#')) return '#fff';
@@ -124,7 +124,7 @@ export default function TagManagerPage() {
             collectionPath="ep_tags"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
-            clientFilter={(r: any) => (r.status ?? 'active') === 'active'}
+            clientFilter={(r: any) => !(r.removedAt) && !(r.archiveAt) && ((r.status ?? 'active') === 'active')}
             defaultPageSize={25}
             enableSelection={false}
             refreshKey={refreshKey}

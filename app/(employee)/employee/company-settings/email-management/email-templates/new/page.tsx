@@ -1,12 +1,14 @@
 "use client";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Title, Text, Card, Stack, Group, Button, TextInput, ActionIcon, Select } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, Button, TextInput, ActionIcon, Select, Alert, Modal } from '@mantine/core';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { RichEmailEditor } from '@/components/RichEmailEditor';
 import EmailPreviewModal from '@/components/email/EmailPreviewModal';
 import { listenEmailVars, type EmailVar } from '@/lib/firebase/emailSettings';
-import { createEmailTemplate, updateEmailTemplateDoc, getEmailTemplateDoc } from '@/services/company-settings/email-templates';
+import { createEmailTemplate, updateEmailTemplateDoc, getEmailTemplateDoc, archiveEmailTemplateDoc, restoreEmailTemplateDoc, deleteEmailTemplateDoc } from '@/services/company-settings/email-templates';
+import { useToast } from '@/components/ToastProvider';
+import TemplateDeletePermanentModal from '@/components/admin-settings/email-templates/TemplateDeletePermanentModal';
 
 export default function NewEmailTemplatePage() {
   const router = useRouter();
@@ -24,6 +26,12 @@ export default function NewEmailTemplatePage() {
   const [vars, setVars] = useState<EmailVar[]>([]);
   const [selectedVar, setSelectedVar] = useState<string | null>(null);
   const subjectRef = useRef<HTMLInputElement | null>(null);
+  const [archivedAt, setArchivedAt] = useState<number | null>(null);
+  const [deletedAt, setDeletedAt] = useState<number | null>(null);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [unarchiveOpen, setUnarchiveOpen] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     const off = listenEmailVars(setVars);
@@ -49,7 +57,7 @@ export default function NewEmailTemplatePage() {
       if (!editId) { setLoaded(true); return; }
       const tpl = await getEmailTemplateDoc(editId);
       if (!cancelled) {
-        if (tpl) { setName(tpl.name || ''); setSubject(tpl.subject || ''); setHtml(tpl.body || ''); }
+        if (tpl) { setName(tpl.name || ''); setSubject(tpl.subject || ''); setHtml(tpl.body || ''); setArchivedAt(tpl.archivedAt ?? null); setDeletedAt(tpl.deletedAt ?? null); }
         setLoaded(true);
       }
     })();
@@ -88,12 +96,16 @@ export default function NewEmailTemplatePage() {
   const renderedSubject = useMemo(() => renderTokens(subject), [subject, varMap]);
   const renderedHtml = useMemo(() => renderTokens(html), [html, varMap]);
 
+  const backHref = deletedAt ? '/employee/company-settings/email-management/email-templates/removed'
+    : (archivedAt ? '/employee/company-settings/email-management/email-templates/archive'
+      : '/employee/company-settings/email-management/email-templates');
+
   return (
     <EmployerAuthGate>
       <Stack>
         <Group justify="space-between" align="flex-start">
           <Group>
-            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push('/employee/company-settings/email-management/email-templates')}>
+            <ActionIcon variant="subtle" size="lg" aria-label="Back" onClick={() => router.push(backHref)}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M11 19l-7-7 7-7v4h8v6h-8v4z" fill="currentColor"/>
               </svg>
@@ -108,6 +120,26 @@ export default function NewEmailTemplatePage() {
             <Button onClick={onSave}>{isEditing ? 'Save changes' : 'Create template'}</Button>
           </Group>
         </Group>
+
+        {isEditing && deletedAt && (
+          <Alert color="red" variant="light" mb="md" title="Removed">
+            <Group justify="space-between" align="center">
+              <Text>This template is removed. You can restore it or permanently delete it.</Text>
+              <Group gap="xs">
+                <Button variant="light" onClick={() => setRestoreOpen(true)}>Restore</Button>
+                <Button color="red" variant="light" onClick={() => setDeleteOpen(true)}>Delete permanently</Button>
+              </Group>
+            </Group>
+          </Alert>
+        )}
+        {isEditing && !deletedAt && archivedAt && (
+          <Alert color="gray" variant="light" mb="md" title="Archived">
+            <Group justify="space-between" align="center">
+              <Text>This template is archived and hidden from the Active list.</Text>
+              <Button variant="light" onClick={() => setUnarchiveOpen(true)}>Unarchive</Button>
+            </Group>
+          </Alert>
+        )}
 
         <Card withBorder>
           <Stack>
@@ -161,6 +193,52 @@ export default function NewEmailTemplatePage() {
         </Card>
 
         <EmailPreviewModal opened={previewOpen} onClose={() => setPreviewOpen(false)} subject={renderedSubject} html={renderedHtml} />
+
+        {/* Lifecycle modals */}
+        <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} centered>
+          <Stack>
+            <Text>Restore this template back to Active?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!editId) return;
+                await restoreEmailTemplateDoc(editId);
+                setRestoreOpen(false);
+                setDeletedAt(null);
+                toast.show({ title: 'Template restored', message: name || 'Template', color: 'green' });
+              }}>Restore</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <Modal opened={unarchiveOpen} onClose={() => setUnarchiveOpen(false)} centered>
+          <Stack>
+            <Text>Unarchive this template? It will return to Active.</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setUnarchiveOpen(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!editId) return;
+                await archiveEmailTemplateDoc(editId, false);
+                setUnarchiveOpen(false);
+                setArchivedAt(null);
+                toast.show({ title: 'Template unarchived', message: name || 'Template', color: 'green' });
+              }}>Unarchive</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <TemplateDeletePermanentModal
+          opened={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          templateName={name || ''}
+          onConfirm={async () => {
+            if (!editId) return;
+            await deleteEmailTemplateDoc(editId);
+            setDeleteOpen(false);
+            toast.show({ title: 'Template deleted', message: name || 'Template', color: 'red' });
+            router.push('/employee/company-settings/email-management/email-templates');
+          }}
+        />
       </Stack>
     </EmployerAuthGate>
   );

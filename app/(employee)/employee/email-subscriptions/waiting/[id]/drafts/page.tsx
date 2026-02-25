@@ -3,14 +3,14 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Card, Stack, Tabs, Anchor } from '@mantine/core';
+import { Card, Stack, Anchor } from '@mantine/core';
 import { db } from '@/lib/firebase/client';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
-import WaitlistHeader from '@/components/waitlists/WaitlistHeader';
+import WaitlistHeaderBar from '@/components/waitlists/WaitlistHeaderBar';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 
 type DraftEmail = { id: string; subject: string; body: string; updatedAt: number };
-type Waitlist = { id: string; name: string };
+type Waitlist = { id: string; name: string; archiveAt: number | null; removedAt: number | null };
 
 export default function WaitingDraftsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -22,7 +22,9 @@ export default function WaitingDraftsPage({ params }: { params: { id: string } }
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) { setList(null); return; }
       const d = snap.data() as any;
-      setList({ id: snap.id, name: d.name || '' });
+      const archiveAt = typeof d.archiveAt === 'number' ? d.archiveAt : (d?.isArchived ? (d?.updatedAt || d?.createdAt || Date.now()) : null);
+      const removedAt = typeof d.removedAt === 'number' ? d.removedAt : (typeof d.deletedAt === 'number' ? d.deletedAt : null);
+      setList({ id: snap.id, name: d.name || '', archiveAt: archiveAt ?? null, removedAt: removedAt ?? null });
       setCountEntries(Number(d.entriesCount || 0));
       setCountSent(Number(d.sentCount || 0));
     });
@@ -33,7 +35,7 @@ export default function WaitingDraftsPage({ params }: { params: { id: string } }
     return (
       <EmployerAuthGate>
         <Stack>
-          <WaitlistHeader listId={params.id} name={'Waiting list'} />
+          <WaitlistHeaderBar listId={params.id} name={'Waiting list'} current="drafts" />
           <Card withBorder>
             Waiting list not found
           </Card>
@@ -45,16 +47,7 @@ export default function WaitingDraftsPage({ params }: { params: { id: string } }
   return (
     <EmployerAuthGate>
       <Stack>
-        <WaitlistHeader listId={list.id} name={list.name} />
-
-        <Tabs value={'drafts'}>
-          <Tabs.List>
-            <Tabs.Tab value="sent"><Link href={`/employee/email-subscriptions/waiting/${list.id}`}>Emails sent</Link></Tabs.Tab>
-            <Tabs.Tab value="drafts"><Link href={`/employee/email-subscriptions/waiting/${list.id}/drafts`}>Email drafts</Link></Tabs.Tab>
-            <Tabs.Tab value="form"><Link href={`/employee/email-subscriptions/waiting/${list.id}/form`}>Copy & paste form</Link></Tabs.Tab>
-            <Tabs.Tab value="settings"><Link href={`/employee/email-subscriptions/waiting/${list.id}/settings`}>List settings</Link></Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
+        <WaitlistHeaderBar listId={list.id} name={list.name} current="drafts" archiveAt={list.archiveAt} removedAt={list.removedAt} />
 
         <Card withBorder>
           {(() => {

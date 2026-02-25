@@ -12,14 +12,22 @@ import { namesToIds, idsToNames } from '@/lib/permissions';
 export default function EditEmployeePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [emp, setEmp] = useState<{ id: string; name: string; email: string; isAdmin?: boolean; roleIds: string[]; permissionIds: string[]; archiveAt?: number | null; removedAt?: number | null } | null>(null);
-  const [roles, setRoles] = useState<Array<{ id: string; name: string; permissionIds: string[] }>>([]);
+  const [roles, setRoles] = useState<Array<{ id: string; name: string; permissionIds: string[]; archiveAt: number | null; removedAt: number | null }>>([]);
   useEffect(() => {
     const qRoles = query(collection(db(), 'ep_employee_roles'));
     const unsub = onSnapshot(qRoles, (snap) => {
-      const list: Array<{ id: string; name: string; permissionIds: string[] }> = [];
+      const list: Array<{ id: string; name: string; permissionIds: string[]; archiveAt: number | null; removedAt: number | null }> = [];
       snap.forEach((d) => {
         const data = d.data() as any;
-        if (!data.deletedAt) list.push({ id: d.id, name: data.name || '', permissionIds: Array.isArray(data.permissionIds) ? data.permissionIds : [] });
+        const archiveAt = typeof data?.archiveAt === 'number' ? (data.archiveAt as number) : (data?.isArchived ? (data?.updatedAt || data?.createdAt || Date.now()) : null);
+        const removedAt = typeof data?.removedAt === 'number' ? (data.removedAt as number) : (typeof data?.deletedAt === 'number' ? (data.deletedAt as number) : null);
+        list.push({
+          id: d.id,
+          name: data.name || '',
+          permissionIds: Array.isArray(data.permissionIds) ? data.permissionIds : [],
+          archiveAt: archiveAt ?? null,
+          removedAt: removedAt ?? null,
+        });
       });
       setRoles(list);
     });
@@ -35,7 +43,10 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
     return () => unsub();
   }, [params.id]);
 
-  const roleOptions = useMemo(() => roles.filter((r) => !('isArchived' in r) || !(r as any).isArchived).map((r) => ({ value: r.id, label: r.name })), [roles]);
+  const roleOptions = useMemo(
+    () => roles.filter((r) => !r.removedAt && !r.archiveAt).map((r) => ({ value: r.id, label: r.name })),
+    [roles]
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);

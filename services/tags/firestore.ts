@@ -38,19 +38,19 @@ export async function updateTag(id: string, patch: TagPatchInput, opts?: Options
 export async function archiveTag(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'ep_tags', id), { status: 'archived' });
+  await updateDoc(doc(store, 'ep_tags', id), { status: 'archived', archiveAt: Date.now(), removedAt: null });
 }
 
 export async function removeTag(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'ep_tags', id), { status: 'removed' });
+  await updateDoc(doc(store, 'ep_tags', id), { status: 'removed', removedAt: Date.now() });
 }
 
 export async function restoreTag(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'ep_tags', id), { status: 'active' });
+  await updateDoc(doc(store, 'ep_tags', id), { status: 'active', archiveAt: null, removedAt: null });
 }
 
 export async function deleteTag(id: string, opts?: Options): Promise<void> {

@@ -9,7 +9,7 @@ import { restoreTag, deleteTag } from '@/services/tags';
 import { DEFAULT_TAG_COLOR } from '@/services/tags/helpers';
  
 
-type TagDoc = { id: string; name: string; description?: string; color?: string; status?: 'active'|'archived'|'removed'; createdAt?: number };
+type TagDoc = { id: string; name: string; description?: string; color?: string; status?: 'active'|'archived'|'removed'; archiveAt?: number | null; removedAt?: number | null; createdAt?: number };
 
 const contrastText = (hex?: string): string => {
   if (!hex || !hex.startsWith('#')) return '#fff';
@@ -92,7 +92,7 @@ export default function TagManagerRemovedPage() {
             collectionPath="ep_tags"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
-            clientFilter={(r: any) => (r.status ?? 'active') === 'removed'}
+            clientFilter={(r: any) => !!(r.removedAt) || ((r.status ?? 'active') === 'removed')}
             defaultPageSize={25}
             enableSelection={false}
             refreshKey={refreshKey}
