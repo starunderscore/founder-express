@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { Title, Text, Card, Stack, Group, Button } from '@mantine/core';
-import { IconPlugConnected, IconReportMoney, IconMail, IconCreditCard } from '@tabler/icons-react';
+import { IconPlugConnected, IconReportMoney, IconMail, IconCreditCard, IconShieldLock } from '@tabler/icons-react';
 import { ActionIcon } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 
@@ -21,7 +21,7 @@ export default function AdminThirdPartyConfigurationPage() {
             <IconPlugConnected size={20} />
             <div>
               <Title order={2} mb={4}>Third‑party Configuration</Title>
-              <Text c="dimmed">APIs and external services.</Text>
+              <Text c="dimmed">Manage integrations and external service connections.</Text>
             </div>
           </Group>
         </Group>
@@ -62,6 +62,19 @@ export default function AdminThirdPartyConfigurationPage() {
               </div>
             </Group>
             <Button component={Link as any} href="/employee/admin-settings/third-party-configuration/finance/providers" variant="light">Open</Button>
+          </Group>
+        </Card>
+
+        <Card withBorder>
+          <Group justify="space-between" align="center">
+            <Group gap="xs" align="center">
+              <IconShieldLock size={18} />
+              <div>
+                <Text fw={600}>Authentication</Text>
+                <Text c="dimmed" size="sm">Google, Microsoft, and other providers</Text>
+              </div>
+            </Group>
+            <Button component={Link as any} href="/employee/admin-settings/third-party-configuration/auth/providers" variant="light">Open</Button>
           </Group>
         </Card>
 

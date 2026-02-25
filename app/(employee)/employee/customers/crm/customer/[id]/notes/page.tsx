@@ -137,7 +137,7 @@ export default function CustomerNotesPage({ params }: { params: { id: string } }
       <CustomerHeader customer={customer} current="notes" />
 
       <Card withBorder radius="md" padding={0}>
-        <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="card-section-header">
           <Title order={4} m={0} style={{ color: 'inherit' }}>Notes</Title>
           <Button variant="default" onClick={() => setNoteOpen(true)}>Add note</Button>
         </div>
@@ -216,6 +216,21 @@ export default function CustomerNotesPage({ params }: { params: { id: string } }
           </Group>
         </Stack>
       </Modal>
+      <style jsx>{`
+        .card-section-header {
+          padding: 12px 16px;
+          background: var(--mantine-color-gray-0);
+          border-bottom: 1px solid var(--mantine-color-gray-2);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        [data-mantine-color-scheme="dark"] .card-section-header {
+          background: var(--mantine-color-dark-6);
+          color: var(--mantine-color-white);
+          border-bottom: 1px solid var(--mantine-color-dark-7);
+        }
+      `}</style>
     </EmployerAuthGate>
   );
 }

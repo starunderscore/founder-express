@@ -289,7 +289,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
       {/* Phones (many) */}
       <Card withBorder radius="md" padding={0} mb="md">
-        <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="card-section-header">
           <Title order={4} m={0} style={{ color: 'inherit' }}>Phones</Title>
           <Button variant="default" onClick={() => { setEditingPhoneId(null); setPhoneNumber(''); setPhoneExt(''); setPhoneLabel(''); setPhoneKind('Work'); setEditPhonesOpen(true); }}>Edit</Button>
         </div>
@@ -547,6 +547,19 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         }
         [data-mantine-color-scheme="dark"] .customer-general-card {
           background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 60%);
+        }
+        .card-section-header {
+          padding: 12px 16px;
+          background: var(--mantine-color-gray-0);
+          border-bottom: 1px solid var(--mantine-color-gray-2);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        [data-mantine-color-scheme="dark"] .card-section-header {
+          background: var(--mantine-color-dark-6);
+          color: var(--mantine-color-white);
+          border-bottom: 1px solid var(--mantine-color-dark-7);
         }
       `}</style>
     </EmployerAuthGate>

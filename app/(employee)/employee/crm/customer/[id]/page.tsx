@@ -5,13 +5,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RouteTabs } from '@/components/RouteTabs';
-import { Card, Title, Text, Group, Badge, Button, Stack, Select, Modal, Tabs, TextInput, Avatar, ActionIcon, Menu, CopyButton, Table, Textarea, Switch, Alert, Divider, MultiSelect, Center, Loader } from '@mantine/core';
+import { Card, Title, Text, Group, Badge, Button, Stack, Select, Modal, Tabs, TextInput, Avatar, ActionIcon, Menu, CopyButton, Table, Textarea, Switch, Alert, Divider, MultiSelect, Center, Loader, useComputedColorScheme } from '@mantine/core';
 import { useAuthUser, sendPasswordReset } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot, updateDoc, deleteDoc, collection } from 'firebase/firestore';
 
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
+  const scheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const router = useRouter();
   const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
   useEffect(() => {
@@ -331,7 +332,19 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
       {/* Phones (many) */}
       <Card withBorder radius="md" padding={0} mb="md">
-        <div style={{ padding: '12px 16px', background: 'var(--mantine-color-dark-6)', color: 'var(--mantine-color-white)', borderBottom: '1px solid var(--mantine-color-dark-7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div
+          style={{
+            padding: '12px 16px',
+            background: scheme === 'dark' ? 'var(--mantine-color-dark-6)' : 'var(--mantine-color-gray-0)',
+            color: scheme === 'dark' ? 'var(--mantine-color-white)' : 'inherit',
+            borderBottom: scheme === 'dark'
+              ? '1px solid var(--mantine-color-dark-7)'
+              : '1px solid var(--mantine-color-gray-3)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <Title order={4} m={0} style={{ color: 'inherit' }}>Phones</Title>
           <Button variant="default" onClick={() => { setEditingPhoneId(null); setPhoneNumber(''); setPhoneExt(''); setPhoneLabel(''); setPhoneKind('Work'); setEditPhonesOpen(true); }}>Edit</Button>
         </div>
