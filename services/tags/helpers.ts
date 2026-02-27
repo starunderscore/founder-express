@@ -80,10 +80,10 @@ export function filterByStatus<T extends Pick<Tag, 'status' | 'archiveAt' | 'rem
 export function tagBackLink(tag: Pick<Tag,'status'|'archiveAt'|'removedAt'>): string {
   const removed = (tag as any).removedAt != null;
   const archived = (tag as any).archiveAt != null;
-  if (removed) return '/employee/tag-manager/removed';
-  if (archived) return '/employee/tag-manager/archive';
+  if (removed) return '/employee/company-settings/tag-manager/removed';
+  if (archived) return '/employee/company-settings/tag-manager/archive';
   const s = ((tag as any).status ?? 'active') as TagStatus;
-  if (s === 'removed') return '/employee/tag-manager/removed';
-  if (s === 'archived') return '/employee/tag-manager/archive';
-  return '/employee/tag-manager';
+  if (s === 'removed') return '/employee/company-settings/tag-manager/removed';
+  if (s === 'archived') return '/employee/company-settings/tag-manager/archive';
+  return '/employee/company-settings/tag-manager';
 }

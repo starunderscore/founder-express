@@ -43,12 +43,13 @@ export async function setActiveClientPolicy(id: string, opts?: Options): Promise
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
   const rows = await listPrivacyPolicies({ getDb });
-  const clientRows = rows.filter((r) => (r.type || 'client') === 'client' && !r.deletedAt);
+  const clientRows = rows.filter((r) => (r.type || 'client') === 'client' && !r.removedAt);
   for (const p of clientRows) {
-    const desired = p.id === id;
-    if ((p.isActive ?? false) !== desired) {
-      await updateDoc(doc(store, 'ep_privacy_policies', p.id), { isActive: desired, updatedAt: Date.now() } as any);
-    }
+    const selected = p.id === id;
+    const payload = selected
+      ? { isActive: true, archiveAt: null, removedAt: null, updatedAt: Date.now() }
+      : { isActive: false, archiveAt: Date.now(), updatedAt: Date.now() };
+    await updateDoc(doc(store, 'ep_privacy_policies', p.id), payload as any);
   }
 }
 
@@ -88,16 +89,15 @@ export async function ensureDefaultPrivacyPolicy(opts?: Options): Promise<void> 
       await setDoc(sref, { privacyPolicyEnabled: true }, { merge: true });
     }
   } catch {}
-  // Ensure at least one client policy exists and is active
+  // Ensure at least one client policy exists and one is Active (not archived/removed)
   const rows = await listPrivacyPolicies({ getDb });
-  const clientRows = rows.filter((r) => (r.type || 'client') === 'client' && !r.deletedAt);
+  const clientRows = rows.filter((r) => (r.type || 'client') === 'client' && !r.removedAt);
   if (clientRows.length === 0) {
     const id = await createPrivacyPolicy({ title: 'Client Privacy Policy', bodyHtml: '<p>Update your privacy policy…</p>', type: 'client' }, { getDb });
     await setActiveClientPolicy(id, { getDb });
     return;
   }
-  if (!clientRows.some((p) => p.isActive)) {
-    // Select most recently updated as active
+  if (!clientRows.some((p) => !!p.isActive)) {
     const latest = clientRows.slice().sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))[0];
     if (latest) await setActiveClientPolicy(latest.id, { getDb });
   }
@@ -118,26 +118,26 @@ export async function migratePrivacyPoliciesIfNeeded(opts?: Options): Promise<bo
 
 export async function getActiveClientPolicy(opts?: Options): Promise<PrivacyPolicy | null> {
   const rows = await listPrivacyPolicies(opts);
-  const active = rows.find((r) => (r.type || 'client') === 'client' && r.isActive);
+  const active = rows.find((r) => (r.type || 'client') === 'client' && !!r.isActive);
   return active || null;
 }
 
 export async function archivePrivacyPolicy(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'ep_privacy_policies', id), { isActive: false, updatedAt: Date.now() } as any);
+  await updateDoc(doc(store, 'ep_privacy_policies', id), { isActive: false, archiveAt: Date.now(), updatedAt: Date.now() } as any);
 }
 
 export async function removePrivacyPolicy(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'ep_privacy_policies', id), { deletedAt: Date.now(), updatedAt: Date.now() } as any);
+  await updateDoc(doc(store, 'ep_privacy_policies', id), { isActive: false, removedAt: Date.now(), updatedAt: Date.now() } as any);
 }
 
 export async function restorePrivacyPolicy(id: string, opts?: Options): Promise<void> {
   const getDb = opts?.getDb || defaultDb;
   const store = getDb();
-  await updateDoc(doc(store, 'ep_privacy_policies', id), { deletedAt: null, updatedAt: Date.now() } as any);
+  await updateDoc(doc(store, 'ep_privacy_policies', id), { isActive: false, removedAt: null, archiveAt: null, updatedAt: Date.now() } as any);
 }
 
 export async function deletePrivacyPolicy(id: string, opts?: Options): Promise<void> {

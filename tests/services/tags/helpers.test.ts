@@ -56,8 +56,8 @@ describe('services/tags helpers', () => {
   });
 
   it('tagBackLink maps correctly', () => {
-    expect(tagBackLink({ status: 'active' } as Tag)).toBe('/employee/tag-manager');
-    expect(tagBackLink({ status: 'archived' } as Tag)).toBe('/employee/tag-manager/archive');
-    expect(tagBackLink({ status: 'removed' } as Tag)).toBe('/employee/tag-manager/removed');
+    expect(tagBackLink({ status: 'active' } as Tag)).toBe('/employee/company-settings/tag-manager');
+    expect(tagBackLink({ status: 'archived' } as Tag)).toBe('/employee/company-settings/tag-manager/archive');
+    expect(tagBackLink({ status: 'removed' } as Tag)).toBe('/employee/company-settings/tag-manager/removed');
   });
 });

@@ -5,10 +5,11 @@ export function normalizePrivacyPolicy(id: string, raw: RawPrivacyPolicyDoc): Pr
   const type = (raw?.type || 'client') as any;
   const bodyHtml = typeof raw?.bodyHtml === 'string' ? raw.bodyHtml : undefined;
   const isActive = !!raw?.isActive;
+  const archiveAt = typeof raw?.archiveAt === 'number' ? (raw.archiveAt as number) : null;
+  const removedAt = typeof raw?.removedAt === 'number' ? (raw.removedAt as number) : (typeof (raw as any)?.deletedAt === 'number' ? ((raw as any).deletedAt as number) : null);
   const createdAt = typeof raw?.createdAt === 'number' ? (raw.createdAt as number) : undefined;
   const updatedAt = typeof raw?.updatedAt === 'number' ? (raw.updatedAt as number) : undefined;
-  const deletedAt = typeof raw?.deletedAt === 'number' ? (raw.deletedAt as number) : undefined;
-  return { id, title, type, bodyHtml, isActive, createdAt, updatedAt, deletedAt: deletedAt ?? null };
+  return { id, title, type, bodyHtml, isActive, archiveAt: archiveAt ?? null, removedAt: removedAt ?? null, createdAt, updatedAt };
 }
 
 export function buildPrivacyPolicyCreate(input: PrivacyPolicyCreateInput): Record<string, any> {
@@ -20,6 +21,8 @@ export function buildPrivacyPolicyCreate(input: PrivacyPolicyCreateInput): Recor
     type: (input.type || 'client'),
     bodyHtml: input.bodyHtml || '',
     isActive: false,
+    archiveAt: null,
+    removedAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -35,8 +38,9 @@ export function buildPrivacyPolicyPatch(input: PrivacyPolicyPatchInput): Record<
   if (typeof input.bodyHtml === 'string') {
     out.bodyHtml = input.bodyHtml;
   }
-  if (typeof input.isActive === 'boolean') out.isActive = input.isActive;
+  if ('archiveAt' in input) out.archiveAt = input.archiveAt ?? null;
+  if ('removedAt' in input) out.removedAt = input.removedAt ?? null;
+  if (typeof (input as any).isActive === 'boolean') out.isActive = (input as any).isActive;
   out.updatedAt = Date.now();
   return out;
 }
-

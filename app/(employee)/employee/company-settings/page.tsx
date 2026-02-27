@@ -1,7 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { Title, Text, Card, Stack, Group, Button } from '@mantine/core';
-import { IconBuilding, IconMail } from '@tabler/icons-react';
+import { IconBuilding, IconMail, IconTags } from '@tabler/icons-react';
 import Link from 'next/link';
 
 export default function AppSettingsPage() {
@@ -29,6 +29,19 @@ export default function AppSettingsPage() {
               </div>
             </Group>
             <Button component={Link as any} href="/employee/company-settings/email-management" variant="light">Open</Button>
+          </Group>
+        </Card>
+
+        <Card withBorder>
+          <Group justify="space-between" align="center">
+            <Group gap="xs" align="center">
+              <IconTags size={18} />
+              <div>
+                <Title order={4}>Tag Manager</Title>
+                <Text c="dimmed" size="sm">Create and manage organization‑wide tags used across CRM.</Text>
+              </div>
+            </Group>
+            <Button component={Link as any} href="/employee/company-settings/tag-manager" variant="light">Open</Button>
           </Group>
         </Card>
 

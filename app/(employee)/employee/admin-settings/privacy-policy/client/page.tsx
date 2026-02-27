@@ -1,10 +1,11 @@
 "use client";
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, ActionIcon, TextInput, Button, Alert } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, ActionIcon, TextInput, Button, Alert, Modal } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { WebContentEditor } from '@/components/WebContentEditor';
-import { listenPrivacyPolicies, updatePrivacyPolicy, type PrivacyPolicy } from '@/services/admin-settings/privacy-policy';
+import { listenPrivacyPolicies, updatePrivacyPolicy, restorePrivacyPolicy, deletePrivacyPolicy, type PrivacyPolicy } from '@/services/admin-settings/privacy-policy';
+import PolicyDeletePermanentModal from '@/components/privacy/PolicyDeletePermanentModal';
 
 export default function PrivacyPolicyClientEditPage() {
   const router = useRouter();
@@ -13,6 +14,9 @@ export default function PrivacyPolicyClientEditPage() {
   const [html, setHtml] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activateOpen, setActivateOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     const unsub = listenPrivacyPolicies((rows) => setItems(rows.filter((p) => (p.type || 'client') === 'client')));
@@ -56,10 +60,10 @@ export default function PrivacyPolicyClientEditPage() {
 
   const status: 'active' | 'archived' | 'removed' | 'none' = useMemo(() => {
     if (!current) return 'none';
-    if (current.deletedAt) return 'removed';
-    if (current.isActive) return 'active' as any;
+    if (current.removedAt) return 'removed';
+    if (!current.archiveAt) return 'active';
     return 'archived';
-  }, [current?.id, current?.isActive, current?.deletedAt]);
+  }, [current?.id, current?.archiveAt, current?.removedAt]);
 
   const backHref = status === 'removed'
     ? '/employee/admin-settings/privacy-policy/removed'
@@ -88,10 +92,23 @@ export default function PrivacyPolicyClientEditPage() {
         </Group>
 
         {status === 'archived' && (
-          <Alert color="yellow">This policy is archived. It is not active for users.</Alert>
+          <Alert color="gray" variant="light" mb="md" title="Archived">
+            <Group justify="space-between" align="center">
+              <Text>This policy is archived and not active for users.</Text>
+              <Button variant="light" onClick={() => setRestoreOpen(true)}>Restore</Button>
+            </Group>
+          </Alert>
         )}
         {status === 'removed' && (
-          <Alert color="red">This policy is removed. Restore it from the Removed tab to edit and use it.</Alert>
+          <Alert color="red" variant="light" mb="md" title="Removed">
+            <Group justify="space-between" align="center">
+              <Text>This policy is removed. You can restore it or permanently delete it.</Text>
+              <Group gap="xs">
+                <Button variant="light" onClick={() => setRestoreOpen(true)}>Restore</Button>
+                <Button color="red" variant="light" onClick={() => setDeleteOpen(true)}>Delete permanently</Button>
+              </Group>
+            </Group>
+          </Alert>
         )}
 
         {items.length === 0 && (
@@ -113,6 +130,34 @@ export default function PrivacyPolicyClientEditPage() {
             />
           </Stack>
         </Card>
+
+        {/* Lifecycle modals */}
+        {null}
+        <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} centered>
+          <Stack>
+            <Text>Restore this policy back to the list?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!current) return;
+                await restorePrivacyPolicy(current.id);
+                setRestoreOpen(false);
+                // Do not redirect; user can choose to activate afterwards
+              }}>Restore</Button>
+            </Group>
+          </Stack>
+        </Modal>
+        <PolicyDeletePermanentModal
+          opened={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          policyTitle={current?.title || ''}
+          onConfirm={async () => {
+            if (!current) return;
+            await deletePrivacyPolicy(current.id);
+            setDeleteOpen(false);
+            router.push('/employee/admin-settings/privacy-policy');
+          }}
+        />
 
         <Card withBorder>
           <Stack>

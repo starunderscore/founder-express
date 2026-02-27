@@ -1,10 +1,11 @@
 "use client";
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, ActionIcon, TextInput, Button, Alert } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, ActionIcon, TextInput, Button, Alert, Modal } from '@mantine/core';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { WebContentEditor } from '@/components/WebContentEditor';
-import { listenCookiePolicies, updateCookiePolicy, type CookiePolicy as CookiePolicyRow } from '@/services/admin-settings/cookie-policy';
+import { listenCookiePolicies, updateCookiePolicy, restoreCookiePolicy, deleteCookiePolicy, type CookiePolicy as CookiePolicyRow } from '@/services/admin-settings/cookie-policy';
+import PolicyDeletePermanentModal from '@/components/privacy/PolicyDeletePermanentModal';
 import { useToast } from '@/components/ToastProvider';
 
 type CookiePolicy = CookiePolicyRow;
@@ -18,6 +19,9 @@ export default function CookiePolicyClientEditPage() {
   const [html, setHtml] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [unarchiveOpen, setUnarchiveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     const unsub = listenCookiePolicies((rows) => setItems(rows));
@@ -96,10 +100,23 @@ export default function CookiePolicyClientEditPage() {
         </Group>
 
         {status === 'archived' && (
-          <Alert color="yellow">This policy is archived. It is not active for users.</Alert>
+          <Alert color="gray" variant="light" mb="md" title="Archived">
+            <Group justify="space-between" align="center">
+              <Text>This policy is archived and not active for users.</Text>
+              <Button variant="light" onClick={() => setUnarchiveOpen(true)}>Unarchive</Button>
+            </Group>
+          </Alert>
         )}
         {status === 'removed' && (
-          <Alert color="red">This policy is removed. Restore it from the Removed tab to edit and use it.</Alert>
+          <Alert color="red" variant="light" mb="md" title="Removed">
+            <Group justify="space-between" align="center">
+              <Text>This policy is removed. You can restore it or permanently delete it.</Text>
+              <Group gap="xs">
+                <Button variant="light" onClick={() => setRestoreOpen(true)}>Restore</Button>
+                <Button color="red" variant="light" onClick={() => setDeleteOpen(true)}>Delete permanently</Button>
+              </Group>
+            </Group>
+          </Alert>
         )}
 
         {items.length === 0 && (
@@ -140,6 +157,48 @@ export default function CookiePolicyClientEditPage() {
             />
           </Stack>
         </Card>
+
+        {/* Lifecycle modals */}
+        <Modal opened={unarchiveOpen} onClose={() => setUnarchiveOpen(false)} centered>
+          <Stack>
+            <Text>Unarchive this policy? It will return to Active.</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setUnarchiveOpen(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!current) return;
+                await updateCookiePolicy(current.id, { archivedAt: null });
+                setUnarchiveOpen(false);
+                toast.show({ title: 'Policy unarchived', message: current.title || 'Policy', color: 'green' });
+              }}>Unarchive</Button>
+            </Group>
+          </Stack>
+        </Modal>
+        <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} centered>
+          <Stack>
+            <Text>Restore this policy back to Active?</Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!current) return;
+                await restoreCookiePolicy(current.id);
+                setRestoreOpen(false);
+                toast.show({ title: 'Policy restored', message: current.title || 'Policy', color: 'green' });
+              }}>Restore</Button>
+            </Group>
+          </Stack>
+        </Modal>
+        <PolicyDeletePermanentModal
+          opened={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          policyTitle={current?.title || ''}
+          onConfirm={async () => {
+            if (!current) return;
+            await deleteCookiePolicy(current.id);
+            setDeleteOpen(false);
+            toast.show({ title: 'Policy deleted', message: current.title || 'Policy', color: 'red' });
+            router.push('/employee/admin-settings/cookie-policy');
+          }}
+        />
       </Stack>
     </EmployerAdminGate>
   );

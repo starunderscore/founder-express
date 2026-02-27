@@ -62,7 +62,7 @@ export default function VendorHeader({
       {vendor.isArchived && (
         <Alert color="gray" variant="light" mb="md" title="Archived">
           <Group justify="space-between" align="center">
-            <Text>This vendor is archived and hidden from the Database view.</Text>
+            <Text>This vendor is archived and hidden from the Active list.</Text>
             <Button variant="light" onClick={() => setUnarchiveOpen(true)}>Unarchive</Button>
           </Group>
         </Alert>

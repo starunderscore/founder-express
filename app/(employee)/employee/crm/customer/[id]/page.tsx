@@ -10,6 +10,7 @@ import { useAuthUser, sendPasswordReset } from '@/lib/firebase/auth';
 import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot, updateDoc, deleteDoc, collection } from 'firebase/firestore';
+import { createTag } from '@/services/tags';
 
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
   const scheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
@@ -521,7 +522,18 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             data={tagOptions}
             value={gTags}
             onChange={setGTags}
-            comboboxProps={{ withinPortal: true }}
+            creatable
+            getCreateLabel={(query) => `Create "${query}"`}
+            onCreate={async (query) => {
+              const name = (query || '').trim();
+              if (!name) return undefined as any;
+              try { await createTag({ name }); } catch {}
+              const item = { value: name, label: name };
+              setTagOptions((opts) => [...opts, item]);
+              setGTags((vals) => Array.from(new Set([...(vals || []), name])));
+              return item as any;
+            }}
+            comboboxProps={{ withinPortal: true, zIndex: 12000 }}
           />
           <Select
             label="Account owner"

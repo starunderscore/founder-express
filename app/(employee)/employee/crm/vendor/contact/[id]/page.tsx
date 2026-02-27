@@ -12,6 +12,7 @@ import { useToast } from '@/components/ToastProvider';
 import { db } from '@/lib/firebase/client';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { addVendorContactNote, archiveVendorContact, deleteVendorContact, removeVendorContact, restoreVendorContact, unarchiveVendorContact, updateVendorContact } from '@/services/crm/vendor-contacts';
+import { DEFAULT_TAG_COLOR } from '@/services/tags/helpers';
 
 export default function VendorContactDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -75,6 +76,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
   const [deleteAddressSnippet, setDeleteAddressSnippet] = useState('');
   const [deleteAddressInput, setDeleteAddressInput] = useState('');
   const [tagOptions, setTagOptions] = useState<{ value: string; label: string }[]>([]);
+  const [tagColorMap, setTagColorMap] = useState<Record<string, string | undefined>>({});
   // contact actions
   const [deleteContactOpen, setDeleteContactOpen] = useState(false);
   const [deleteContactSnippet, setDeleteContactSnippet] = useState('');
@@ -92,19 +94,39 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
     }
   }, [contact?.id]);
 
+  // Compute readable text color for a hex background
+  const contrastText = (hex?: string): string => {
+    if (!hex || !hex.startsWith('#')) return '#fff';
+    const h = hex.replace('#', '');
+    const bigint = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+    const r = (bigint >> 16) & 255; const g = (bigint >> 8) & 255; const b = bigint & 255;
+    const srgb = [r, g, b].map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+    const L = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+    return L > 0.5 ? '#000' : '#fff';
+  };
+
   // Load tag options from Tag Manager (Firestore)
   useEffect(() => {
     const q = query(collection(db(), 'ep_tags'));
     const unsub = onSnapshot(q, (snap) => {
       const rows: { value: string; label: string; createdAt: number }[] = [];
+      const cmap: Record<string, string | undefined> = {};
       snap.forEach((d) => {
         const data = d.data() as any;
+        // Only include active tags
+        const status = (data.status || 'active').toString();
+        const removedAt = data.removedAt ?? null;
+        const archiveAt = data.archiveAt ?? null;
+        if (status !== 'active' || removedAt || archiveAt) return;
         const name = (data.name || '').toString();
         if (!name) return;
         rows.push({ value: name, label: name, createdAt: typeof data.createdAt === 'number' ? data.createdAt : 0 });
+        const color = (typeof data.color === 'string' && data.color.trim()) ? data.color.trim() : DEFAULT_TAG_COLOR;
+        cmap[name] = color;
       });
       rows.sort((a, b) => (b.createdAt - a.createdAt) || a.label.localeCompare(b.label));
       setTagOptions(rows.map(({ value, label }) => ({ value, label })));
+      setTagColorMap(cmap);
     });
     return () => unsub();
   }, []);
@@ -245,7 +267,17 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
                 <Stack gap={2}>
                   <Text c="dimmed" size="xs">Tags</Text>
                   <Group gap={6} wrap="wrap">
-                    {(contact as any).tags && (contact as any).tags.length > 0 ? (contact as any).tags.map((t: string) => (<Badge key={t} variant="light">{t}</Badge>)) : <Text size="sm">—</Text>}
+                    {(contact as any).tags && (contact as any).tags.length > 0 ? (
+                      (contact as any).tags.map((t: string) => {
+                        const bg = tagColorMap[t] || DEFAULT_TAG_COLOR;
+                        const fg = contrastText(bg);
+                        return (
+                          <span key={t} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 6, background: bg, color: fg, fontSize: 12 }}>{t}</span>
+                        );
+                      })
+                    ) : (
+                      <Text size="sm">—</Text>
+                    )}
                   </Group>
                 </Stack>
                 <Stack gap={2}>
@@ -584,6 +616,16 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
                 data={tagOptions}
                 value={cTags}
                 onChange={setCTags}
+                valueComponent={({ value, label, onRemove }: any) => {
+                  const bg = tagColorMap[label] || DEFAULT_TAG_COLOR;
+                  const fg = contrastText(bg);
+                  return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 8px', borderRadius: 6, background: bg, color: fg, fontSize: 12 }}>
+                      {label}
+                      <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} style={{ background: 'transparent', border: 0, color: fg, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                    </span>
+                  );
+                }}
                 comboboxProps={{ withinPortal: true, zIndex: 11000 }}
               />
             </Tabs.Panel>

@@ -60,7 +60,7 @@ export default function TagManagerPage() {
 
   const columns: Column<TagDoc>[] = [
     { key: 'name', header: 'Tag', render: (r) => (
-      <Link href={`/employee/tag-manager/${r.id}`} style={{ textDecoration: 'none' }}>
+      <Link href={`/employee/company-settings/tag-manager/${r.id}`} style={{ textDecoration: 'none' }}>
         <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 6, background: (r.color || DEFAULT_TAG_COLOR), color: contrastText(r.color || DEFAULT_TAG_COLOR) }}>
           {r.name || '—'}
         </span>
@@ -82,7 +82,7 @@ export default function TagManagerPage() {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item onClick={() => router.push(`/employee/tag-manager/${r.id}`)}>Edit</Menu.Item>
+              <Menu.Item onClick={() => router.push(`/employee/company-settings/tag-manager/${r.id}`)}>Edit</Menu.Item>
               <Menu.Item onClick={() => openArchive(r)}>Archive</Menu.Item>
               <Menu.Item color="red" onClick={() => openRemove(r)}>Remove</Menu.Item>
             </Menu.Dropdown>
@@ -113,9 +113,9 @@ export default function TagManagerPage() {
 
         <Tabs value={'active'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/tag-manager">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/tag-manager/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/tag-manager/removed">Removed</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/company-settings/tag-manager">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/company-settings/tag-manager/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/company-settings/tag-manager/removed">Removed</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 

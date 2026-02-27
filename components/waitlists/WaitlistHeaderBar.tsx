@@ -1,7 +1,11 @@
 "use client";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Group, Title, Text, Button, ActionIcon, Alert } from '@mantine/core';
+import { useState } from 'react';
+import { Group, Title, Text, Button, ActionIcon, Alert, Modal, Stack } from '@mantine/core';
+import { db } from '@/lib/firebase/client';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import WaitlistDeletePermanentModal from '@/components/waitlists/WaitlistDeletePermanentModal';
 import { RouteTabs } from '@/components/RouteTabs';
 
 export type WaitlistHeaderBarProps = {
@@ -20,6 +24,9 @@ export default function WaitlistHeaderBar({ listId, name, current, onAdd, onSend
   const add = onAdd || (() => {});
   const send = onSend || (() => router.push(`/employee/email-subscriptions/waiting/${listId}/send`));
   const computedBack = backHref || (removedAt ? '/employee/email-subscriptions/waiting/removed' : (archiveAt ? '/employee/email-subscriptions/waiting/archive' : '/employee/email-subscriptions/waiting'));
+  const [unarchiveOpen, setUnarchiveOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
     <>
@@ -43,12 +50,21 @@ export default function WaitlistHeaderBar({ listId, name, current, onAdd, onSend
 
       {removedAt && (
         <Alert color="red" variant="light" mb="md" title="Removed">
-          This waiting list is removed and appears in the Removed tab.
+          <Group justify="space-between" align="center">
+            <Text>This waiting list is removed. You can restore it or permanently delete it.</Text>
+            <Group gap="xs">
+              <Button variant="light" onClick={() => setRestoreOpen(true)}>Restore</Button>
+              <Button color="red" variant="light" onClick={() => setDeleteOpen(true)}>Delete permanently</Button>
+            </Group>
+          </Group>
         </Alert>
       )}
       {!removedAt && archiveAt && (
         <Alert color="gray" variant="light" mb="md" title="Archived">
-          This waiting list is archived and hidden from the Active list.
+          <Group justify="space-between" align="center">
+            <Text>This waiting list is archived and hidden from the Active list.</Text>
+            <Button variant="light" onClick={() => setUnarchiveOpen(true)}>Unarchive</Button>
+          </Group>
         </Alert>
       )}
 
@@ -61,6 +77,45 @@ export default function WaitlistHeaderBar({ listId, name, current, onAdd, onSend
           { value: 'form', label: 'Copy & paste form', href: `/employee/email-subscriptions/waiting/${listId}/form` },
           { value: 'settings', label: 'List settings', href: `/employee/email-subscriptions/waiting/${listId}/settings` },
         ]}
+      />
+
+      <Modal opened={unarchiveOpen} onClose={() => setUnarchiveOpen(false)} centered>
+        <Stack>
+          <Text>Unarchive this waiting list? It will return to Active.</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setUnarchiveOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              await updateDoc(doc(db(), 'ep_waitlists', listId), { archiveAt: null, isArchived: false });
+              setUnarchiveOpen(false);
+              router.push('/employee/email-subscriptions/waiting');
+            }}>Unarchive</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} centered>
+        <Stack>
+          <Text>Restore this waiting list back to Active?</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              await updateDoc(doc(db(), 'ep_waitlists', listId), { removedAt: null, archiveAt: null, isArchived: false });
+              setRestoreOpen(false);
+              router.push('/employee/email-subscriptions/waiting');
+            }}>Restore</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <WaitlistDeletePermanentModal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        listName={name || ''}
+        onConfirm={async () => {
+          await deleteDoc(doc(db(), 'ep_waitlists', listId));
+          setDeleteOpen(false);
+          router.push('/employee/email-subscriptions/waiting');
+        }}
       />
     </>
   );

@@ -8,6 +8,7 @@ import FirestoreDataTable, { type Column } from '@/components/data-table/Firesto
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { listenCookiePolicyEnabled, restoreCookiePolicy, deleteCookiePolicy } from '@/services/admin-settings/cookie-policy';
+import PolicyDeletePermanentModal from '@/components/privacy/PolicyDeletePermanentModal';
 
 export default function CookiePolicyRemovedPage() {
   const router = useRouter();
@@ -106,21 +107,18 @@ export default function CookiePolicyRemovedPage() {
           </Stack>
         </Modal>
 
-        <Modal opened={confirmDelete} onClose={() => setConfirmDelete(false)} title="Permanently delete policy" centered>
-          <Stack>
-            <Text color="red">This action permanently deletes the policy and cannot be undone.</Text>
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-              <Button color="red" onClick={async () => {
-                if (!target) return;
-                await deleteCookiePolicy(target.id);
-                setConfirmDelete(false); setTarget(null);
-                setRefreshKey((k) => k + 1);
-                toast.show({ title: 'Deleted', message: 'Policy permanently deleted.', color: 'green' });
-              }}>Delete permanently</Button>
-            </Group>
-          </Stack>
-        </Modal>
+        <PolicyDeletePermanentModal
+          opened={confirmDelete}
+          onClose={() => setConfirmDelete(false)}
+          policyTitle={target?.title || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await deleteCookiePolicy(target.id);
+            setConfirmDelete(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+            toast.show({ title: 'Deleted', message: 'Policy permanently deleted.', color: 'green' });
+          }}
+        />
       </Stack>
     </EmployerAdminGate>
   );

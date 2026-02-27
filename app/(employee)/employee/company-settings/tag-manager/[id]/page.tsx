@@ -9,6 +9,7 @@ import { IconPalette } from '@tabler/icons-react';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { DEFAULT_TAG_COLOR } from '@/services/tags/helpers';
+import { restoreTag, deleteTag } from '@/services/tags/firestore';
 import type { Route } from 'next';
 
 type TagStatus = 'active' | 'archived' | 'removed';
@@ -37,6 +38,9 @@ export default function TagDetailPage({ params }: { params: { id: string } }) {
   const [color, setColor] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState<string>('');
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [unarchiveOpen, setUnarchiveOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     const ref = doc(db(), 'ep_tags', params.id);
@@ -67,7 +71,7 @@ export default function TagDetailPage({ params }: { params: { id: string } }) {
     return (
       <EmployerAuthGate>
         <Group>
-          <Button variant="light" component={Link} href="/employee/tag-manager">Back</Button>
+          <Button variant="light" component={Link} href="/employee/company-settings/tag-manager">Back</Button>
           <Text>Tag not found</Text>
         </Group>
       </EmployerAuthGate>
@@ -75,9 +79,9 @@ export default function TagDetailPage({ params }: { params: { id: string } }) {
   }
 
   const returnHref = (): Route => {
-    if (tag?.removedAt || tag?.deletedAt) return '/employee/tag-manager/removed' as Route;
-    if (tag?.archiveAt || tag?.isArchived) return '/employee/tag-manager/archive' as Route;
-    return '/employee/tag-manager' as Route;
+    if (tag?.removedAt || tag?.deletedAt) return '/employee/company-settings/tag-manager/removed' as Route;
+    if (tag?.archiveAt || tag?.isArchived) return '/employee/company-settings/tag-manager/archive' as Route;
+    return '/employee/company-settings/tag-manager' as Route;
   };
 
   const save = async () => {
@@ -113,12 +117,21 @@ export default function TagDetailPage({ params }: { params: { id: string } }) {
 
       {tag?.removedAt && (
         <Alert color="red" variant="light" mb="md" title="Removed">
-          This tag is removed and appears in the Removed tab.
+          <Group justify="space-between" align="center">
+            <Text>This tag is removed. You can restore it or permanently delete it.</Text>
+            <Group gap="xs">
+              <Button variant="light" onClick={() => setRestoreOpen(true)}>Restore</Button>
+              <Button color="red" variant="light" onClick={() => setDeleteOpen(true)}>Delete permanently</Button>
+            </Group>
+          </Group>
         </Alert>
       )}
       {tag && !tag.removedAt && tag.archiveAt && (
         <Alert color="gray" variant="light" mb="md" title="Archived">
-          This tag is archived and hidden from the Active list.
+          <Group justify="space-between" align="center">
+            <Text>This tag is archived and hidden from the Active list.</Text>
+            <Button variant="light" onClick={() => setUnarchiveOpen(true)}>Unarchive</Button>
+          </Group>
         </Alert>
       )}
 
@@ -179,6 +192,52 @@ export default function TagDetailPage({ params }: { params: { id: string } }) {
           </Group>
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={() => setPreviewOpen(false)}>Close</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={unarchiveOpen} onClose={() => setUnarchiveOpen(false)} centered>
+        <Stack>
+          <Text>Unarchive this tag? It will return to Active.</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setUnarchiveOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              if (!tag) return;
+              await restoreTag(tag.id);
+              setUnarchiveOpen(false);
+              toast.show({ title: 'Tag unarchived', message: tag.name || 'Tag', color: 'green' });
+            }}>Unarchive</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} centered>
+        <Stack>
+          <Text>Restore this tag back to Active?</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              if (!tag) return;
+              await restoreTag(tag.id);
+              setRestoreOpen(false);
+              toast.show({ title: 'Tag restored', message: tag.name || 'Tag', color: 'green' });
+            }}>Restore</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={deleteOpen} onClose={() => setDeleteOpen(false)} centered>
+        <Stack>
+          <Text>Permanently delete this tag? This action cannot be undone.</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button color="red" onClick={async () => {
+              if (!tag) return;
+              await deleteTag(tag.id);
+              setDeleteOpen(false);
+              toast.show({ title: 'Tag deleted', message: tag.name || 'Tag', color: 'red' });
+              router.push('/employee/company-settings/tag-manager');
+            }}>Delete</Button>
           </Group>
         </Stack>
       </Modal>

@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { Title, Text, Card, Stack, Group, ActionIcon, Button, Modal, Select, Badge, Switch, Menu, Tabs } from '@mantine/core';
+import { Title, Text, Card, Stack, Group, ActionIcon, Button, Modal, Select, Badge, Switch, Menu, Tabs, Alert } from '@mantine/core';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
 import { IconShieldCheck } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
@@ -29,16 +29,19 @@ export default function PrivacyPolicyPage() {
     (async () => {
       try { await ensureDefaultPrivacyPolicy(); } catch {}
       if (cancelled) return;
-      unsubPolicies = listenPrivacyPolicies((rows) => setPolicies(rows.filter((p) => !p.deletedAt)));
+      unsubPolicies = listenPrivacyPolicies((rows) => setPolicies(rows.filter((p) => !p.removedAt)));
       unsubEnabled = listenPrivacyPolicyEnabled((flag) => setEnabled(flag ?? true));
     })();
     return () => { cancelled = true; try { unsubPolicies && unsubPolicies(); } catch {} try { unsubEnabled && unsubEnabled(); } catch {} };
   }, []);
 
-  const activeId = useMemo(() => policies.find((p) => (p.type || 'client') === 'client' && p.isActive)?.id || null, [policies]);
+  // isActive is used only for column display; table shows all non-archived/non-removed records
+  const currentActiveId = useMemo(() => (
+    policies.find((p) => (p.type || 'client') === 'client' && !!p.isActive && !p.removedAt)?.id || null
+  ), [policies]);
 
   const openSelectModal = () => {
-    setSelectedId(activeId || (policies.find((p) => (p.type || 'client') === 'client')?.id ?? null));
+    setSelectedId(currentActiveId || (policies.find((p) => (p.type || 'client') === 'client' && !p.removedAt && !p.archiveAt)?.id ?? null));
     setSelectOpen(true);
   };
 
@@ -77,9 +80,9 @@ export default function PrivacyPolicyPage() {
           </Group>
         </Group>
 
-        <Tabs value={'active'}>
+        <Tabs value={'database'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/admin-settings/privacy-policy">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="database"><Link href="/employee/admin-settings/privacy-policy">Database</Link></Tabs.Tab>
             <Tabs.Tab value="archive"><Link href="/employee/admin-settings/privacy-policy/archive">Archive</Link></Tabs.Tab>
             <Tabs.Tab value="removed"><Link href="/employee/admin-settings/privacy-policy/removed">Removed</Link></Tabs.Tab>
           </Tabs.List>
@@ -109,6 +112,8 @@ export default function PrivacyPolicyPage() {
 
         {enabled && (
           <>
+            {null}
+
             <Card withBorder>
               <FirestoreDataTable
                 collectionPath="ep_privacy_policies"
@@ -135,7 +140,7 @@ export default function PrivacyPolicyPage() {
                   )},
                 ] as Column<any>[]}
                 initialSort={{ field: 'updatedAt', direction: 'desc' }}
-                clientFilter={(r: any) => !r.deletedAt && (r.type || 'client') === 'client' && !!r.isActive}
+                clientFilter={(r: any) => !r.removedAt && !r.archiveAt && (r.type || 'client') === 'client'}
                 enableSelection={false}
                 defaultPageSize={25}
                 refreshKey={refreshKey}

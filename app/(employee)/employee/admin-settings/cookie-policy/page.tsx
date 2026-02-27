@@ -124,7 +124,7 @@ export default function CookiePolicyPage() {
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item component={Link as any} href="/employee/admin-settings/cookie-policy/client">Edit</Menu.Item>
-                      <Menu.Item onClick={() => { setTarget(r); setConfirmArchive(true); }}>Deactivate</Menu.Item>
+                      <Menu.Item onClick={() => { setTarget(r); setConfirmArchive(true); }}>Archive</Menu.Item>
                       <Menu.Item color="red" onClick={() => { setTarget(r); setConfirmRemove(true); }}>Remove</Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
@@ -159,9 +159,9 @@ export default function CookiePolicyPage() {
           </Stack>
         </Modal>
 
-        <Modal opened={confirmArchive} onClose={() => setConfirmArchive(false)} title="Deactivate policy" centered>
+        <Modal opened={confirmArchive} onClose={() => setConfirmArchive(false)} title="Archive policy" centered>
           <Stack>
-            <Text>Deactivate this policy? It will no longer be active.</Text>
+            <Text>Archive this policy? It will move to Archive and can be restored later.</Text>
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setConfirmArchive(false)}>Cancel</Button>
               <Button onClick={async () => {
@@ -169,8 +169,8 @@ export default function CookiePolicyPage() {
                 await archiveCookiePolicy(target.id);
                 setConfirmArchive(false); setTarget(null);
                 setRefreshKey((k) => k + 1);
-                toast.show({ title: 'Saved', message: 'Policy deactivated.', color: 'green' });
-              }}>Deactivate</Button>
+                toast.show({ title: 'Saved', message: 'Policy archived.', color: 'green' });
+              }}>Archive</Button>
             </Group>
           </Stack>
         </Modal>

@@ -1,13 +1,11 @@
 "use client";
 import Link from 'next/link';
-import { useState } from 'react';
-import { Button, Card, Group, Stack, Text, Title, Tabs, Menu, ActionIcon, Modal } from '@mantine/core';
-import { useRouter } from 'next/navigation';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
-import { useToast } from '@/components/ToastProvider';
+import { Title, Text, Card, Group, Stack, Tabs, Menu, ActionIcon, Modal, Button } from '@mantine/core';
+import { useState } from 'react';
 import FirestoreDataTable, { type Column } from '@/components/data-table/FirestoreDataTable';
-import TagRemoveModal from '@/components/tags/TagRemoveModal';
-import { restoreTag, removeTag } from '@/services/tags';
+import TagDeletePermanentModal from '@/components/tags/TagDeletePermanentModal';
+import { restoreTag, deleteTag } from '@/services/tags';
 import { DEFAULT_TAG_COLOR } from '@/services/tags/helpers';
  
 
@@ -23,38 +21,27 @@ const contrastText = (hex?: string): string => {
   return L > 0.5 ? '#000' : '#fff';
 };
 
-export default function TagManagerArchivePage() {
-  const router = useRouter();
-  const toast = useToast();
-
+export default function TagManagerRemovedPage() {
   // Removed usage metric in free version
 
   const [target, setTarget] = useState<TagDoc | null>(null);
   const [confirmRestore, setConfirmRestore] = useState(false);
-  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const openRestore = (row: TagDoc) => { setTarget(row); setConfirmRestore(true); };
-  const openRemove = (row: TagDoc) => { setTarget(row); setConfirmRemove(true); };
+  const openDelete = (row: TagDoc) => { setTarget(row); setConfirmDelete(true); };
 
   const onConfirmRestore = async () => {
     if (!target) return;
     await restoreTag(target.id);
     setConfirmRestore(false); setTarget(null);
     setRefreshKey((k) => k + 1);
-    toast.show({ title: 'Tag restored', message: target.name, color: 'green' });
-  };
-  const onConfirmRemove = async () => {
-    if (!target) return;
-    await removeTag(target.id);
-    setConfirmRemove(false); setTarget(null);
-    setRefreshKey((k) => k + 1);
-    toast.show({ title: 'Tag moved to removed', message: target.name, color: 'orange' });
   };
 
   const columns: Column<TagDoc>[] = [
     { key: 'name', header: 'Tag', render: (r) => (
-      <Link href={`/employee/tag-manager/${r.id}`} style={{ textDecoration: 'none' }}>
+      <Link href={`/employee/company-settings/tag-manager/${r.id}`} style={{ textDecoration: 'none' }}>
         <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 6, background: (r.color || DEFAULT_TAG_COLOR), color: contrastText(r.color || DEFAULT_TAG_COLOR) }}>
           {r.name || '—'}
         </span>
@@ -65,7 +52,7 @@ export default function TagManagerArchivePage() {
       key: 'actions', header: '', width: 1,
       render: (r) => (
         <Group justify="flex-end">
-          <Menu withinPortal position="bottom-end" shadow="md" width={180}>
+          <Menu withinPortal position="bottom-end" shadow="md" width={200}>
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label="More actions">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -76,9 +63,9 @@ export default function TagManagerArchivePage() {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item onClick={() => router.push(`/employee/tag-manager/${r.id}`)}>Edit</Menu.Item>
+              <Menu.Item component={Link as any} href={`/employee/company-settings/tag-manager/${r.id}` as any}>Edit</Menu.Item>
               <Menu.Item onClick={() => openRestore(r)}>Restore</Menu.Item>
-              <Menu.Item color="red" onClick={() => openRemove(r)}>Remove</Menu.Item>
+              <Menu.Item color="red" onClick={() => openDelete(r)}>Delete permanently</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -92,11 +79,11 @@ export default function TagManagerArchivePage() {
         <Title order={2} mb="sm">Tag Manager</Title>
         <Text c="dimmed" mb="md">Create and manage organization-wide tags used across CRM.</Text>
 
-        <Tabs value="archive">
+        <Tabs value="removed">
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/tag-manager">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/tag-manager/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/tag-manager/removed">Removed</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/company-settings/tag-manager">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/company-settings/tag-manager/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/company-settings/tag-manager/removed">Removed</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
@@ -105,7 +92,7 @@ export default function TagManagerArchivePage() {
             collectionPath="ep_tags"
             columns={columns}
             initialSort={{ field: 'name', direction: 'asc' }}
-            clientFilter={(r: any) => !(r.removedAt) && !!(r.archiveAt) || ((r.status ?? 'active') === 'archived')}
+            clientFilter={(r: any) => !!(r.removedAt) || ((r.status ?? 'active') === 'removed')}
             defaultPageSize={25}
             enableSelection={false}
             refreshKey={refreshKey}
@@ -122,7 +109,17 @@ export default function TagManagerArchivePage() {
           </Stack>
         </Modal>
 
-        <TagRemoveModal opened={confirmRemove} onClose={() => setConfirmRemove(false)} tagName={target?.name || ''} onConfirm={onConfirmRemove} />
+        <TagDeletePermanentModal
+          opened={confirmDelete}
+          onClose={() => setConfirmDelete(false)}
+          tagName={target?.name || ''}
+          onConfirm={async () => {
+            if (!target) return;
+            await deleteTag(target.id);
+            setConfirmDelete(false); setTarget(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
       </Stack>
     </EmployerAdminGate>
   );

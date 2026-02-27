@@ -47,7 +47,6 @@ export function EmployerSidebar() {
       <NavLink component={Link} href="/employee/finance/reports" label="Financial Reports" active={isActive('/employee/finance/reports')} leftSection={<IconReportMoney size={16} />} />
       <NavLink component={Link} href="/employee/finance/settings" label="Finance Settings" active={isActive('/employee/finance/settings')} leftSection={<IconCurrencyDollar size={16} />} />
       <Divider my={6} />
-      <NavLink component={Link} href="/employee/tag-manager" label="Tag Manager" active={isActive('/employee/tag-manager')} leftSection={<IconTags size={16} />} />
       <NavLink component={Link} href="/employee/reports" label="Reports" active={isActive('/employee/reports')} leftSection={<IconReport size={16} />} />
       <NavLink component={Link} href="/employee/company-settings" label="Company Settings" active={isActive('/employee/company-settings')} leftSection={<IconBuilding size={16} />} />
       {isAdmin && (

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, Textarea, Center, Loader, Alert } from '@mantine/core';
+import { Button, Card, Group, Stack, Text, TextInput, Title, ActionIcon, Badge, Textarea, Center, Loader, Alert, Modal } from '@mantine/core';
 import { useToast } from '@/components/ToastProvider';
 import type { Route } from 'next';
 import { PermissionsMatrix } from '@/components/PermissionsMatrix';
@@ -9,6 +9,8 @@ import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { updateRole } from '@/services/roles';
+import { restoreRole, deleteRole } from '@/services/roles/firestore';
+import RoleDeletePermanentModal from '@/components/roles/RoleDeletePermanentModal';
 import { idsToNames, namesToIds } from '@/lib/permissions';
 
 export default function EditRolePage({ params }: { params: { id: string } }) {
@@ -30,6 +32,9 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
+  const [unarchiveOpen, setUnarchiveOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (!role) return;
@@ -54,6 +59,8 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
       </Stack>
     );
   }
+
+  
 
   const onSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -99,12 +106,21 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
 
       {role.removedAt && (
         <Alert color="red" variant="light" mb="md" title="Removed">
-          This role is removed and appears in the Removed tab.
+          <Group justify="space-between" align="center">
+            <Text>This role is removed. You can restore it or permanently delete it.</Text>
+            <Group gap="xs">
+              <Button variant="light" onClick={() => setRestoreOpen(true)}>Restore</Button>
+              <Button color="red" variant="light" onClick={() => setDeleteOpen(true)}>Delete permanently</Button>
+            </Group>
+          </Group>
         </Alert>
       )}
       {!role.removedAt && role.archiveAt && (
         <Alert color="gray" variant="light" mb="md" title="Archived">
-          This role is archived and hidden from the Active list.
+          <Group justify="space-between" align="center">
+            <Text>This role is archived and hidden from the Active list.</Text>
+            <Button variant="light" onClick={() => setUnarchiveOpen(true)}>Unarchive</Button>
+          </Group>
         </Alert>
       )}
 
@@ -145,6 +161,38 @@ export default function EditRolePage({ params }: { params: { id: string } }) {
           </Stack>
         </form>
       </Card>
+
+      <Modal opened={unarchiveOpen} onClose={() => setUnarchiveOpen(false)} centered>
+        <Stack>
+          <Text>Unarchive this role? It will return to Active.</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setUnarchiveOpen(false)}>Cancel</Button>
+            <Button onClick={async () => { await restoreRole(role.id); setUnarchiveOpen(false); toast.show({ title: 'Role unarchived', message: role.name, color: 'green' }); }}>Unarchive</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} centered>
+        <Stack>
+          <Text>Restore this role back to Active?</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
+            <Button onClick={async () => { await restoreRole(role.id); setRestoreOpen(false); toast.show({ title: 'Role restored', message: role.name, color: 'green' }); }}>Restore</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <RoleDeletePermanentModal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        roleName={role.name || ''}
+        onConfirm={async () => {
+          await deleteRole(role.id);
+          setDeleteOpen(false);
+          toast.show({ title: 'Role deleted', message: role.name, color: 'red' });
+          router.push('/employee/employees/roles');
+        }}
+      />
     </Stack>
     </EmployerAdminGate>
   );

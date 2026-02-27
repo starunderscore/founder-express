@@ -84,7 +84,7 @@ export default function PrivacyPolicyArchivePage() {
               )},
             ] as Column<any>[]}
             initialSort={{ field: 'updatedAt', direction: 'desc' }}
-            clientFilter={(r: any) => !r.deletedAt && (r.type || 'client') === 'client' && !r.isActive}
+            clientFilter={(r: any) => !r.removedAt && !!r.archiveAt && (r.type || 'client') === 'client'}
             enableSelection={false}
             defaultPageSize={25}
             refreshKey={refreshKey}

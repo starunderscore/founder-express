@@ -1,12 +1,14 @@
 "use client";
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, Checkbox, Group, MultiSelect, Stack, Text, TextInput, Title, ActionIcon, Badge, Alert } from '@mantine/core';
+import { Button, Card, Checkbox, Group, MultiSelect, Stack, Text, TextInput, Title, ActionIcon, Badge, Alert, Modal } from '@mantine/core';
 import { PermissionsMatrix } from '@/components/PermissionsMatrix';
 import { EmployerAdminGate } from '@/components/EmployerAdminGate';
 import { collection, doc, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { updateEmployeeDoc } from '@/services/employees';
+import { restoreEmployeeDoc, deleteEmployeeDoc } from '@/services/employees/firestore';
+import EmployeeDeletePermanentModal from '@/components/employees/EmployeeDeletePermanentModal';
 import { namesToIds, idsToNames } from '@/lib/permissions';
 
 export default function EditEmployeePage({ params }: { params: { id: string } }) {
@@ -52,6 +54,9 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [extraNames, setExtraNames] = useState<string[]>([]);
+  const [unarchiveOpen, setUnarchiveOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (!emp) return;
@@ -117,12 +122,21 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
 
       {emp?.removedAt && (
         <Alert color="red" variant="light" mb="md" title="Removed">
-          This employee is removed and appears in the Removed tab.
+          <Group justify="space-between" align="center">
+            <Text>This employee is removed. You can restore or permanently delete.</Text>
+            <Group gap="xs">
+              <Button variant="light" onClick={() => setRestoreOpen(true)}>Restore</Button>
+              <Button color="red" variant="light" onClick={() => setDeleteOpen(true)}>Delete permanently</Button>
+            </Group>
+          </Group>
         </Alert>
       )}
       {!emp?.removedAt && emp?.archiveAt && (
         <Alert color="gray" variant="light" mb="md" title="Archived">
-          This employee is archived and hidden from the Active list.
+          <Group justify="space-between" align="center">
+            <Text>This employee is archived and hidden from the Active list.</Text>
+            <Button variant="light" onClick={() => setUnarchiveOpen(true)}>Unarchive</Button>
+          </Group>
         </Alert>
       )}
 
@@ -156,6 +170,38 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
           </Stack>
         </form>
       </Card>
+
+      <Modal opened={unarchiveOpen} onClose={() => setUnarchiveOpen(false)} centered>
+        <Stack>
+          <Text>Unarchive this employee? They will return to Active.</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setUnarchiveOpen(false)}>Cancel</Button>
+            <Button onClick={async () => { if (!emp) return; await restoreEmployeeDoc(emp.id); setUnarchiveOpen(false); router.push('/employee/employees/manage'); }}>Unarchive</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={restoreOpen} onClose={() => setRestoreOpen(false)} centered>
+        <Stack>
+          <Text>Restore this employee back to Active?</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setRestoreOpen(false)}>Cancel</Button>
+            <Button onClick={async () => { if (!emp) return; await restoreEmployeeDoc(emp.id); setRestoreOpen(false); router.push('/employee/employees/manage'); }}>Restore</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <EmployeeDeletePermanentModal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        employeeName={emp?.name || ''}
+        onConfirm={async () => {
+          if (!emp) return;
+          await deleteEmployeeDoc(emp.id);
+          setDeleteOpen(false);
+          router.push('/employee/employees/manage');
+        }}
+      />
     </Stack>
     </EmployerAdminGate>
   );
