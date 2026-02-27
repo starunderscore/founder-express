@@ -12,6 +12,7 @@ export type VendorContact = {
   id: string;
   name: string;
   title?: string;
+  ownerId?: string | null;
   createdAt?: number;
   deletedAt?: number;
   tags?: string[];
@@ -25,4 +26,3 @@ export type VendorContact = {
 };
 
 export type VendorContactPatch = Partial<Omit<VendorContact, 'id' | 'createdAt'>>;
-

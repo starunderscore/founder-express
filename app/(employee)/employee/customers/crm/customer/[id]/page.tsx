@@ -515,11 +515,13 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           />
           <Select
             label="Account owner"
-            placeholder="Unassigned"
+            placeholder="Assign owner"
             data={employees.map((e) => ({ value: e.id, label: e.name }))}
             value={gOwnerId}
             onChange={(v) => setGOwnerId((v as string) || null)}
             clearable
+            searchable
+            nothingFoundMessage="No employees"
             comboboxProps={{ withinPortal: true }}
           />
           <Group justify="flex-end">
@@ -532,7 +534,8 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 source: gSource,
                 sourceDetail: gSource === 'Other' ? (gSourceDetail.trim() || undefined) : undefined,
                 tags: gTags,
-                ownerId: gOwnerId || undefined,
+                // Include ownerId explicitly so null clears it via service mapping
+                ownerId: gOwnerId,
               };
               await updateCRMRecord(customer.id, patch);
               setEditGeneralOpen(false);

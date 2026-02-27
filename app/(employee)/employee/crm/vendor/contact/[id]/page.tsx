@@ -47,6 +47,19 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
   const [cName, setCName] = useState('');
   const [cTitle, setCTitle] = useState('');
   const [cTags, setCTags] = useState<string[]>([]);
+  const [cOwnerId, setCOwnerId] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db(), 'ep_employees'), (snap) => {
+      const rows: Array<{ id: string; name: string }> = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        rows.push({ id: d.id, name: data.name || '' });
+      });
+      setEmployees(rows);
+    });
+    return () => unsub();
+  }, []);
   const [editOpen, setEditOpen] = useState(false);
   const [editActiveTab, setEditActiveTab] = useState<string | null>('overview');
   const [editPhonesOpen, setEditPhonesOpen] = useState(false);
@@ -253,7 +266,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
             <Stack gap={4}>
               <Group justify="space-between">
                 <Title order={4}>General</Title>
-                <Button variant="light" onClick={() => setEditOpen(true)}>Edit</Button>
+                <Button variant="light" onClick={() => { setCName(contact.name || ''); setCTitle(contact.title || ''); setCTags(Array.isArray((contact as any).tags) ? (contact as any).tags : []); setCOwnerId(typeof (contact as any).ownerId === 'string' ? (contact as any).ownerId : null); setEditOpen(true); }}>Edit</Button>
               </Group>
               <Stack gap={10}>
                 <Stack gap={2}>
@@ -281,9 +294,19 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
                   </Group>
                 </Stack>
                 <Stack gap={2}>
-                  <Text c="dimmed" size="xs">Joined</Text>
-                  <Text size="sm">{contact.createdAt ? new Date(contact.createdAt).toLocaleDateString() : '—'}</Text>
-                </Stack>
+                <Text c="dimmed" size="xs">Joined</Text>
+                <Text size="sm">{contact.createdAt ? new Date(contact.createdAt).toLocaleDateString() : '—'}</Text>
+              </Stack>
+              <Stack gap={2}>
+                <Text c="dimmed" size="xs">Account owner</Text>
+                <Group gap={6}>
+                  {(contact as any).ownerId ? (
+                    <Badge variant="light">{employees.find((e) => e.id === (contact as any).ownerId)?.name || 'Unknown'}</Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">Unassigned</Badge>
+                  )}
+                </Group>
+              </Stack>
               </Stack>
             </Stack>
           </Card>
@@ -628,6 +651,18 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
                 }}
                 comboboxProps={{ withinPortal: true, zIndex: 11000 }}
               />
+              <Select
+                mt="sm"
+                label="Account owner"
+                placeholder="Assign owner"
+                data={employees.map((e) => ({ value: e.id, label: e.name }))}
+                value={cOwnerId}
+                onChange={(v) => setCOwnerId((v as string) || null)}
+                clearable
+                searchable
+                nothingFoundMessage="No employees"
+                comboboxProps={{ withinPortal: true, zIndex: 11000 }}
+              />
             </Tabs.Panel>
           </Tabs>
           <div
@@ -641,7 +676,7 @@ export default function VendorContactDetailPage({ params }: { params: { id: stri
               width: '100%'
             }}
           >
-            <Button onClick={() => { saveOverview(); setEditOpen(false); }}>Save changes</Button>
+            <Button onClick={() => { updateVendorContact(vendor.id, contact.id, { name: cName.trim() || contact.name, title: cTitle.trim() || undefined, tags: cTags, ownerId: cOwnerId }, { getDb }); setEditOpen(false); }}>Save changes</Button>
           </div>
         </div>
       </Modal>
