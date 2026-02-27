@@ -13,6 +13,8 @@ export default function AdminPaymentProvidersConfigurationPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [selectOpen, setSelectOpen] = useState(false);
+  const [modalActive, setModalActive] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/finance/providers')
@@ -31,6 +33,11 @@ export default function AdminPaymentProvidersConfigurationPage() {
   const saveActive = () => {
     try { if (active) localStorage.setItem('admin-payment-active-provider', active); } catch {}
     alert('Saved (admin scaffold)');
+  };
+
+  const setAndPersistActive = (value: string | null) => {
+    setActive(value);
+    try { if (value) localStorage.setItem('admin-payment-active-provider', value); } catch {}
   };
 
   const anyConfigured = providers.some((p) => p.configured);
@@ -53,7 +60,10 @@ export default function AdminPaymentProvidersConfigurationPage() {
               </div>
             </Group>
           </Group>
-          <Button variant="light" onClick={() => setHelpOpen(true)}>Setup help</Button>
+          <Group gap="xs">
+            <Button variant="light" onClick={() => setHelpOpen(true)}>Setup help</Button>
+            <Button onClick={() => { const configured = providers.filter((p) => p.configured); setModalActive(active || configured[0]?.id || null); setSelectOpen(true); }} disabled={!anyConfigured}>Select active</Button>
+          </Group>
         </Group>
 
         {/* Top: No configuration detected card */}
@@ -76,7 +86,6 @@ export default function AdminPaymentProvidersConfigurationPage() {
             <Table verticalSpacing="xs">
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th style={{ width: 80 }}>Active</Table.Th>
                   <Table.Th>Provider</Table.Th>
                   <Table.Th>Status</Table.Th>
                   <Table.Th>Env var(s)</Table.Th>
@@ -86,9 +95,11 @@ export default function AdminPaymentProvidersConfigurationPage() {
                 {providers.map((p) => (
                   <Table.Tr key={p.id}>
                     <Table.Td>
-                      <Radio name="active-payment-provider" value={p.id} checked={active === p.id} onChange={() => setActive(p.id)} disabled={!p.configured} aria-label={`Activate ${p.name}`} />
+                      <Group gap="xs">
+                        <Text>{p.name}</Text>
+                        {active === p.id && <Badge color="blue" variant="light">Active</Badge>}
+                      </Group>
                     </Table.Td>
-                    <Table.Td>{p.name}</Table.Td>
                     <Table.Td>
                       <Badge color={p.configured ? 'green' : 'gray'} variant="light">{p.configured ? 'Configured' : 'Not configured'}</Badge>
                     </Table.Td>
@@ -97,14 +108,12 @@ export default function AdminPaymentProvidersConfigurationPage() {
                 ))}
                 {providers.length === 0 && (
                   <Table.Tr>
-                    <Table.Td colSpan={4}><Text c="dimmed">No providers detected.</Text></Table.Td>
+                    <Table.Td colSpan={3}><Text c="dimmed">No providers detected.</Text></Table.Td>
                   </Table.Tr>
                 )}
               </Table.Tbody>
             </Table>
-            <Group justify="flex-start" mt="sm">
-              <Button onClick={saveActive} disabled={!anyConfigured}>Save selection</Button>
-            </Group>
+            {/* selection handled by header modal */}
           </Stack>
         </Card>
 
@@ -138,6 +147,30 @@ Notes:
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setHelpOpen(false)}>Close</Button>
             </Group>
+          </Stack>
+        </Modal>
+
+        <Modal opened={selectOpen} onClose={() => setSelectOpen(false)} title="Select active payment provider" centered>
+          <Stack>
+            {providers.filter((p) => p.configured).length > 0 ? (
+              <Stack>
+                {providers.filter((p) => p.configured).map((p) => (
+                  <Group key={p.id} justify="space-between">
+                    <Group>
+                      <Radio name="modal-active-payment-provider" value={p.id} checked={modalActive === p.id} onChange={() => setModalActive(p.id)} aria-label={`Choose ${p.name}`} />
+                      <Text>{p.name}</Text>
+                    </Group>
+                    <Badge color="green" variant="light">Configured</Badge>
+                  </Group>
+                ))}
+                <Group justify="flex-end">
+                  <Button variant="default" onClick={() => setSelectOpen(false)}>Cancel</Button>
+                  <Button onClick={() => { if (modalActive) setAndPersistActive(modalActive); setSelectOpen(false); }}>Save selection</Button>
+                </Group>
+              </Stack>
+            ) : (
+              <Text c="dimmed">No providers configured. Add env vars and restart.</Text>
+            )}
           </Stack>
         </Modal>
       </Stack>
