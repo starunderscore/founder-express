@@ -3,53 +3,25 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Card, Group, Select, Stack, Table, Text, Title } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts';
+import { getStripeFinanceGeneral } from '@/services/stripe/finance-general-client';
+import { getProductPerformance, type ProductRow } from '@/services/stripe/product-performance-client';
 
 type RangeKey = '6m' | '12m' | 'ytd' | 'all';
 
 export default function ProductPerformanceReportPage() {
   const router = useRouter();
-  const invoices = useFinanceStore((s) => s.invoices);
-  const products = useFinanceStore((s) => s.settings.products);
-  const currency = useFinanceStore((s) => s.settings.currency);
+  const defaultCurrency = useFinanceStore((s) => s.settings.currency);
   const [range, setRange] = useState<RangeKey>('12m');
+  const [currency, setCurrency] = useState<string>(defaultCurrency);
+  const [rows, setRows] = useState<ProductRow[]>([]);
 
-  const { data, table } = useMemo(() => {
-    const now = new Date();
-    const { start, end } = getRange(range, now);
-    const agg = new Map<string, { value: number; count: number }>();
-    // Aggregate by invoice items; fallback to 'Uncategorized' when no items
-    const eligible = invoices.filter((i) => i.status === 'Paid' && i.currency === currency);
-    for (const inv of eligible) {
-      const ts = typeof inv.paidAt === 'number' ? inv.paidAt : inv.issuedAt;
-      if (ts < start || ts > end) continue;
-      if (Array.isArray(inv.items) && inv.items.length > 0) {
-        for (const it of inv.items) {
-          const name = (it as any).productName || it.description || 'Uncategorized';
-          const amount = Number(it.quantity || 0) * Number(it.unitPrice || 0);
-          const cur = agg.get(name) || { value: 0, count: 0 };
-          cur.value += amount;
-          cur.count += 1;
-          agg.set(name, cur);
-        }
-      } else {
-        const cur = agg.get('Uncategorized') || { value: 0, count: 0 };
-        cur.value += Number(inv.amount || 0);
-        cur.count += 1;
-        agg.set('Uncategorized', cur);
-      }
-    }
-    // If nothing real, use sample
-    if (agg.size === 0) {
-      ['Starter', 'Pro', 'Enterprise'].forEach((p, idx) => agg.set(p, { value: 3000 + idx * 2400, count: 5 - idx }));
-    }
-    const rows = Array.from(agg.entries()).map(([name, v]) => ({ name, value: v.value, count: v.count }));
-    rows.sort((a, b) => b.value - a.value);
-    const chartData = rows.slice(0, 10); // top 10 for readability
-    return { data: chartData, table: rows };
-  }, [invoices, currency, range]);
+  useEffect(() => { (async () => { try { const g = await getStripeFinanceGeneral(); if (g?.currency) setCurrency(g.currency); } catch {} })(); }, []);
+  useEffect(() => { (async () => { try { const res = await getProductPerformance(range, currency?.toUpperCase()); setRows(res.rows); } catch { setRows([]); } })(); }, [range, currency]);
 
+  const data = useMemo(() => rows.slice(0, 10), [rows]);
+  const table = rows;
   const total = useMemo(() => table.reduce((acc, r) => acc + r.value, 0), [table]);
 
   return (

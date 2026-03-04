@@ -1,10 +1,11 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useFinanceStore } from '@/state/financeStore';
 import { listCRM } from '@/services/crm/firestore';
 import { Card, Group, SimpleGrid, Text, Title } from '@mantine/core';
 import { IconChartBar } from '@tabler/icons-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { getStripeOverview } from '@/services/stripe/overview-client';
+import { getStripeFinanceGeneral } from '@/services/stripe/finance-general-client';
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -17,27 +18,14 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 
 export default function FinanceOverviewPage() {
-  const invoices = useFinanceStore((s) => s.invoices);
-  const settings = useFinanceStore((s) => s.settings);
   const [customersCount, setCustomersCount] = useState(0);
+  const [currency, setCurrency] = useState('USD');
+  const [totals, setTotals] = useState<{ paid: number; unpaid: number; lateCount: number }>({ paid: 0, unpaid: 0, lateCount: 0 });
+  const [grace, setGrace] = useState(0);
   useEffect(() => { (async () => { const rows = await listCRM('active'); setCustomersCount(rows.filter((r:any)=>r.type==='customer').length); })(); }, []);
-
-  const today = new Date();
-  const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
-  const toMoney = (n: number) => `$${n.toFixed(2)}`;
-
-  const paid = invoices.filter((i) => i.status === 'Paid');
-  const unpaid = invoices.filter((i) => i.status === 'Unpaid');
-  const late = unpaid.filter((i) => {
-    const d = new Date(i.dueDate);
-    const grace = new Date(d);
-    grace.setDate(grace.getDate() + (settings.gracePeriodDays || 0));
-    return grace < today;
-  });
-
-  const totalPaid = sum(paid.map((i) => i.amount));
-  const totalUnpaid = sum(unpaid.map((i) => i.amount));
-  const totalLate = sum(late.map((i) => i.amount));
+  useEffect(() => { (async () => { const g = await getStripeFinanceGeneral(); setGrace(g.gracePeriodDays || 0); setCurrency(g.currency || 'USD'); })(); }, []);
+  useEffect(() => { (async () => { const o = await getStripeOverview(grace); setTotals({ paid: o.totalPaid, unpaid: o.totalUnpaid, lateCount: o.lateCount }); if (o.currency) setCurrency(o.currency); })(); }, [grace]);
+  const toMoney = (n: number) => `${currency} ${n.toFixed(2)}`;
 
   return (
     <EmployerAuthGate>
@@ -51,18 +39,11 @@ export default function FinanceOverviewPage() {
 
       <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} mb="md">
         <StatCard label="Total customers" value={String(customersCount)} />
-        <StatCard label="Total paid" value={toMoney(totalPaid)} />
-        <StatCard label="Outstanding" value={toMoney(totalUnpaid)} />
-        <StatCard label={`Late (>${settings.gracePeriodDays}d)`} value={toMoney(totalLate)} />
+        <StatCard label="Total paid" value={toMoney(totals.paid)} />
+        <StatCard label="Outstanding" value={toMoney(totals.unpaid)} />
+        <StatCard label={`Late (>${grace}d)`} value={String(totals.lateCount)} />
       </SimpleGrid>
 
-      <Card withBorder>
-        <Group gap="lg">
-          <Text size="sm">Paid invoices: {paid.length}</Text>
-          <Text size="sm">Unpaid invoices: {unpaid.length}</Text>
-          <Text size="sm" c={late.length ? 'red' : undefined}>Late invoices: {late.length}</Text>
-        </Group>
-      </Card>
     </EmployerAuthGate>
   );
 }

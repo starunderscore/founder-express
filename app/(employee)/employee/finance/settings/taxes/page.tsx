@@ -6,20 +6,23 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
-import { createTax, listenTaxes, updateTaxDoc, archiveTaxDoc, removeTaxDoc, type Tax } from '@/services/finance/taxes';
+import { listStripeTaxes, createStripeTax, updateStripeTax, archiveStripeTax, removeStripeTax, type StripeTax } from '@/services/stripe/taxes-client';
 
 export default function FinanceTaxesPage() {
   const router = useRouter();
-  const [rows, setRows] = useState<Tax[]>([]);
-  useEffect(() => {
-    const unsub = listenTaxes('active', setRows);
-    return () => { try { unsub(); } catch {} };
-  }, []);
+  const [rows, setRows] = useState<StripeTax[]>([]);
+  const refresh = async () => { setRows(await listStripeTaxes('active')); };
+  useEffect(() => { refresh(); }, []);
 
   const [taxOpen, setTaxOpen] = useState(false);
   const [editingTaxId, setEditingTaxId] = useState<string | null>(null);
   const [taxName, setTaxName] = useState('');
   const [taxRate, setTaxRate] = useState<number | string>('');
+  const [taxInclusive, setTaxInclusive] = useState(false);
+  const [taxCountry, setTaxCountry] = useState('');
+  const [taxState, setTaxState] = useState('');
+  const [taxDesc, setTaxDesc] = useState('');
+  const [infoOpen, setInfoOpen] = useState(false);
 
   return (
     <EmployerAuthGate>
@@ -64,8 +67,10 @@ export default function FinanceTaxesPage() {
                 </Anchor>
               ) },
               { key: 'rate', header: 'Rate', width: 120, render: (t: any) => `${t.rate}%` },
+              { key: 'inclusive', header: 'Inclusive', width: 100, render: (t: any) => (<Text size="sm">{t.inclusive ? 'Yes' : 'No'}</Text>) },
+              { key: 'location', header: 'Location', width: 140, render: (t: any) => (<Text size="sm">{[t.country, t.state].filter(Boolean).join('-') || '—'}</Text>) },
               { key: 'enabled', header: 'Enabled', width: 120, render: (t: any) => (
-                <Checkbox checked={t.enabled} onChange={(e) => updateTaxDoc(t.id, { enabled: e.currentTarget.checked })} />
+                <Checkbox checked={t.enabled} onChange={async (e) => { await updateStripeTax(t.id, { enabled: e.currentTarget.checked }); refresh(); }} />
               ) },
               { key: 'actions', header: '', width: 1, render: (t: any) => (
                 <Menu withinPortal position="bottom-end" shadow="md" width={180}>
@@ -80,8 +85,8 @@ export default function FinanceTaxesPage() {
                   </Menu.Target>
                   <Menu.Dropdown>
                     <Menu.Item onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxOpen(true); }}>Edit</Menu.Item>
-                    <Menu.Item onClick={() => archiveTaxDoc(t.id)}>Archive</Menu.Item>
-                    <Menu.Item color="red" onClick={() => removeTaxDoc(t.id)}>Remove</Menu.Item>
+                    <Menu.Item onClick={async () => { await archiveStripeTax(t.id); refresh(); }}>Archive</Menu.Item>
+                    <Menu.Item color="red" onClick={async () => { await removeStripeTax(t.id); refresh(); }}>Remove</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
@@ -96,18 +101,42 @@ export default function FinanceTaxesPage() {
           <Stack>
             <TextInput label="Tax name" placeholder="VAT" value={taxName} onChange={(e) => setTaxName(e.currentTarget.value)} />
             <NumberInput label="Rate (%)" value={taxRate as any} onChange={setTaxRate as any} min={0} step={0.01} />
+            <Group align="center" gap="xs">
+              <Checkbox label="Inclusive" checked={taxInclusive} onChange={(e) => setTaxInclusive(e.currentTarget.checked)} />
+              <ActionIcon variant="subtle" aria-label="What is inclusive tax?" onClick={() => setInfoOpen(true)}>?</ActionIcon>
+            </Group>
+            <Group grow>
+              <TextInput label="Country (optional)" placeholder="US" value={taxCountry} onChange={(e) => setTaxCountry(e.currentTarget.value)} />
+              <TextInput label="State/Region (optional)" placeholder="CA" value={taxState} onChange={(e) => setTaxState(e.currentTarget.value)} />
+            </Group>
+            <TextInput label="Description (optional)" placeholder="Sales tax" value={taxDesc} onChange={(e) => setTaxDesc(e.currentTarget.value)} />
             <Group justify="flex-end">
               <Button variant="default" onClick={() => { setTaxOpen(false); setEditingTaxId(null); }}>Cancel</Button>
               <Button onClick={async () => {
                 const id = editingTaxId as string | undefined;
                 const rateNum = Number(taxRate) || 0;
-                if (!id) await createTax({ name: taxName.trim(), rate: rateNum }); else await updateTaxDoc(id, { name: taxName.trim(), rate: rateNum });
-                setTaxOpen(false); setEditingTaxId(null);
+                const core = { name: taxName.trim(), rate: rateNum, inclusive: taxInclusive, country: taxCountry.trim() || undefined, state: taxState.trim() || undefined, description: taxDesc.trim() || undefined };
+                if (!id) await createStripeTax(core); else await updateStripeTax(id, core);
+                setTaxOpen(false); setEditingTaxId(null); refresh();
               }}>Save</Button>
             </Group>
+          </Stack>
+        </Modal>
+
+        <Modal opened={infoOpen} onClose={() => setInfoOpen(false)} title="Inclusive tax" centered>
+          <Stack>
+            <Text>
+              Inclusive tax means the tax is included in the item price you set. For example, if a product is $100 and a 10% tax is inclusive, the $100 already contains the tax portion. Exclusive tax is added on top of the item price at checkout.
+            </Text>
+            <Text c="dimmed" size="sm">
+              Stripe uses tax rate settings to determine whether to add tax on top (exclusive) or treat it as part of the price (inclusive).
+            </Text>
           </Stack>
         </Modal>
       </Stack>
     </EmployerAuthGate>
   );
 }
+  
+// Info modal about inclusive tax
+// Rendered at root of component tree above

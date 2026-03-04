@@ -2,6 +2,7 @@ export type InvoiceTemplateItem = {
   description: string;
   quantity: number;
   unitPrice: number;
+  priceId?: string; // optional Stripe price id for this line
 };
 
 export type InvoiceTemplate = {
@@ -22,4 +23,3 @@ export type InvoiceTemplateCreateInput = {
 };
 
 export type InvoiceTemplatePatchInput = Partial<Omit<InvoiceTemplate, 'id'>>;
-

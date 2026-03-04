@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { listenInvoiceTemplates, createInvoiceTemplate, updateInvoiceTemplateDoc, archiveInvoiceTemplateDoc, removeInvoiceTemplateDoc, type InvoiceTemplate } from '@/services/finance/invoice-templates';
-import { listenTaxes, type Tax } from '@/services/finance/taxes';
+import { listStripeTaxes, type StripeTax } from '@/services/stripe/taxes-client';
+import { listStripeProducts, type StripeProduct } from '@/services/stripe/products-client';
 
 export default function InvoiceTemplatesPage() {
   const router = useRouter();
@@ -15,17 +16,14 @@ export default function InvoiceTemplatesPage() {
     const unsub = listenInvoiceTemplates('active', setRows);
     return () => { try { unsub(); } catch {} };
   }, []);
-  const [taxes, setTaxes] = useState<Tax[]>([]);
-  useEffect(() => {
-    const unsub = listenTaxes('active', setTaxes);
-    return () => { try { unsub(); } catch {} };
-  }, []);
+  const [taxes, setTaxes] = useState<StripeTax[]>([]);
+  useEffect(() => { (async () => { setTaxes(await listStripeTaxes('active')); })(); }, []);
   const taxOptions = useMemo(() => taxes.map((t) => ({ value: t.id, label: `${t.name} (${t.rate}%)` })), [taxes]);
 
   const [tplOpen, setTplOpen] = useState(false);
   const [editingTplId, setEditingTplId] = useState<string | null>(null);
   const [tplName, setTplName] = useState('');
-  const [tplItems, setTplItems] = useState<{ id: string; description: string; quantity: string; unitPrice: string }[]>([]);
+  const [tplItems, setTplItems] = useState<{ id: string; description: string; quantity: string; unitPrice: string; priceId?: string }[]>([]);
   const [tplTaxIds, setTplTaxIds] = useState<string[]>([]);
 
   return (
@@ -63,7 +61,7 @@ export default function InvoiceTemplatesPage() {
           {(() => {
             const columns: import('@/components/data-table/LocalDataTable').Column<any>[] = [
               { key: 'name', header: 'Name', render: (tpl: any) => (
-                <Anchor onClick={() => { setTplName(tpl.name); setTplItems(tpl.items.map((it: any) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice) }))); setTplTaxIds(tpl.taxIds); setEditingTplId(tpl.id); setTplOpen(true); }}>
+                <Anchor onClick={() => { setTplName(tpl.name); setTplItems(tpl.items.map((it: any) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice), priceId: it.priceId }))); setTplTaxIds(tpl.taxIds); setEditingTplId(tpl.id); setTplOpen(true); }}>
                   {tpl.name || '—'}
                 </Anchor>
               ) },
@@ -81,7 +79,7 @@ export default function InvoiceTemplatesPage() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => { setTplName(tpl.name); setTplItems(tpl.items.map((it: any) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice) }))); setTplTaxIds(tpl.taxIds); setEditingTplId(tpl.id); setTplOpen(true); }}>Edit</Menu.Item>
+                    <Menu.Item onClick={() => { setTplName(tpl.name); setTplItems(tpl.items.map((it: any) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice), priceId: it.priceId }))); setTplTaxIds(tpl.taxIds); setEditingTplId(tpl.id); setTplOpen(true); }}>Edit</Menu.Item>
                     <Menu.Item onClick={() => archiveInvoiceTemplateDoc(tpl.id)}>Archive</Menu.Item>
                     <Menu.Item color="red" onClick={() => removeInvoiceTemplateDoc(tpl.id)}>Remove</Menu.Item>
                   </Menu.Dropdown>
@@ -118,8 +116,8 @@ function ModalEditTemplate(props: {
   editingTplId: string | null;
   tplName: string;
   setTplName: (v: string) => void;
-  tplItems: { id: string; description: string; quantity: string; unitPrice: string }[];
-  setTplItems: (v: { id: string; description: string; quantity: string; unitPrice: string }[]) => void;
+  tplItems: { id: string; description: string; quantity: string; unitPrice: string; priceId?: string }[];
+  setTplItems: (v: { id: string; description: string; quantity: string; unitPrice: string; priceId?: string }[]) => void;
   tplTaxIds: string[];
   setTplTaxIds: (v: string[]) => void;
   taxOptions: { value: string; label: string }[];
@@ -130,7 +128,13 @@ function ModalEditTemplate(props: {
 
   const addTplRow = () => setTplItems([ ...tplItems, { id: `row-${Date.now()}-${Math.random()}`, description: '', quantity: '1', unitPrice: '0' } ]);
   const removeTplRow = (id: string) => setTplItems(tplItems.filter((r) => r.id !== id));
-  const updateTplRow = (id: string, patch: Partial<{ description: string; quantity: string; unitPrice: string }>) => setTplItems(tplItems.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const updateTplRow = (id: string, patch: Partial<{ description: string; quantity: string; unitPrice: string; priceId?: string }>) => setTplItems(tplItems.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const [pricePickerOpen, setPricePickerOpen] = useState<{ open: boolean; rowId?: string }>({ open: false });
+  const [products, setProducts] = useState<StripeProduct[] | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
+  useEffect(() => { if (pricePickerOpen.open && !products) (async () => setProducts(await listStripeProducts('active')))(); }, [pricePickerOpen.open, products]);
 
   return (
     <Modal opened={opened} onClose={onClose} title={editingTplId ? 'Edit template' : 'New template'} size="lg" centered>
@@ -144,6 +148,7 @@ function ModalEditTemplate(props: {
               <Table.Th style={{ width: 120 }}>Qty</Table.Th>
               <Table.Th style={{ width: 160 }}>Unit price</Table.Th>
               <Table.Th style={{ width: 1 }}></Table.Th>
+              <Table.Th style={{ width: 1 }}></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -155,6 +160,9 @@ function ModalEditTemplate(props: {
                 </Table.Td>
                 <Table.Td>
                   <NumberInput value={r.unitPrice as any} onChange={(v: any) => updateTplRow(r.id, { unitPrice: String(v ?? '0') })} min={0} step={0.01} />
+                </Table.Td>
+                <Table.Td>
+                  <Button size="xs" variant="light" onClick={() => { setSelectedProductId(null); setSelectedPriceId(null); setPricePickerOpen({ open: true, rowId: r.id }); }}>Link Stripe price</Button>
                 </Table.Td>
                 <Table.Td><Button size="xs" variant="subtle" color="red" onClick={() => removeTplRow(r.id)}>Remove</Button></Table.Td>
               </Table.Tr>
@@ -173,12 +181,42 @@ function ModalEditTemplate(props: {
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>Cancel</Button>
           <Button onClick={() => {
-            const payload = { name: (tplName || '').trim(), items: tplItems.map((r) => ({ description: r.description, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 })), taxIds: tplTaxIds };
+            const payload = { name: (tplName || '').trim(), items: tplItems.map((r) => ({ description: r.description, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0, priceId: r.priceId })), taxIds: tplTaxIds };
             if (!payload.name) return;
             if (editingTplId) updateTemplate(editingTplId, payload); else addTemplate(payload);
             onClose();
           }}>Save</Button>
         </Group>
+
+        <Modal opened={pricePickerOpen.open} onClose={() => setPricePickerOpen({ open: false })} title="Link Stripe price" centered>
+          <Stack>
+            <Select
+              label="Product"
+              data={(products || []).map((p) => ({ value: p.id, label: p.name }))}
+              value={selectedProductId}
+              onChange={(v) => { setSelectedProductId(v); setSelectedPriceId(null); }}
+              searchable
+              placeholder="Select a product"
+            />
+            <Select
+              label="Price"
+              data={(products || []).find((p) => p.id === selectedProductId)?.prices.map((pr) => ({ value: pr.id, label: `${pr.currency} ${(pr.unitAmount).toFixed(2)} ${pr.type === 'recurring' ? `· ${pr.recurring?.interval}/${pr.recurring?.intervalCount || 1}` : ''}` })) || []}
+              value={selectedPriceId}
+              onChange={setSelectedPriceId}
+              searchable
+              placeholder="Select a price"
+            />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setPricePickerOpen({ open: false })}>Cancel</Button>
+              <Button disabled={!selectedProductId || !selectedPriceId} onClick={() => {
+                const pr = (products || []).find((p) => p.id === selectedProductId)?.prices.find((x) => x.id === selectedPriceId);
+                if (!pr || !pricePickerOpen.rowId) return;
+                updateTplRow(pricePickerOpen.rowId, { priceId: pr.id, unitPrice: String(pr.unitAmount), description: (products || []).find((p) => p.id === selectedProductId)?.name || '' });
+                setPricePickerOpen({ open: false });
+              }}>Link</Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </Modal>
   );

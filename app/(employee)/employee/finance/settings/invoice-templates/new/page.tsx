@@ -1,36 +1,39 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { ActionIcon, Button, Card, Group, MultiSelect, Stack, Table, Text, TextInput, Title, NumberInput } from '@mantine/core';
+import { ActionIcon, Button, Card, Group, MultiSelect, Stack, Table, Text, TextInput, Title, NumberInput, Select } from '@mantine/core';
 import { IconFileInvoice } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createInvoiceTemplate } from '@/services/finance/invoice-templates';
-import { listenTaxes, type Tax } from '@/services/finance/taxes';
+import { listStripeTaxes, type StripeTax } from '@/services/stripe/taxes-client';
+import { listStripeProducts, type StripeProduct } from '@/services/stripe/products-client';
 
 export default function NewInvoiceTemplatePage() {
   const router = useRouter();
-  const [taxes, setTaxes] = useState<Tax[]>([]);
-  useEffect(() => {
-    const unsub = listenTaxes('active', setTaxes);
-    return () => { try { unsub(); } catch {} };
-  }, []);
+  const [taxes, setTaxes] = useState<StripeTax[]>([]);
+  useEffect(() => { (async () => { setTaxes(await listStripeTaxes('active')); })(); }, []);
 
   const taxOptions = useMemo(() => taxes.map((t) => ({ value: t.id, label: `${t.name} (${t.rate}%)` })), [taxes]);
 
   const [name, setName] = useState('');
-  const [items, setItems] = useState<{ id: string; description: string; quantity: string; unitPrice: string }[]>([]);
+  const [items, setItems] = useState<{ id: string; description: string; quantity: string; unitPrice: string; priceId?: string }[]>([]);
   const [taxIds, setTaxIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const addRow = () => setItems((rows) => [...rows, { id: `row-${Date.now()}-${Math.random()}`, description: '', quantity: '1', unitPrice: '0' }]);
   const removeRow = (id: string) => setItems((rows) => rows.filter((r) => r.id !== id));
-  const updateRow = (id: string, patch: Partial<{ description: string; quantity: string; unitPrice: string }>) => setItems((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const updateRow = (id: string, patch: Partial<{ description: string; quantity: string; unitPrice: string; priceId?: string }>) => setItems((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const [pricePickerOpen, setPricePickerOpen] = useState<{ open: boolean; rowId?: string }>({ open: false });
+  const [products, setProducts] = useState<StripeProduct[] | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
+  useEffect(() => { if (pricePickerOpen.open && !products) (async () => setProducts(await listStripeProducts('active')))(); }, [pricePickerOpen.open, products]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError('Template name required'); return; }
     if (items.length === 0) { setError('Add at least one item'); return; }
-    const payload = { name: name.trim(), items: items.map((r) => ({ description: r.description, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 })), taxIds };
+    const payload = { name: name.trim(), items: items.map((r) => ({ description: r.description, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0, priceId: r.priceId })), taxIds };
     await createInvoiceTemplate(payload);
     router.push('/employee/finance/settings/invoice-templates');
   };
@@ -65,6 +68,7 @@ export default function NewInvoiceTemplatePage() {
                     <Table.Th style={{ width: 120 }}>Qty</Table.Th>
                     <Table.Th style={{ width: 160 }}>Unit price</Table.Th>
                     <Table.Th style={{ width: 1 }}></Table.Th>
+                    <Table.Th style={{ width: 1 }}></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -76,6 +80,9 @@ export default function NewInvoiceTemplatePage() {
                       </Table.Td>
                       <Table.Td>
                         <NumberInput value={r.unitPrice as any} onChange={(v: any) => updateRow(r.id, { unitPrice: String(v ?? '0') })} min={0} step={0.01} />
+                      </Table.Td>
+                      <Table.Td>
+                        <Button size="xs" variant="light" onClick={() => { setSelectedProductId(null); setSelectedPriceId(null); setPricePickerOpen({ open: true, rowId: r.id }); }}>Link Stripe price</Button>
                       </Table.Td>
                       <Table.Td><Button size="xs" variant="subtle" color="red" onClick={() => removeRow(r.id)}>Remove</Button></Table.Td>
                     </Table.Tr>
@@ -99,6 +106,36 @@ export default function NewInvoiceTemplatePage() {
             </Stack>
           </form>
         </Card>
+
+        <Modal opened={pricePickerOpen.open} onClose={() => setPricePickerOpen({ open: false })} title="Link Stripe price" centered>
+          <Stack>
+            <Select
+              label="Product"
+              data={(products || []).map((p) => ({ value: p.id, label: p.name }))}
+              value={selectedProductId}
+              onChange={(v) => { setSelectedProductId(v); setSelectedPriceId(null); }}
+              searchable
+              placeholder="Select a product"
+            />
+            <Select
+              label="Price"
+              data={(products || []).find((p) => p.id === selectedProductId)?.prices.map((pr) => ({ value: pr.id, label: `${pr.currency} ${(pr.unitAmount).toFixed(2)} ${pr.type === 'recurring' ? `· ${pr.recurring?.interval}/${pr.recurring?.intervalCount || 1}` : ''}` })) || []}
+              value={selectedPriceId}
+              onChange={setSelectedPriceId}
+              searchable
+              placeholder="Select a price"
+            />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setPricePickerOpen({ open: false })}>Cancel</Button>
+              <Button disabled={!selectedProductId || !selectedPriceId} onClick={() => {
+                const pr = (products || []).find((p) => p.id === selectedProductId)?.prices.find((x) => x.id === selectedPriceId);
+                if (!pr || !pricePickerOpen.rowId) return;
+                updateRow(pricePickerOpen.rowId, { priceId: pr.id, unitPrice: String(pr.unitAmount), description: (products || []).find((p) => p.id === selectedProductId)?.name || '' });
+                setPricePickerOpen({ open: false });
+              }}>Link</Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </EmployerAuthGate>
   );

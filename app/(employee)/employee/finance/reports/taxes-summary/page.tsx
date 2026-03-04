@@ -3,66 +3,25 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Card, Group, Select, Stack, Table, Text, Title } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts';
+import { getStripeFinanceGeneral } from '@/services/stripe/finance-general-client';
+import { getTaxesSummary, type TaxRow } from '@/services/stripe/taxes-summary-client';
 
 type RangeKey = '6m' | '12m' | 'ytd' | 'all';
 
 export default function TaxesSummaryReportPage() {
   const router = useRouter();
-  const invoices = useFinanceStore((s) => s.invoices);
-  const taxes = useFinanceStore((s) => s.settings.taxes);
-  const currency = useFinanceStore((s) => s.settings.currency);
+  const defaultCurrency = useFinanceStore((s) => s.settings.currency);
   const [range, setRange] = useState<RangeKey>('12m');
+  const [currency, setCurrency] = useState<string>(defaultCurrency);
+  const [rows, setRows] = useState<TaxRow[]>([]);
 
-  const { data, table } = useMemo(() => {
-    const now = new Date();
-    const { start, end } = getRange(range, now);
-    const taxMap = new Map<string, { name: string; rate: number }>();
-    taxes.forEach((t) => taxMap.set(t.id, { name: t.name, rate: t.rate }));
-    const agg = new Map<string, { name: string; value: number; count: number }>();
-    const eligible = invoices.filter((i) => i.status === 'Paid' && i.currency === currency);
-    for (const inv of eligible) {
-      const ts = typeof inv.paidAt === 'number' ? inv.paidAt : inv.issuedAt;
-      if (ts < start || ts > end) continue;
-      const ids: string[] = Array.isArray(inv.taxIds) ? inv.taxIds : [];
-      if (ids.length === 0) continue;
-      const rates = ids.map((id) => taxMap.get(id)?.rate || 0);
-      const subtotal = typeof (inv as any).subtotal === 'number' ? (inv as any).subtotal : sumItems(inv);
-      if (subtotal && subtotal > 0) {
-        ids.forEach((id, idx) => {
-          const r = rates[idx] || 0;
-          const amt = subtotal * (r / 100);
-          const key = id;
-          const cur = agg.get(key) || { name: taxMap.get(id)?.name || `Tax ${id}`, value: 0, count: 0 };
-          cur.value += amt;
-          cur.count += 1;
-          agg.set(key, cur);
-        });
-      } else if (typeof (inv as any).taxTotal === 'number') {
-        const totalTax = Number((inv as any).taxTotal) || 0;
-        const totalRate = rates.reduce((a, b) => a + b, 0);
-        if (totalRate > 0 && totalTax > 0) {
-          ids.forEach((id, idx) => {
-            const share = (rates[idx] || 0) / totalRate;
-            const amt = totalTax * share;
-            const cur = agg.get(id) || { name: taxMap.get(id)?.name || `Tax ${id}`, value: 0, count: 0 };
-            cur.value += amt;
-            cur.count += 1;
-            agg.set(id, cur);
-          });
-        }
-      }
-    }
-    if (agg.size === 0) {
-      ['Sales Tax', 'VAT', 'Local Tax'].forEach((n, idx) => agg.set(`dummy-${idx}`, { name: n, value: 1500 + idx * 900, count: 3 - idx }));
-    }
-    const rows = Array.from(agg.values());
-    rows.sort((a, b) => b.value - a.value);
-    const chartData = rows.slice(0, 10).map((r) => ({ name: r.name, value: r.value }));
-    return { data: chartData, table: rows };
-  }, [invoices, taxes, currency, range]);
+  useEffect(() => { (async () => { try { const g = await getStripeFinanceGeneral(); if (g?.currency) setCurrency(g.currency); } catch {} })(); }, []);
+  useEffect(() => { (async () => { try { const res = await getTaxesSummary(range, currency?.toUpperCase()); setRows(res.rows); } catch { setRows([]); } })(); }, [range, currency]);
 
+  const data = useMemo(() => rows.slice(0, 10).map((r) => ({ name: r.name, value: r.value })), [rows]);
+  const table = rows;
   const total = useMemo(() => table.reduce((acc, r) => acc + r.value, 0), [table]);
 
   return (
@@ -156,28 +115,4 @@ export default function TaxesSummaryReportPage() {
   );
 }
 
-function getRange(key: RangeKey, now: Date) {
-  if (key === '6m') {
-    const start = new Date(now.getFullYear(), now.getMonth() - 5, 1).getTime();
-    const end = now.getTime();
-    return { start, end };
-  }
-  if (key === '12m') {
-    const start = new Date(now.getFullYear(), now.getMonth() - 11, 1).getTime();
-    const end = now.getTime();
-    return { start, end };
-  }
-  // ytd
-  if (key === 'ytd') {
-    const start = new Date(now.getFullYear(), 0, 1).getTime();
-    const end = now.getTime();
-    return { start, end };
-  }
-  // all time
-  return { start: 0, end: now.getTime() };
-}
-
-function sumItems(inv: any): number {
-  if (!Array.isArray(inv.items)) return 0;
-  return inv.items.reduce((acc: number, it: any) => acc + Number(it.quantity || 0) * Number(it.unitPrice || 0), 0);
-}
+// Local helpers not needed; API handles range and tax aggregation

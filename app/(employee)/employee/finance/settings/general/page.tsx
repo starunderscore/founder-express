@@ -5,7 +5,8 @@ import { useFinanceStore } from '@/state/financeStore';
 import { Button, Card, Checkbox, Group, NumberInput, Select, Stack, Text, Title, ActionIcon } from '@mantine/core';
 import { IconAdjustments } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { buildGeneralPatch, listAllowedCurrencies, readFinanceGeneral, listenFinanceGeneral, updateFinanceGeneral, type GeneralPatchInput } from '@/services/finance/general';
+import { buildGeneralPatch, listAllowedCurrencies, type GeneralPatchInput } from '@/services/finance/general';
+import { getStripeFinanceGeneral, patchStripeFinanceGeneral } from '@/services/stripe/finance-general-client';
 import { useToast } from '@/components/ToastProvider';
 
 export default function FinanceGeneralPage() {
@@ -21,8 +22,8 @@ export default function FinanceGeneralPage() {
 
   useEffect(() => {
     let mounted = true;
-    // Prime from Firestore once, then subscribe for realtime updates
-    readFinanceGeneral().then((row) => {
+    // Load from Stripe account metadata once
+    getStripeFinanceGeneral().then((row) => {
       if (!mounted) return;
       setCurrency(row.currency);
       setGracePeriodDays(row.gracePeriodDays);
@@ -30,19 +31,9 @@ export default function FinanceGeneralPage() {
       setLoading(false);
     }).catch(() => setLoading(false));
 
-    unsubRef.current = listenFinanceGeneral((row) => {
-      // Keep local store in sync with any external changes
-      setCurrency(row.currency);
-      setGracePeriodDays(row.gracePeriodDays);
-      setEnforceTax(row.enforceTax);
-    });
-
     return () => {
       mounted = false;
-      if (unsubRef.current) {
-        try { unsubRef.current(); } catch {}
-        unsubRef.current = null;
-      }
+      unsubRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -55,7 +46,7 @@ export default function FinanceGeneralPage() {
     if (Object.prototype.hasOwnProperty.call(patch, 'gracePeriodDays') && typeof patch.gracePeriodDays === 'number') setGracePeriodDays(patch.gracePeriodDays);
     if (Object.prototype.hasOwnProperty.call(patch, 'enforceTax') && typeof patch.enforceTax === 'boolean') setEnforceTax(patch.enforceTax);
     try {
-      await updateFinanceGeneral(patch);
+      await patchStripeFinanceGeneral(patch as any);
       toast.show({ title: 'Saved', color: 'green', message: 'Finance settings updated.' });
     } catch (e) {
       toast.show({ title: 'Save failed', color: 'red', message: 'Could not update settings.' });

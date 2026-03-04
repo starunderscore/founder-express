@@ -6,6 +6,7 @@ export function normalizeInvoice(id: string, raw: any): Invoice {
     description: String(r?.description || ''),
     quantity: Math.max(0, Number(r?.quantity) || 0),
     unitPrice: Math.max(0, Number(r?.unitPrice) || 0),
+    priceId: typeof r?.priceId === 'string' && r.priceId.trim() ? r.priceId : undefined,
   })) : [];
   return {
     id,
@@ -32,6 +33,7 @@ export function buildInvoiceCreate(input: InvoiceCreateInput): Record<string, an
     description: String(r?.description || ''),
     quantity: Math.max(0, Number(r?.quantity) || 0),
     unitPrice: Math.max(0, Number(r?.unitPrice) || 0),
+    priceId: typeof (r as any)?.priceId === 'string' && (r as any).priceId.trim() ? (r as any).priceId : undefined,
   })) : [];
   return {
     customerId: String(input.customerId),
@@ -60,11 +62,10 @@ export function buildInvoicePatch(input: InvoicePatchInput): Record<string, any>
   if (input.status === 'Paid' || input.status === 'Unpaid') out.status = input.status;
   if (typeof input.paidAt === 'number' || input.paidAt === undefined) out.paidAt = input.paidAt;
   if (typeof input.notes === 'string') out.notes = input.notes;
-  if (Array.isArray(input.items)) out.items = input.items.map((r) => ({ id: r.id, description: r.description, quantity: Math.max(0, Number(r.quantity) || 0), unitPrice: Math.max(0, Number(r.unitPrice) || 0) }));
+  if (Array.isArray(input.items)) out.items = input.items.map((r) => ({ id: r.id, description: r.description, quantity: Math.max(0, Number(r.quantity) || 0), unitPrice: Math.max(0, Number(r.unitPrice) || 0), priceId: typeof (r as any)?.priceId === 'string' && (r as any).priceId.trim() ? (r as any).priceId : undefined }));
   if (Array.isArray(input.taxIds)) out.taxIds = input.taxIds.map(String);
   if (typeof input.subtotal === 'number') out.subtotal = input.subtotal;
   if (typeof input.taxTotal === 'number') out.taxTotal = input.taxTotal;
   if (Object.keys(out).length) out.updatedAt = Date.now();
   return out;
 }
-

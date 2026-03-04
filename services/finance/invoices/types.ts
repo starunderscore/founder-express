@@ -5,6 +5,7 @@ export type InvoiceItem = {
   description: string;
   quantity: number;
   unitPrice: number;
+  priceId?: string; // optional Stripe price linkage
 };
 
 export type Invoice = {
@@ -38,4 +39,3 @@ export type InvoiceCreateInput = {
 };
 
 export type InvoicePatchInput = Partial<Omit<Invoice, 'id' | 'issuedAt'>>;
-

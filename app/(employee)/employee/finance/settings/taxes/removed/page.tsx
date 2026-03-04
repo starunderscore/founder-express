@@ -2,23 +2,26 @@
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
-import { ActionIcon, Card, Group, Menu, Stack, Tabs, Text, Title, Modal, TextInput, NumberInput, Button, Anchor } from '@mantine/core';
+import { ActionIcon, Card, Checkbox, Group, Menu, Stack, Tabs, Text, Title, Modal, TextInput, NumberInput, Button, Anchor } from '@mantine/core';
 import { IconPercentage } from '@tabler/icons-react';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
-import { listenTaxes, restoreTaxDoc, updateTaxDoc, type Tax } from '@/services/finance/taxes';
+import { listStripeTaxes, restoreStripeTax, updateStripeTax, type StripeTax } from '@/services/stripe/taxes-client';
 import { useEffect, useState } from 'react';
 
 export default function FinanceTaxesRemovedPage() {
   const router = useRouter();
-  const [rows, setRows] = useState<Tax[]>([]);
-  useEffect(() => {
-    const unsub = listenTaxes('removed', setRows);
-    return () => { try { unsub(); } catch {} };
-  }, []);
+  const [rows, setRows] = useState<StripeTax[]>([]);
+  const refresh = async () => { setRows(await listStripeTaxes('removed')); };
+  useEffect(() => { refresh(); }, []);
   const [taxOpen, setTaxOpen] = useState(false);
   const [editingTaxId, setEditingTaxId] = useState<string | null>(null);
   const [taxName, setTaxName] = useState('');
   const [taxRate, setTaxRate] = useState<number | string>('');
+  const [taxInclusive, setTaxInclusive] = useState(false);
+  const [taxCountry, setTaxCountry] = useState('');
+  const [taxState, setTaxState] = useState('');
+  const [taxDesc, setTaxDesc] = useState('');
+  const [infoOpen, setInfoOpen] = useState(false);
 
   return (
     <EmployerAuthGate>
@@ -52,7 +55,7 @@ export default function FinanceTaxesRemovedPage() {
           {(() => {
             const columns: Column<any>[] = [
               { key: 'name', header: 'Name', render: (t: any) => (
-                <Anchor onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxOpen(true); }}>
+                <Anchor onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxInclusive(!!t.inclusive); setTaxCountry(t.country || ''); setTaxState(t.state || ''); setTaxDesc(t.description || ''); setTaxOpen(true); }}>
                   {t.name || '—'}
                 </Anchor>
               ) },
@@ -69,7 +72,7 @@ export default function FinanceTaxesRemovedPage() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => restoreTaxDoc(t.id)}>Restore</Menu.Item>
+                    <Menu.Item onClick={async () => { await restoreStripeTax(t.id); refresh(); }}>Restore</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
@@ -82,15 +85,35 @@ export default function FinanceTaxesRemovedPage() {
           <Stack>
             <TextInput label="Tax name" placeholder="VAT" value={taxName} onChange={(e) => setTaxName(e.currentTarget.value)} />
             <NumberInput label="Rate (%)" value={taxRate as any} onChange={setTaxRate as any} min={0} step={0.01} />
+            <Group align="center" gap="xs">
+              <Checkbox label="Inclusive" checked={taxInclusive} onChange={(e) => setTaxInclusive(e.currentTarget.checked)} />
+              <ActionIcon variant="subtle" aria-label="What is inclusive tax?" onClick={() => setInfoOpen(true)}>?</ActionIcon>
+            </Group>
+            <Group grow>
+              <TextInput label="Country (optional)" placeholder="US" value={taxCountry} onChange={(e) => setTaxCountry(e.currentTarget.value)} />
+              <TextInput label="State/Region (optional)" placeholder="CA" value={taxState} onChange={(e) => setTaxState(e.currentTarget.value)} />
+            </Group>
+            <TextInput label="Description (optional)" placeholder="Sales tax" value={taxDesc} onChange={(e) => setTaxDesc(e.currentTarget.value)} />
             <Group justify="flex-end">
               <Button variant="default" onClick={() => { setTaxOpen(false); setEditingTaxId(null); }}>Cancel</Button>
-              <Button onClick={() => {
+              <Button onClick={async () => {
                 const id = editingTaxId as string | undefined;
                 const rateNum = Number(taxRate) || 0;
-                if (id) updateTaxDoc(id, { name: taxName, rate: rateNum });
-                setTaxOpen(false); setEditingTaxId(null);
+                if (id) await updateStripeTax(id, { name: taxName, rate: rateNum, inclusive: taxInclusive, country: taxCountry || undefined, state: taxState || undefined, description: taxDesc || undefined });
+                setTaxOpen(false); setEditingTaxId(null); refresh();
               }}>Save</Button>
             </Group>
+          </Stack>
+        </Modal>
+
+        <Modal opened={infoOpen} onClose={() => setInfoOpen(false)} title="Inclusive tax" centered>
+          <Stack>
+            <Text>
+              Inclusive tax means the tax is included in the item price you set. For example, if a product is $100 and a 10% tax is inclusive, the $100 already contains the tax portion. Exclusive tax is added on top of the item price at checkout.
+            </Text>
+            <Text c="dimmed" size="sm">
+              Stripe uses tax rate settings to determine whether to add tax on top (exclusive) or treat it as part of the price (inclusive).
+            </Text>
           </Stack>
         </Modal>
       </Stack>

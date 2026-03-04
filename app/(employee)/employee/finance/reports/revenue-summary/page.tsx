@@ -5,6 +5,8 @@ import { ActionIcon, Card, Group, Stack, Table, Text, Title, Select } from '@man
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
+import { getRevenueSummary } from '@/services/stripe/reports-client';
+import { getStripeFinanceGeneral } from '@/services/stripe/finance-general-client';
 
 type RangeKey = '30d' | '6m' | '12m' | 'ytd' | 'all';
 
@@ -13,6 +15,15 @@ export default function RevenueSummaryReportPage() {
   const invoices = useFinanceStore((s) => s.invoices);
   const defaultCurrency = useFinanceStore((s) => s.settings.currency);
   const [range, setRange] = useState<RangeKey>('12m');
+  const [currency, setCurrency] = useState<string>(defaultCurrency);
+  const [stripeSeries, setStripeSeries] = useState<{ label: string; value: number }[]>([]);
+  const [stripeLabel, setStripeLabel] = useState('');
+  const [mtdLabel, setMtdLabel] = useState('');
+  const [mtdTotalRemote, setMtdTotalRemote] = useState<number | null>(null);
+  const [mtdCountRemote, setMtdCountRemote] = useState<number | null>(null);
+
+  useEffect(() => { (async () => { try { const g = await getStripeFinanceGeneral(); if (g?.currency) setCurrency(g.currency); } catch {} })(); }, []);
+  useEffect(() => { (async () => { try { const r = await getRevenueSummary((range === 'all' ? '12m' : range) as any, currency?.toLowerCase()); setStripeSeries(r.series); setStripeLabel(r.label); setMtdLabel(r.mtdLabel); setMtdTotalRemote(r.mtd); setMtdCountRemote(r.mtdCount); } catch { setStripeSeries([]); setStripeLabel(''); setMtdLabel(''); setMtdTotalRemote(null); setMtdCountRemote(null); } })(); }, [range, currency]);
 
   // Derive buckets based on selected range
   const { data, label, usedDummy, rangeStart, rangeEnd } = useMemo(() => {
@@ -23,10 +34,8 @@ export default function RevenueSummaryReportPage() {
     else if (range === '12m') built = buildMonthly(now, 12, invoices, defaultCurrency);
     else if (range === 'ytd') built = buildYTD(now, invoices, defaultCurrency);
     else built = buildAllMonthly(now, invoices, defaultCurrency);
-    const hasReal = invoices && invoices.length > 0 && (built.data as Array<{ value: number }>).some((d: { value: number }) => d.value > 0);
-    if (hasReal) return { ...built, usedDummy: false } as any;
-    const dummy = buildDummy(range, now);
-    return { data: dummy.data, label: dummy.label, usedDummy: true, rangeStart: dummy.rangeStart, rangeEnd: dummy.rangeEnd } as any;
+    // Do not use dummy/sample data for real summaries; show zeros when no paid invoices
+    return { ...built, usedDummy: false } as any;
   }, [range, invoices, defaultCurrency]);
 
   const total = useMemo(() => (data as Array<{ value: number }>).reduce((acc: number, d) => acc + d.value, 0), [data]);
@@ -60,7 +69,7 @@ export default function RevenueSummaryReportPage() {
             </ActionIcon>
             <div>
               <Title order={2} mb={4}>Revenue summary</Title>
-              <Text c="dimmed">Paid revenue in {defaultCurrency} — {label}</Text>
+              <Text c="dimmed">Paid revenue in {(stripeSeries.length ? currency : defaultCurrency)} — {(stripeSeries.length ? stripeLabel : label)}</Text>
             </div>
           </Group>
         </Group>
@@ -70,11 +79,11 @@ export default function RevenueSummaryReportPage() {
           <Group justify="space-between" align="center">
             <div>
               <Text fw={600}>Month to date</Text>
-              <Text c="dimmed" size="sm">{monthLabel} · Paid revenue in {defaultCurrency}</Text>
+              <Text c="dimmed" size="sm">{(mtdLabel || monthLabel)} · Paid revenue in {(stripeSeries.length ? currency : defaultCurrency)}</Text>
             </div>
             <div>
               <Text size="sm" c="dimmed">Total</Text>
-              <Text fw={600} ta="right">{defaultCurrency} {mtdTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              <Text fw={600} ta="right">{(stripeSeries.length ? currency : defaultCurrency)} {(stripeSeries.length ? (mtdTotalRemote ?? 0) : mtdTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </div>
           </Group>
         </Card>
@@ -90,7 +99,6 @@ export default function RevenueSummaryReportPage() {
                 { value: '6m', label: 'Last 6 months' },
                 { value: '12m', label: 'Last 12 months' },
                 { value: 'ytd', label: 'Year to date' },
-                { value: 'all', label: 'All time' },
               ]}
               allowDeselect={false}
               w={220}
@@ -104,11 +112,11 @@ export default function RevenueSummaryReportPage() {
             <Text fw={600}>Revenue by period</Text>
             <div style={{ width: '100%', height: 220 }}>
               <ResponsiveContainer>
-                <BarChart data={data} margin={{ top: 8, right: 12, left: 12, bottom: 8 }}>
+                <BarChart data={(stripeSeries.length ? stripeSeries : (data as any))} margin={{ top: 8, right: 12, left: 12, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(v: any) => [`${defaultCurrency} ${Number(v).toFixed(2)}`, 'Revenue']} />
+                  <Tooltip formatter={(v: any) => [`${(stripeSeries.length ? currency : defaultCurrency)} ${Number(v).toFixed(2)}`, 'Revenue']} />
                   <Bar dataKey="value" fill="#82c91e" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -124,11 +132,11 @@ export default function RevenueSummaryReportPage() {
               <Table.Tbody>
                 <Table.Tr>
                   <Table.Td><Text c="dimmed">Total</Text></Table.Td>
-                  <Table.Td><Text fw={600}>{defaultCurrency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text></Table.Td>
+                  <Table.Td><Text fw={600}>{(stripeSeries.length ? currency : defaultCurrency)} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text></Table.Td>
                 </Table.Tr>
                 <Table.Tr>
                   <Table.Td><Text c="dimmed">Average per period</Text></Table.Td>
-                  <Table.Td><Text fw={600}>{defaultCurrency} {avg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text></Table.Td>
+                  <Table.Td><Text fw={600}>{(stripeSeries.length ? currency : defaultCurrency)} {avg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text></Table.Td>
                 </Table.Tr>
                 <Table.Tr>
                   <Table.Td><Text c="dimmed">Latest period</Text></Table.Td>
@@ -140,7 +148,7 @@ export default function RevenueSummaryReportPage() {
                 </Table.Tr>
                 <Table.Tr>
                   <Table.Td><Text c="dimmed">Paid invoices</Text></Table.Td>
-                  <Table.Td><Text fw={600}>{paidCount === null ? '—' : paidCount}</Text></Table.Td>
+                  <Table.Td><Text fw={600}>{(stripeSeries.length ? (mtdCountRemote ?? null) : paidCount) ?? '—'}</Text></Table.Td>
                 </Table.Tr>
               </Table.Tbody>
             </Table>

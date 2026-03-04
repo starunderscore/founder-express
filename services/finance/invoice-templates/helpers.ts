@@ -6,6 +6,7 @@ export function normalizeInvoiceTemplate(id: string, raw: any): InvoiceTemplate 
     description: String(r?.description || ''),
     quantity: Math.max(0, Number(r?.quantity) || 0),
     unitPrice: Math.max(0, Number(r?.unitPrice) || 0),
+    priceId: typeof r?.priceId === 'string' && r.priceId.trim() ? r.priceId : undefined,
   })) : [];
   const taxIds: string[] = Array.isArray(raw?.taxIds) ? (raw.taxIds as any[]).map(String) : [];
   const archiveAt = typeof raw?.archiveAt === 'number' ? (raw.archiveAt as number) : null;
@@ -22,6 +23,7 @@ export function buildInvoiceTemplateCreate(input: InvoiceTemplateCreateInput): R
     description: String(r?.description || ''),
     quantity: Math.max(0, Number(r?.quantity) || 0),
     unitPrice: Math.max(0, Number(r?.unitPrice) || 0),
+    priceId: typeof (r as any)?.priceId === 'string' && (r as any).priceId.trim() ? (r as any).priceId : undefined,
   })) : [];
   const taxIds: string[] = Array.isArray(input?.taxIds) ? input.taxIds.map(String) : [];
   return {
@@ -42,6 +44,7 @@ export function buildInvoiceTemplatePatch(input: InvoiceTemplatePatchInput): Rec
     description: String(r?.description || ''),
     quantity: Math.max(0, Number(r?.quantity) || 0),
     unitPrice: Math.max(0, Number(r?.unitPrice) || 0),
+    priceId: typeof (r as any)?.priceId === 'string' && (r as any).priceId.trim() ? (r as any).priceId : undefined,
   }));
   if (Array.isArray(input.taxIds)) out.taxIds = input.taxIds.map(String);
   if (Object.keys(out).length) out.updatedAt = Date.now();
@@ -57,4 +60,3 @@ export function filterTemplatesByStatus<T extends Pick<InvoiceTemplate, 'archive
     return status === 'active';
   });
 }
-

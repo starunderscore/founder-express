@@ -27,7 +27,7 @@ export default function FinanceNewInvoicePage() {
   const [currency, setCurrency] = useState('USD');
   const [dueDate, setDueDate] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<{ id: string; description: string; quantity: string; unitPrice: string }[]>([]);
+  const [items, setItems] = useState<{ id: string; description: string; quantity: string; unitPrice: string; priceId?: string }[]>([]);
   const [taxIds, setTaxIds] = useState<string[]>([]);
   const [templateId, setTemplateId] = useState<string | null>(null);
 
@@ -36,7 +36,7 @@ export default function FinanceNewInvoicePage() {
 
   const addRow = () => setItems((rows) => [...rows, { id: `row-${Date.now()}-${Math.random()}`, description: '', quantity: '1', unitPrice: '0' }]);
   const removeRow = (id: string) => setItems((rows) => rows.filter((r) => r.id !== id));
-  const updateRow = (id: string, patch: Partial<{ description: string; quantity: string; unitPrice: string }>) => setItems((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const updateRow = (id: string, patch: Partial<{ description: string; quantity: string; unitPrice: string; priceId?: string }>) => setItems((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
   const subtotal = items.reduce((sum, r) => sum + (Number(r.quantity) || 0) * (Number(r.unitPrice) || 0), 0);
   const taxesAmount = taxIds
@@ -55,7 +55,7 @@ export default function FinanceNewInvoicePage() {
       amount: total,
       currency,
       dueDate,
-      items: items.map((r) => ({ id: r.id, description: r.description, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 })),
+      items: items.map((r) => ({ id: r.id, description: r.description, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0, priceId: (r as any).priceId })),
       taxIds,
       subtotal,
       taxTotal: taxesAmount,
@@ -93,7 +93,7 @@ export default function FinanceNewInvoicePage() {
                   setTemplateId(v);
                   const t = templates.find((x) => x.id === v);
                   if (t) {
-                    setItems(t.items.map((it) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice) })));
+                    setItems(t.items.map((it) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice), priceId: (it as any).priceId })));
                     setTaxIds(t.taxIds);
                   }
                 }} />
