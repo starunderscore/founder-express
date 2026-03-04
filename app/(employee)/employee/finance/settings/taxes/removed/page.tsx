@@ -42,9 +42,9 @@ export default function FinanceTaxesRemovedPage() {
 
         <Tabs value={'removed'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/finance/taxes">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/finance/taxes/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/finance/taxes/removed">Remove</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/finance/settings/taxes">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/settings/taxes/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/settings/taxes/removed">Remove</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 

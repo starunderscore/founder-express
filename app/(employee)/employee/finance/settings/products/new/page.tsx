@@ -1,6 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useFinanceStore } from '@/state/financeStore';
+const createStripeProduct = require('@/services/stripe/products-client').createStripeProduct as (input: any) => Promise<string>;
+const addStripePrice = require('@/services/stripe/products-client').addStripePrice as (productId: string, price: any) => Promise<string>;
 import { ActionIcon, Badge, Button, Card, Checkbox, Group, NumberInput, Select, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -16,7 +17,6 @@ type PriceRow = {
 
 export default function NewProductPage() {
   const router = useRouter();
-  const createProductSvc = require('@/services/finance/products').createProduct as (input: any) => Promise<string>;
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -38,18 +38,12 @@ export default function NewProductPage() {
     if (!name.trim()) { setError('Product name is required'); return; }
     const validPrices = prices.filter((p) => Number(p.unitAmount) > 0 && p.currency);
     if (validPrices.length === 0) { setError('Add at least one valid price'); return; }
-    await createProductSvc({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      active,
-      prices: validPrices.map((p) => ({
-        currency: p.currency,
-        unitAmount: Number(p.unitAmount),
-        type: p.type,
-        recurring: p.type === 'recurring' ? { interval: p.interval || 'month', intervalCount: Number(p.intervalCount) || 1 } : undefined,
-      })),
-      defaultType: (validPrices[0]?.type || 'one_time'),
-    });
+    const prodId = await createStripeProduct({ name: name.trim(), description: description.trim() || undefined, active, defaultType: (validPrices[0]?.type || 'one_time') });
+    for (const p of validPrices) {
+      const payload: any = { currency: p.currency, unitAmount: Number(p.unitAmount), type: p.type };
+      if (p.type === 'recurring') payload.recurring = { interval: p.interval || 'month', intervalCount: Number(p.intervalCount) || 1 };
+      await addStripePrice(prodId, payload);
+    }
     router.push('/employee/finance/settings');
   };
 

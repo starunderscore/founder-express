@@ -5,16 +5,14 @@ import { useRouter } from 'next/navigation';
 import { ActionIcon, Card, Group, Menu, Stack, Tabs, Text, Title } from '@mantine/core';
 import { IconPackage } from '@tabler/icons-react';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
-import { listenProducts, restoreProductDoc, type Product } from '@/services/finance/products';
+import { listStripeProducts, restoreStripeProduct, type StripeProduct } from '@/services/stripe/products-client';
 import { useEffect, useState } from 'react';
 
 export default function FinanceProductsRemovedPage() {
   const router = useRouter();
-  const [rows, setRows] = useState<Product[]>([]);
-  useEffect(() => {
-    const unsub = listenProducts('removed', setRows);
-    return () => { try { unsub(); } catch {} };
-  }, []);
+  const [rows, setRows] = useState<StripeProduct[]>([]);
+  const refresh = async () => { setRows(await listStripeProducts('removed')); };
+  useEffect(() => { refresh(); }, []);
 
   return (
     <EmployerAuthGate>
@@ -53,7 +51,7 @@ export default function FinanceProductsRemovedPage() {
                     <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => restoreProductDoc(p.id)}>Restore</Menu.Item>
+                    <Menu.Item onClick={async () => { await restoreStripeProduct(p.id); refresh(); }}>Restore</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },

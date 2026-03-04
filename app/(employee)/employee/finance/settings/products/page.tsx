@@ -1,24 +1,20 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Text, TextInput, Title, Tabs } from '@mantine/core';
 import { IconPackage } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
-import { archiveProductDoc, createProduct, listenProducts, removeProductDoc, updatePriceOnProduct as updatePriceOnProductDoc, updateProductDoc, addPriceToProduct as addPriceToProductDoc, type Product } from '@/services/finance/products';
+import { listStripeProducts, createStripeProduct, updateStripeProduct, archiveStripeProduct, removeStripeProduct, addStripePrice, updateStripePrice, type StripeProduct } from '@/services/stripe/products-client';
 
 export default function FinanceProductsPage() {
   const router = useRouter();
-  const settings = useFinanceStore((s) => s.settings);
-  const [rows, setRows] = useState<Product[]>([]);
-  useEffect(() => {
-    const unsub = listenProducts('active', setRows);
-    return () => { try { unsub(); } catch {} };
-  }, []);
+  const [rows, setRows] = useState<StripeProduct[]>([]);
+  const refresh = async () => { const data = await listStripeProducts('active'); setRows(data); };
+  useEffect(() => { refresh(); }, []);
 
-  const [prodView, setProdView] = useState<'all' | 'one_time' | 'recurring' | 'mixed'>('all');
+  const [prodView, setProdView] = useState<'all' | 'one_time' | 'recurring'>('all');
   const filteredProducts = useMemo(() => {
     const classify = (p: any): 'one_time' | 'recurring' | 'mixed' | 'none' => {
       const hasOne = Array.isArray(p.prices) && p.prices.some((pr: any) => pr.type === 'one_time');
@@ -41,7 +37,7 @@ export default function FinanceProductsPage() {
   const [priceOpen, setPriceOpen] = useState(false);
   const [priceProdId, setPriceProdId] = useState<string | null>(null);
   const [priceIdEditing, setPriceIdEditing] = useState<string | null>(null);
-  const [priceCurrency, setPriceCurrency] = useState(settings.currency);
+  const [priceCurrency, setPriceCurrency] = useState('USD');
   const [priceAmount, setPriceAmount] = useState<number | string>('');
   const [priceType, setPriceType] = useState<'one_time' | 'recurring'>('one_time');
   const [priceInterval, setPriceInterval] = useState<'day' | 'week' | 'month' | 'year'>('month');
@@ -86,7 +82,6 @@ export default function FinanceProductsPage() {
                 { label: 'All', value: 'all' },
                 { label: 'One-time', value: 'one_time' },
                 { label: 'Recurring', value: 'recurring' },
-                { label: 'Mixed', value: 'mixed' },
               ]}
             />
           </Group>
@@ -125,9 +120,9 @@ export default function FinanceProductsPage() {
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item onClick={() => { setProdIdEditing(p.id); setProdName(p.name); setProdDesc(p.description || ''); setProdOpen(true); }}>Edit</Menu.Item>
-                      <Menu.Item onClick={() => { setPriceProdId(p.id); setPriceIdEditing(null); setPriceCurrency(settings.currency); setPriceAmount(''); setPriceType((p.defaultType || 'one_time') as any); setPriceInterval('month'); setPriceIntervalCount('1'); setPriceOpen(true); }}>Add price</Menu.Item>
-                      <Menu.Item color="orange" onClick={() => archiveProductDoc(p.id)}>Archive</Menu.Item>
-                      <Menu.Item color="red" onClick={() => removeProductDoc(p.id)}>Remove</Menu.Item>
+                      <Menu.Item onClick={() => { setPriceProdId(p.id); setPriceIdEditing(null); setPriceCurrency('USD'); setPriceAmount(''); setPriceType((p.defaultType || 'one_time') as any); setPriceInterval('month'); setPriceIntervalCount('1'); setPriceOpen(true); }}>Add price</Menu.Item>
+                      <Menu.Item color="orange" onClick={async () => { await archiveStripeProduct(p.id); refresh(); }}>Archive</Menu.Item>
+                      <Menu.Item color="red" onClick={async () => { await removeStripeProduct(p.id); refresh(); }}>Remove</Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
                 ) },
@@ -146,9 +141,9 @@ export default function FinanceProductsPage() {
               <Button variant="default" onClick={() => { setProdOpen(false); setProdIdEditing(null); }}>Cancel</Button>
               <Button onClick={async () => {
                 if (!prodName.trim()) return;
-                if (prodIdEditing) await updateProductDoc(prodIdEditing, { name: prodName.trim(), description: prodDesc.trim() || undefined });
-                else await createProduct({ name: prodName.trim(), description: prodDesc.trim() || undefined, active: true, prices: [] });
-                setProdOpen(false); setProdIdEditing(null);
+                if (prodIdEditing) await updateStripeProduct(prodIdEditing, { name: prodName.trim(), description: prodDesc.trim() || undefined });
+                else await createStripeProduct({ name: prodName.trim(), description: prodDesc.trim() || undefined, active: true });
+                setProdOpen(false); setProdIdEditing(null); refresh();
               }}>Save</Button>
             </Group>
           </Stack>
@@ -173,8 +168,8 @@ export default function FinanceProductsPage() {
                 if (!priceProdId) return;
                 const payload: any = { currency: priceCurrency, unitAmount: Number(priceAmount) || 0, type: priceType as any };
                 if (priceType === 'recurring') payload.recurring = { interval: priceInterval, intervalCount: Number(priceIntervalCount) || 1 };
-                if (priceIdEditing) await updatePriceOnProductDoc(priceProdId, priceIdEditing, payload); else await addPriceToProductDoc(priceProdId, payload);
-                setPriceOpen(false); setPriceProdId(null); setPriceIdEditing(null);
+                if (priceIdEditing) await updateStripePrice(priceProdId, priceIdEditing, payload); else await addStripePrice(priceProdId, payload);
+                setPriceOpen(false); setPriceProdId(null); setPriceIdEditing(null); refresh();
               }}>Save</Button>
             </Group>
           </Stack>

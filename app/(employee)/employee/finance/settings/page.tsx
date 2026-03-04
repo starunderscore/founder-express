@@ -51,7 +51,7 @@ export default function FinanceSettingsPage() {
                 <Text c="dimmed" size="sm">Manage tax rates and enablement</Text>
               </div>
             </Group>
-            <Button component={Link as any} href="/employee/finance/taxes" variant="light">Open</Button>
+            <Button component={Link as any} href="/employee/finance/settings/taxes" variant="light">Open</Button>
           </Group>
         </Card>
 

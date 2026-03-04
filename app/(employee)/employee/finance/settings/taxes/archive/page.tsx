@@ -1,21 +1,20 @@
 "use client";
-import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { ActionIcon, Button, Card, Checkbox, Group, Modal, NumberInput, Stack, Text, TextInput, Title, Menu, Tabs, Anchor } from '@mantine/core';
-import { IconPercentage } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { EmployerAuthGate } from '@/components/EmployerAuthGate';
+import { useRouter } from 'next/navigation';
+import { ActionIcon, Button, Card, Group, Menu, Stack, Tabs, Text, Title, Modal, TextInput, NumberInput, Anchor } from '@mantine/core';
+import { IconPercentage } from '@tabler/icons-react';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
-import { createTax, listenTaxes, updateTaxDoc, archiveTaxDoc, removeTaxDoc, type Tax } from '@/services/finance/taxes';
+import { listenTaxes, removeTaxDoc, restoreTaxDoc, updateTaxDoc, type Tax } from '@/services/finance/taxes';
+import { useEffect, useState } from 'react';
 
-export default function FinanceTaxesPage() {
+export default function FinanceTaxesArchivePage() {
   const router = useRouter();
   const [rows, setRows] = useState<Tax[]>([]);
   useEffect(() => {
-    const unsub = listenTaxes('active', setRows);
+    const unsub = listenTaxes('archived', setRows);
     return () => { try { unsub(); } catch {} };
   }, []);
-
   const [taxOpen, setTaxOpen] = useState(false);
   const [editingTaxId, setEditingTaxId] = useState<string | null>(null);
   const [taxName, setTaxName] = useState('');
@@ -39,23 +38,17 @@ export default function FinanceTaxesPage() {
               </div>
             </Group>
           </Group>
-          <Group gap="xs">
-            <Button onClick={() => { setTaxName(''); setTaxRate(''); setEditingTaxId(null); setTaxOpen(true); }} variant="light">Add tax</Button>
-          </Group>
         </Group>
 
-        <Tabs value={'active'}>
+        <Tabs value={'archive'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/finance/taxes">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/finance/taxes/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/finance/taxes/removed">Remove</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/finance/settings/taxes">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/settings/taxes/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/settings/taxes/removed">Remove</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
         <Card withBorder mt="sm">
-          <Group justify="space-between" mb="xs">
-            <Text fw={600}>Tax rates</Text>
-          </Group>
           {(() => {
             const columns: Column<any>[] = [
               { key: 'name', header: 'Name', render: (t: any) => (
@@ -64,9 +57,6 @@ export default function FinanceTaxesPage() {
                 </Anchor>
               ) },
               { key: 'rate', header: 'Rate', width: 120, render: (t: any) => `${t.rate}%` },
-              { key: 'enabled', header: 'Enabled', width: 120, render: (t: any) => (
-                <Checkbox checked={t.enabled} onChange={(e) => updateTaxDoc(t.id, { enabled: e.currentTarget.checked })} />
-              ) },
               { key: 'actions', header: '', width: 1, render: (t: any) => (
                 <Menu withinPortal position="bottom-end" shadow="md" width={180}>
                   <Menu.Target>
@@ -79,8 +69,7 @@ export default function FinanceTaxesPage() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxOpen(true); }}>Edit</Menu.Item>
-                    <Menu.Item onClick={() => archiveTaxDoc(t.id)}>Archive</Menu.Item>
+                    <Menu.Item onClick={() => restoreTaxDoc(t.id)}>Restore</Menu.Item>
                     <Menu.Item color="red" onClick={() => removeTaxDoc(t.id)}>Remove</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
@@ -90,18 +79,16 @@ export default function FinanceTaxesPage() {
           })()}
         </Card>
 
-        {/* Archived taxes moved to /archive tab */}
-
-        <Modal opened={taxOpen} onClose={() => { setTaxOpen(false); setEditingTaxId(null); }} title={editingTaxId ? 'Edit tax' : 'Add tax'} centered>
+        <Modal opened={taxOpen} onClose={() => { setTaxOpen(false); setEditingTaxId(null); }} title={'Edit tax'} centered>
           <Stack>
             <TextInput label="Tax name" placeholder="VAT" value={taxName} onChange={(e) => setTaxName(e.currentTarget.value)} />
             <NumberInput label="Rate (%)" value={taxRate as any} onChange={setTaxRate as any} min={0} step={0.01} />
             <Group justify="flex-end">
               <Button variant="default" onClick={() => { setTaxOpen(false); setEditingTaxId(null); }}>Cancel</Button>
-              <Button onClick={async () => {
+              <Button onClick={() => {
                 const id = editingTaxId as string | undefined;
                 const rateNum = Number(taxRate) || 0;
-                if (!id) await createTax({ name: taxName.trim(), rate: rateNum }); else await updateTaxDoc(id, { name: taxName.trim(), rate: rateNum });
+                if (id) updateTaxDoc(id, { name: taxName, rate: rateNum });
                 setTaxOpen(false); setEditingTaxId(null);
               }}>Save</Button>
             </Group>
