@@ -1,16 +1,19 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Button, Card, Group, MultiSelect, Stack, Table, Text, TextInput, Title, NumberInput } from '@mantine/core';
 import { IconFileInvoice } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createInvoiceTemplate } from '@/services/finance/invoice-templates';
+import { listenTaxes, type Tax } from '@/services/finance/taxes';
 
 export default function NewInvoiceTemplatePage() {
   const router = useRouter();
-  const addTemplate = useFinanceStore((s) => s.addTemplate);
-  const taxes = useFinanceStore((s) => s.settings.taxes);
-  const products = useFinanceStore((s) => s.settings.products);
+  const [taxes, setTaxes] = useState<Tax[]>([]);
+  useEffect(() => {
+    const unsub = listenTaxes('active', setTaxes);
+    return () => { try { unsub(); } catch {} };
+  }, []);
 
   const taxOptions = useMemo(() => taxes.map((t) => ({ value: t.id, label: `${t.name} (${t.rate}%)` })), [taxes]);
 
@@ -23,13 +26,13 @@ export default function NewInvoiceTemplatePage() {
   const removeRow = (id: string) => setItems((rows) => rows.filter((r) => r.id !== id));
   const updateRow = (id: string, patch: Partial<{ description: string; quantity: string; unitPrice: string }>) => setItems((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError('Template name required'); return; }
     if (items.length === 0) { setError('Add at least one item'); return; }
     const payload = { name: name.trim(), items: items.map((r) => ({ description: r.description, quantity: Number(r.quantity) || 0, unitPrice: Number(r.unitPrice) || 0 })), taxIds };
-    addTemplate(payload);
-    router.push('/employee/finance/invoice-templates');
+    await createInvoiceTemplate(payload);
+    router.push('/employee/finance/settings/invoice-templates');
   };
 
   return (
@@ -86,19 +89,11 @@ export default function NewInvoiceTemplatePage() {
               </Table>
               <Group>
                 <Button variant="light" onClick={addRow} type="button">Add item</Button>
-                <Button variant="light" onClick={() => {
-                  const name = prompt('Product name to add (matches first)');
-                  if (!name) return;
-                  const prod = products.find((p) => (p.name || '').toLowerCase().includes(name.toLowerCase()));
-                  if (!prod || !prod.prices.length) return alert('No matching product/price');
-                  const pr = prod.prices[0];
-                  setItems((rows) => [...rows, { id: `row-${Date.now()}`, description: prod.name, quantity: '1', unitPrice: String(pr.unitAmount) }]);
-                }} type="button">Add from product (quick)</Button>
               </Group>
               <MultiSelect label="Taxes" data={taxOptions} value={taxIds} onChange={setTaxIds} searchable placeholder="Select taxes to apply" />
               {error && <Text c="red" size="sm">{error}</Text>}
               <Group justify="flex-end">
-                <Button variant="default" type="button" onClick={() => router.push('/employee/finance/invoice-templates')}>Cancel</Button>
+                <Button variant="default" type="button" onClick={() => router.push('/employee/finance/settings/invoice-templates')}>Cancel</Button>
                 <Button type="submit">Create template</Button>
               </Group>
             </Stack>

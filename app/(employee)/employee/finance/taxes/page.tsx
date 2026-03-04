@@ -1,21 +1,20 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Button, Card, Checkbox, Group, Modal, NumberInput, Stack, Text, TextInput, Title, Menu, Tabs, Anchor } from '@mantine/core';
 import { IconPercentage } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
+import { createTax, listenTaxes, updateTaxDoc, archiveTaxDoc, removeTaxDoc, type Tax } from '@/services/finance/taxes';
 
 export default function FinanceTaxesPage() {
   const router = useRouter();
-  const settings = useFinanceStore((s) => s.settings);
-  const addTax = useFinanceStore((s) => s.addTax);
-  const updateTax = useFinanceStore((s) => s.updateTax);
-  const removeTax = useFinanceStore((s) => s.removeTax);
-  const archiveTax = useFinanceStore((s) => s.archiveTax);
-  const restoreTax = useFinanceStore((s) => s.restoreTax);
+  const [rows, setRows] = useState<Tax[]>([]);
+  useEffect(() => {
+    const unsub = listenTaxes('active', setRows);
+    return () => { try { unsub(); } catch {} };
+  }, []);
 
   const [taxOpen, setTaxOpen] = useState(false);
   const [editingTaxId, setEditingTaxId] = useState<string | null>(null);
@@ -66,7 +65,7 @@ export default function FinanceTaxesPage() {
               ) },
               { key: 'rate', header: 'Rate', width: 120, render: (t: any) => `${t.rate}%` },
               { key: 'enabled', header: 'Enabled', width: 120, render: (t: any) => (
-                <Checkbox checked={t.enabled} onChange={(e) => updateTax(t.id, { enabled: e.currentTarget.checked })} />
+                <Checkbox checked={t.enabled} onChange={(e) => updateTaxDoc(t.id, { enabled: e.currentTarget.checked })} />
               ) },
               { key: 'actions', header: '', width: 1, render: (t: any) => (
                 <Menu withinPortal position="bottom-end" shadow="md" width={180}>
@@ -81,13 +80,12 @@ export default function FinanceTaxesPage() {
                   </Menu.Target>
                   <Menu.Dropdown>
                     <Menu.Item onClick={() => { setTaxName(t.name); setTaxRate(t.rate); setEditingTaxId(t.id); setTaxOpen(true); }}>Edit</Menu.Item>
-                    <Menu.Item onClick={() => archiveTax(t.id)}>Archive</Menu.Item>
-                    <Menu.Item color="red" onClick={() => removeTax(t.id)}>Remove</Menu.Item>
+                    <Menu.Item onClick={() => archiveTaxDoc(t.id)}>Archive</Menu.Item>
+                    <Menu.Item color="red" onClick={() => removeTaxDoc(t.id)}>Remove</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
             ];
-            const rows = settings.taxes.filter((t) => !t.isArchived && !t.deletedAt);
             return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
           })()}
         </Card>
@@ -100,10 +98,10 @@ export default function FinanceTaxesPage() {
             <NumberInput label="Rate (%)" value={taxRate as any} onChange={setTaxRate as any} min={0} step={0.01} />
             <Group justify="flex-end">
               <Button variant="default" onClick={() => { setTaxOpen(false); setEditingTaxId(null); }}>Cancel</Button>
-              <Button onClick={() => {
+              <Button onClick={async () => {
                 const id = editingTaxId as string | undefined;
                 const rateNum = Number(taxRate) || 0;
-                if (id) updateTax(id, { name: taxName, rate: rateNum }); else addTax({ name: taxName, rate: rateNum });
+                if (!id) await createTax({ name: taxName.trim(), rate: rateNum }); else await updateTaxDoc(id, { name: taxName.trim(), rate: rateNum });
                 setTaxOpen(false); setEditingTaxId(null);
               }}>Save</Button>
             </Group>

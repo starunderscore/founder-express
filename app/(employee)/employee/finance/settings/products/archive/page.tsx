@@ -2,18 +2,19 @@
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
-import { ActionIcon, Button, Card, Group, Menu, Stack, Tabs, Text, Title } from '@mantine/core';
+import { ActionIcon, Card, Group, Menu, Stack, Tabs, Text, Title } from '@mantine/core';
 import { IconPackage } from '@tabler/icons-react';
-import { useFinanceStore } from '@/state/financeStore';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
+import { listenProducts, removeProductDoc, restoreProductDoc, type Product } from '@/services/finance/products';
+import { useEffect, useState } from 'react';
 
 export default function FinanceProductsArchivePage() {
   const router = useRouter();
-  const products = useFinanceStore((s) => s.settings.products);
-  const restoreProduct = useFinanceStore((s) => s.restoreProduct);
-  const removeProduct = useFinanceStore((s) => s.removeProduct);
-
-  const archived = products.filter((p: any) => p.isArchived && !p.deletedAt);
+  const [rows, setRows] = useState<Product[]>([]);
+  useEffect(() => {
+    const unsub = listenProducts('archived', setRows);
+    return () => { try { unsub(); } catch {} };
+  }, []);
 
   return (
     <EmployerAuthGate>
@@ -35,9 +36,9 @@ export default function FinanceProductsArchivePage() {
 
         <Tabs value={'archive'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/finance/products">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/finance/products/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/finance/products/removed">Remove</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/finance/settings/products">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/settings/products/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/settings/products/removed">Remove</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
@@ -52,13 +53,12 @@ export default function FinanceProductsArchivePage() {
                     <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => restoreProduct(p.id)}>Restore</Menu.Item>
-                    <Menu.Item color="red" onClick={() => removeProduct(p.id)}>Remove</Menu.Item>
+                    <Menu.Item onClick={() => restoreProductDoc(p.id)}>Restore</Menu.Item>
+                    <Menu.Item color="red" onClick={() => removeProductDoc(p.id)}>Remove</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
             ];
-            const rows = archived;
             return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
           })()}
         </Card>

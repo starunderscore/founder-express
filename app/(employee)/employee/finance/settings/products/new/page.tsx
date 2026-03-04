@@ -16,8 +16,7 @@ type PriceRow = {
 
 export default function NewProductPage() {
   const router = useRouter();
-  const addProduct = useFinanceStore((s) => s.addProduct);
-  const addPriceToProduct = useFinanceStore((s) => s.addPriceToProduct);
+  const createProductSvc = require('@/services/finance/products').createProduct as (input: any) => Promise<string>;
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -34,17 +33,23 @@ export default function NewProductPage() {
   const removeRow = (id: string) => setPrices((rows) => rows.filter((r) => r.id !== id));
   const updateRow = (id: string, patch: Partial<PriceRow>) => setPrices((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError('Product name is required'); return; }
     const validPrices = prices.filter((p) => Number(p.unitAmount) > 0 && p.currency);
     if (validPrices.length === 0) { setError('Add at least one valid price'); return; }
-    const prodId = addProduct({ name: name.trim(), description: description.trim() || undefined, active });
-    for (const p of validPrices) {
-      const payload: any = { currency: p.currency, unitAmount: Number(p.unitAmount), type: p.type };
-      if (p.type === 'recurring') payload.recurring = { interval: p.interval || 'month', intervalCount: Number(p.intervalCount) || 1 };
-      addPriceToProduct(prodId, payload);
-    }
+    await createProductSvc({
+      name: name.trim(),
+      description: description.trim() || undefined,
+      active,
+      prices: validPrices.map((p) => ({
+        currency: p.currency,
+        unitAmount: Number(p.unitAmount),
+        type: p.type,
+        recurring: p.type === 'recurring' ? { interval: p.interval || 'month', intervalCount: Number(p.intervalCount) || 1 } : undefined,
+      })),
+      defaultType: (validPrices[0]?.type || 'one_time'),
+    });
     router.push('/employee/finance/settings');
   };
 

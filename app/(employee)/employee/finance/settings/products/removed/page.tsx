@@ -4,15 +4,17 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
 import { ActionIcon, Card, Group, Menu, Stack, Tabs, Text, Title } from '@mantine/core';
 import { IconPackage } from '@tabler/icons-react';
-import { useFinanceStore } from '@/state/financeStore';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
+import { listenProducts, restoreProductDoc, type Product } from '@/services/finance/products';
+import { useEffect, useState } from 'react';
 
 export default function FinanceProductsRemovedPage() {
   const router = useRouter();
-  const products = useFinanceStore((s) => s.settings.products);
-  const updateProduct = useFinanceStore((s) => s.updateProduct);
-
-  const removed = products.filter((p: any) => !!p.deletedAt);
+  const [rows, setRows] = useState<Product[]>([]);
+  useEffect(() => {
+    const unsub = listenProducts('removed', setRows);
+    return () => { try { unsub(); } catch {} };
+  }, []);
 
   return (
     <EmployerAuthGate>
@@ -34,9 +36,9 @@ export default function FinanceProductsRemovedPage() {
 
         <Tabs value={'removed'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/finance/products">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/finance/products/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/finance/products/removed">Remove</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/finance/settings/products">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/settings/products/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/settings/products/removed">Remove</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
@@ -51,12 +53,11 @@ export default function FinanceProductsRemovedPage() {
                     <ActionIcon variant="subtle" aria-label="Actions">⋮</ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => updateProduct(p.id, { deletedAt: undefined, isArchived: false })}>Restore</Menu.Item>
+                    <Menu.Item onClick={() => restoreProductDoc(p.id)}>Restore</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
             ];
-            const rows = removed;
             return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
           })()}
         </Card>

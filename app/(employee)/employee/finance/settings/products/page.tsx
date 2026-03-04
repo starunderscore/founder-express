@@ -3,22 +3,20 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Text, TextInput, Title, Tabs } from '@mantine/core';
 import { IconPackage } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
+import { archiveProductDoc, createProduct, listenProducts, removeProductDoc, updatePriceOnProduct as updatePriceOnProductDoc, updateProductDoc, addPriceToProduct as addPriceToProductDoc, type Product } from '@/services/finance/products';
 
 export default function FinanceProductsPage() {
   const router = useRouter();
   const settings = useFinanceStore((s) => s.settings);
-  const products = settings.products;
-  const addProduct = useFinanceStore((s) => s.addProduct);
-  const updateProduct = useFinanceStore((s) => s.updateProduct);
-  const removeProduct = useFinanceStore((s) => s.removeProduct);
-  const addPriceToProduct = useFinanceStore((s) => s.addPriceToProduct);
-  const updatePriceOnProduct = useFinanceStore((s) => s.updatePriceOnProduct);
-  const archiveProduct = useFinanceStore((s) => s.archiveProduct);
-  const restoreProduct = useFinanceStore((s) => s.restoreProduct);
+  const [rows, setRows] = useState<Product[]>([]);
+  useEffect(() => {
+    const unsub = listenProducts('active', setRows);
+    return () => { try { unsub(); } catch {} };
+  }, []);
 
   const [prodView, setProdView] = useState<'all' | 'one_time' | 'recurring' | 'mixed'>('all');
   const filteredProducts = useMemo(() => {
@@ -30,10 +28,10 @@ export default function FinanceProductsPage() {
       if (hasOne) return 'one_time';
       return 'none';
     };
-    const base = products.filter((p: any) => !p.isArchived && !p.deletedAt);
+    const base = rows;
     if (prodView === 'all') return base;
     return base.filter((p) => classify(p) === prodView);
-  }, [products, prodView]);
+  }, [rows, prodView]);
 
   const [prodOpen, setProdOpen] = useState(false);
   const [prodIdEditing, setProdIdEditing] = useState<string | null>(null);
@@ -68,15 +66,15 @@ export default function FinanceProductsPage() {
             </Group>
           </Group>
           <Group gap="xs">
-            <Button component={require('next/link').default as any} href="/employee/finance/products/new" variant="light">New product</Button>
+            <Button component={require('next/link').default as any} href="/employee/finance/settings/products/new" variant="light">New product</Button>
           </Group>
         </Group>
 
         <Tabs value={'active'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/finance/products">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/finance/products/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/finance/products/removed">Remove</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/finance/settings/products">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/settings/products/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/settings/products/removed">Remove</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
@@ -128,13 +126,13 @@ export default function FinanceProductsPage() {
                     <Menu.Dropdown>
                       <Menu.Item onClick={() => { setProdIdEditing(p.id); setProdName(p.name); setProdDesc(p.description || ''); setProdOpen(true); }}>Edit</Menu.Item>
                       <Menu.Item onClick={() => { setPriceProdId(p.id); setPriceIdEditing(null); setPriceCurrency(settings.currency); setPriceAmount(''); setPriceType((p.defaultType || 'one_time') as any); setPriceInterval('month'); setPriceIntervalCount('1'); setPriceOpen(true); }}>Add price</Menu.Item>
-                      <Menu.Item color="orange" onClick={() => archiveProduct(p.id)}>Archive</Menu.Item>
-                      <Menu.Item color="red" onClick={() => removeProduct(p.id)}>Remove</Menu.Item>
+                      <Menu.Item color="orange" onClick={() => archiveProductDoc(p.id)}>Archive</Menu.Item>
+                      <Menu.Item color="red" onClick={() => removeProductDoc(p.id)}>Remove</Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
                 ) },
               ];
-              const rows = filteredProducts.filter((p: any) => !p.deletedAt);
+              const rows = filteredProducts;
               return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
             })()}
           </Card>
@@ -146,10 +144,10 @@ export default function FinanceProductsPage() {
             <TextInput label="Description" value={prodDesc} onChange={(e) => setProdDesc(e.currentTarget.value)} />
             <Group justify="flex-end">
               <Button variant="default" onClick={() => { setProdOpen(false); setProdIdEditing(null); }}>Cancel</Button>
-              <Button onClick={() => {
+              <Button onClick={async () => {
                 if (!prodName.trim()) return;
-                if (prodIdEditing) updateProduct(prodIdEditing, { name: prodName.trim(), description: prodDesc.trim() || undefined });
-                else addProduct({ name: prodName.trim(), description: prodDesc.trim() || undefined });
+                if (prodIdEditing) await updateProductDoc(prodIdEditing, { name: prodName.trim(), description: prodDesc.trim() || undefined });
+                else await createProduct({ name: prodName.trim(), description: prodDesc.trim() || undefined, active: true, prices: [] });
                 setProdOpen(false); setProdIdEditing(null);
               }}>Save</Button>
             </Group>
@@ -171,11 +169,11 @@ export default function FinanceProductsPage() {
             )}
             <Group justify="flex-end">
               <Button variant="default" onClick={() => { setPriceOpen(false); setPriceProdId(null); setPriceIdEditing(null); }}>Cancel</Button>
-              <Button onClick={() => {
+              <Button onClick={async () => {
                 if (!priceProdId) return;
                 const payload: any = { currency: priceCurrency, unitAmount: Number(priceAmount) || 0, type: priceType as any };
                 if (priceType === 'recurring') payload.recurring = { interval: priceInterval, intervalCount: Number(priceIntervalCount) || 1 };
-                if (priceIdEditing) updatePriceOnProduct(priceProdId, priceIdEditing, payload); else addPriceToProduct(priceProdId, payload);
+                if (priceIdEditing) await updatePriceOnProductDoc(priceProdId, priceIdEditing, payload); else await addPriceToProductDoc(priceProdId, payload);
                 setPriceOpen(false); setPriceProdId(null); setPriceIdEditing(null);
               }}>Save</Button>
             </Group>

@@ -2,19 +2,19 @@
 import Link from 'next/link';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
-import { ActionIcon, Card, Group, Menu, Stack, Tabs, Text, Title, Button, Modal, TextInput, NumberInput, Anchor } from '@mantine/core';
+import { ActionIcon, Button, Card, Group, Menu, Stack, Tabs, Text, Title, Modal, TextInput, NumberInput, Anchor } from '@mantine/core';
 import { IconPercentage } from '@tabler/icons-react';
-import { useFinanceStore } from '@/state/financeStore';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
+import { listenTaxes, removeTaxDoc, restoreTaxDoc, updateTaxDoc, type Tax } from '@/services/finance/taxes';
+import { useEffect, useState } from 'react';
 
 export default function FinanceTaxesArchivePage() {
   const router = useRouter();
-  const taxes = useFinanceStore((s) => s.settings.taxes);
-  const restoreTax = useFinanceStore((s) => s.restoreTax);
-  const updateTax = useFinanceStore((s) => s.updateTax);
-  const removeTax = useFinanceStore((s) => s.removeTax);
-
-  const archived = taxes.filter((t) => t.isArchived && !t.deletedAt);
+  const [rows, setRows] = useState<Tax[]>([]);
+  useEffect(() => {
+    const unsub = listenTaxes('archived', setRows);
+    return () => { try { unsub(); } catch {} };
+  }, []);
   const [taxOpen, setTaxOpen] = useState(false);
   const [editingTaxId, setEditingTaxId] = useState<string | null>(null);
   const [taxName, setTaxName] = useState('');
@@ -69,13 +69,12 @@ export default function FinanceTaxesArchivePage() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => restoreTax(t.id)}>Restore</Menu.Item>
-                    <Menu.Item color="red" onClick={() => removeTax(t.id)}>Remove</Menu.Item>
+                    <Menu.Item onClick={() => restoreTaxDoc(t.id)}>Restore</Menu.Item>
+                    <Menu.Item color="red" onClick={() => removeTaxDoc(t.id)}>Remove</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
             ];
-            const rows = archived;
             return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
           })()}
         </Card>
@@ -89,7 +88,7 @@ export default function FinanceTaxesArchivePage() {
               <Button onClick={() => {
                 const id = editingTaxId as string | undefined;
                 const rateNum = Number(taxRate) || 0;
-                if (id) updateTax(id, { name: taxName, rate: rateNum });
+                if (id) updateTaxDoc(id, { name: taxName, rate: rateNum });
                 setTaxOpen(false); setEditingTaxId(null);
               }}>Save</Button>
             </Group>

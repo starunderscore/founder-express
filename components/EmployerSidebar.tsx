@@ -42,7 +42,7 @@ export function EmployerSidebar() {
       <NavLink component={Link} href="/employee/achievements" label="Achievements" active={isActive('/employee/achievements')} leftSection={<IconTrophy size={16} />} rightSection={<Badge size="xs" variant="light">sample</Badge>} />
       <Divider my={6} />
       <Text size="xs" c="dimmed" px="xs">Financial</Text>
-      <NavLink component={Link} href="/employee/finance/overview" label="Overview" active={isActive('/employee/finance/overview')} leftSection={<IconChartBar size={16} />} />
+      <NavLink component={Link} href="/employee/finance/settings/overview" label="Overview" active={isActive('/employee/finance/settings/overview')} leftSection={<IconChartBar size={16} />} />
       <NavLink component={Link} href="/employee/finance/invoices" label="Invoices" active={isActive('/employee/finance/invoices')} leftSection={<IconFileInvoice size={16} />} />
       <NavLink component={Link} href="/employee/finance/reports" label="Financial Reports" active={isActive('/employee/finance/reports')} leftSection={<IconReportMoney size={16} />} />
       <NavLink component={Link} href="/employee/finance/settings" label="Finance Settings" active={isActive('/employee/finance/settings')} leftSection={<IconCurrencyDollar size={16} />} />

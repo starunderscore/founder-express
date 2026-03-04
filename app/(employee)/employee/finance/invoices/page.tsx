@@ -1,24 +1,24 @@
 "use client";
 import { useState, useMemo, useEffect } from 'react';
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useFinanceStore } from '@/state/financeStore';
 import { listCRM } from '@/services/crm/firestore';
 import { Button, Card, Group, Select, Table, Text, TextInput, Title, Stack } from '@mantine/core';
 import { IconFileInvoice } from '@tabler/icons-react';
+import { listenInvoices, updateInvoiceDoc, deleteInvoiceDoc, type Invoice } from '@/services/finance/invoices';
 
 export default function FinanceInvoicesPage() {
-  const invoices = useFinanceStore((s) => s.invoices);
-  const financeSettings = useFinanceStore((s) => s.settings);
-  const addInvoice = useFinanceStore((s) => s.addInvoice);
-  const updateInvoice = useFinanceStore((s) => s.updateInvoice);
-  const removeInvoice = useFinanceStore((s) => s.removeInvoice);
-  const markPaid = useFinanceStore((s) => s.markPaid);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [defaultCurrency, setDefaultCurrency] = useState<'USD'|'EUR'|'GBP'>('USD');
+  useEffect(() => {
+    const unsub = listenInvoices(setInvoices);
+    return () => { try { unsub(); } catch {} };
+  }, []);
   const [customers, setCustomers] = useState<any[]>([]);
   useEffect(() => { (async () => { const rows = await listCRM('active'); setCustomers(rows.filter((r:any)=>r.type==='customer')); })(); }, []);
 
   const [customerId, setCustomerId] = useState<string | null>(customers[0]?.id || null);
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState(financeSettings.currency);
+  const [currency, setCurrency] = useState<string>(defaultCurrency);
   const [dueDate, setDueDate] = useState<string>('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Unpaid'>('All');
@@ -36,13 +36,7 @@ export default function FinanceInvoicesPage() {
     });
   }, [invoices, customers, query, statusFilter]);
 
-  const onAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = parseFloat(amount);
-    if (!customerId || !isFinite(amt) || amt <= 0 || !dueDate) return;
-    addInvoice({ customerId, amount: amt, currency, dueDate });
-    setAmount(''); setDueDate('');
-  };
+  const onAdd = (e: React.FormEvent) => { e.preventDefault(); };
 
   const today = new Date();
 
@@ -88,19 +82,14 @@ export default function FinanceInvoicesPage() {
                   <Table.Td>{i.dueDate}</Table.Td>
                   <Table.Td>
                     <Group gap={8}>
-                      <Select
-                        data={[ 'Unpaid', 'Paid' ]}
-                        value={i.status}
-                        onChange={(v) => v && updateInvoice(i.id, { status: v as any, paidAt: v === 'Paid' ? Date.now() : undefined })}
-                        allowDeselect={false}
-                      />
+                      <Select data={[ 'Unpaid', 'Paid' ]} value={i.status} onChange={(v) => v && updateInvoiceDoc(i.id, { status: v as any, paidAt: v === 'Paid' ? Date.now() : undefined })} allowDeselect={false} />
                       {isLate && <Text size="sm" c="red">Late</Text>}
                     </Group>
                   </Table.Td>
                   <Table.Td>
                     <Group gap={6}>
-                      {i.status !== 'Paid' && <Button size="xs" variant="light" onClick={() => markPaid(i.id)}>Mark paid</Button>}
-                      <Button size="xs" variant="subtle" color="red" onClick={() => removeInvoice(i.id)}>Remove</Button>
+                      {i.status !== 'Paid' && <Button size="xs" variant="light" onClick={() => updateInvoiceDoc(i.id, { status: 'Paid', paidAt: Date.now() })}>Mark paid</Button>}
+                      <Button size="xs" variant="subtle" color="red" onClick={() => deleteInvoiceDoc(i.id)}>Remove</Button>
                     </Group>
                   </Table.Td>
                 </Table.Tr>

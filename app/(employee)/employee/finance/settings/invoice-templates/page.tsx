@@ -1,21 +1,26 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { useFinanceStore } from '@/state/financeStore';
 import { ActionIcon, Anchor, Button, Card, Group, Stack, Table, Text, TextInput, Title, NumberInput, MultiSelect, Menu, Modal, Tabs } from '@mantine/core';
 import { IconFileInvoice } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { listenInvoiceTemplates, createInvoiceTemplate, updateInvoiceTemplateDoc, archiveInvoiceTemplateDoc, removeInvoiceTemplateDoc, type InvoiceTemplate } from '@/services/finance/invoice-templates';
+import { listenTaxes, type Tax } from '@/services/finance/taxes';
 
 export default function InvoiceTemplatesPage() {
   const router = useRouter();
-  const settings = useFinanceStore((s) => s.settings);
-  const addTemplate = useFinanceStore((s) => s.addTemplate);
-  const updateTemplate = useFinanceStore((s) => s.updateTemplate);
-  const removeTemplate = useFinanceStore((s) => s.removeTemplate);
-  const archiveTemplate = useFinanceStore((s) => s.archiveTemplate);
-
-  const taxOptions = useMemo(() => settings.taxes.map((t) => ({ value: t.id, label: `${t.name} (${t.rate}%)` })), [settings.taxes]);
+  const [rows, setRows] = useState<InvoiceTemplate[]>([]);
+  useEffect(() => {
+    const unsub = listenInvoiceTemplates('active', setRows);
+    return () => { try { unsub(); } catch {} };
+  }, []);
+  const [taxes, setTaxes] = useState<Tax[]>([]);
+  useEffect(() => {
+    const unsub = listenTaxes('active', setTaxes);
+    return () => { try { unsub(); } catch {} };
+  }, []);
+  const taxOptions = useMemo(() => taxes.map((t) => ({ value: t.id, label: `${t.name} (${t.rate}%)` })), [taxes]);
 
   const [tplOpen, setTplOpen] = useState(false);
   const [editingTplId, setEditingTplId] = useState<string | null>(null);
@@ -42,15 +47,15 @@ export default function InvoiceTemplatesPage() {
             </Group>
           </Group>
           <Group gap="xs">
-            <Button component={require('next/link').default as any} href="/employee/finance/invoice-templates/new" variant="light">New template</Button>
+            <Button component={require('next/link').default as any} href="/employee/finance/settings/invoice-templates/new" variant="light">New template</Button>
           </Group>
         </Group>
 
         <Tabs value={'active'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/finance/invoice-templates">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/finance/invoice-templates/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/finance/invoice-templates/removed">Remove</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/finance/settings/invoice-templates">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/settings/invoice-templates/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/settings/invoice-templates/removed">Remove</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
@@ -77,14 +82,13 @@ export default function InvoiceTemplatesPage() {
                   </Menu.Target>
                   <Menu.Dropdown>
                     <Menu.Item onClick={() => { setTplName(tpl.name); setTplItems(tpl.items.map((it: any) => ({ id: `row-${Math.random()}`, description: it.description, quantity: String(it.quantity), unitPrice: String(it.unitPrice) }))); setTplTaxIds(tpl.taxIds); setEditingTplId(tpl.id); setTplOpen(true); }}>Edit</Menu.Item>
-                    <Menu.Item onClick={() => archiveTemplate(tpl.id)}>Archive</Menu.Item>
-                    <Menu.Item color="red" onClick={() => removeTemplate(tpl.id)}>Remove</Menu.Item>
+                    <Menu.Item onClick={() => archiveInvoiceTemplateDoc(tpl.id)}>Archive</Menu.Item>
+                    <Menu.Item color="red" onClick={() => removeInvoiceTemplateDoc(tpl.id)}>Remove</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
             ];
             const LocalDataTable = require('@/components/data-table/LocalDataTable').default as typeof import('@/components/data-table/LocalDataTable').default;
-            const rows = settings.templates.filter((tpl) => !tpl.isArchived && !tpl.deletedAt);
             return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
           })()}
         </Card>
@@ -100,8 +104,8 @@ export default function InvoiceTemplatesPage() {
           tplTaxIds={tplTaxIds}
           setTplTaxIds={setTplTaxIds}
           taxOptions={taxOptions}
-          addTemplate={addTemplate}
-          updateTemplate={updateTemplate}
+          addTemplate={(p: any) => { createInvoiceTemplate(p); }}
+          updateTemplate={(id: string, p: any) => { updateInvoiceTemplateDoc(id, p); }}
         />
       </Stack>
     </EmployerAuthGate>

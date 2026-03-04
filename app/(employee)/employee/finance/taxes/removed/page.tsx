@@ -4,15 +4,17 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
 import { ActionIcon, Card, Group, Menu, Stack, Tabs, Text, Title, Modal, TextInput, NumberInput, Button, Anchor } from '@mantine/core';
 import { IconPercentage } from '@tabler/icons-react';
-import { useFinanceStore } from '@/state/financeStore';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
+import { listenTaxes, restoreTaxDoc, updateTaxDoc, type Tax } from '@/services/finance/taxes';
+import { useEffect, useState } from 'react';
 
 export default function FinanceTaxesRemovedPage() {
   const router = useRouter();
-  const taxes = useFinanceStore((s) => s.settings.taxes);
-  const updateTax = useFinanceStore((s) => s.updateTax);
-
-  const removed = taxes.filter((t) => !!t.deletedAt);
+  const [rows, setRows] = useState<Tax[]>([]);
+  useEffect(() => {
+    const unsub = listenTaxes('removed', setRows);
+    return () => { try { unsub(); } catch {} };
+  }, []);
   const [taxOpen, setTaxOpen] = useState(false);
   const [editingTaxId, setEditingTaxId] = useState<string | null>(null);
   const [taxName, setTaxName] = useState('');
@@ -67,12 +69,11 @@ export default function FinanceTaxesRemovedPage() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => updateTax(t.id, { deletedAt: undefined, isArchived: false })}>Restore</Menu.Item>
+                    <Menu.Item onClick={() => restoreTaxDoc(t.id)}>Restore</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
             ];
-            const rows = removed;
             return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
           })()}
         </Card>
@@ -86,7 +87,7 @@ export default function FinanceTaxesRemovedPage() {
               <Button onClick={() => {
                 const id = editingTaxId as string | undefined;
                 const rateNum = Number(taxRate) || 0;
-                if (id) updateTax(id, { name: taxName, rate: rateNum });
+                if (id) updateTaxDoc(id, { name: taxName, rate: rateNum });
                 setTaxOpen(false); setEditingTaxId(null);
               }}>Save</Button>
             </Group>

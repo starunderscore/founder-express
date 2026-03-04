@@ -25,7 +25,7 @@ export default function FinanceSettingsPage() {
                 <Text c="dimmed" size="sm">Currency, grace period, and tax defaults</Text>
               </div>
             </Group>
-            <Button component={Link as any} href="/employee/finance/general" variant="light">Open</Button>
+            <Button component={Link as any} href="/employee/finance/settings/general" variant="light">Open</Button>
           </Group>
         </Card>
 
@@ -38,7 +38,7 @@ export default function FinanceSettingsPage() {
                 <Text c="dimmed" size="sm">Stripe-like products and prices</Text>
               </div>
             </Group>
-            <Button component={Link as any} href="/employee/finance/products" variant="light">Open</Button>
+            <Button component={Link as any} href="/employee/finance/settings/products" variant="light">Open</Button>
           </Group>
         </Card>
 
@@ -64,7 +64,7 @@ export default function FinanceSettingsPage() {
                 <Text c="dimmed" size="sm">Reusable line items and taxes</Text>
               </div>
             </Group>
-            <Button component={Link as any} href="/employee/finance/invoice-templates" variant="light">Open</Button>
+            <Button component={Link as any} href="/employee/finance/settings/invoice-templates" variant="light">Open</Button>
           </Group>
         </Card>
       </Stack>

@@ -4,16 +4,17 @@ import { EmployerAuthGate } from '@/components/EmployerAuthGate';
 import { useRouter } from 'next/navigation';
 import { ActionIcon, Anchor, Button, Card, Group, Menu, Modal, NumberInput, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
 import { IconFileInvoice } from '@tabler/icons-react';
-import { useFinanceStore } from '@/state/financeStore';
 import LocalDataTable, { type Column } from '@/components/data-table/LocalDataTable';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { listenInvoiceTemplates, restoreInvoiceTemplateDoc, type InvoiceTemplate } from '@/services/finance/invoice-templates';
 
 export default function InvoiceTemplatesRemovedPage() {
   const router = useRouter();
-  const templates = useFinanceStore((s) => s.settings.templates);
-  const updateTemplate = useFinanceStore((s) => s.updateTemplate);
-
-  const removed = templates.filter((t) => !!t.deletedAt);
+  const [rows, setRows] = useState<InvoiceTemplate[]>([]);
+  useEffect(() => {
+    const unsub = listenInvoiceTemplates('removed', setRows);
+    return () => { try { unsub(); } catch {} };
+  }, []);
   const [tplOpen, setTplOpen] = useState(false);
   const [editingTplId, setEditingTplId] = useState<string | null>(null);
   const [tplName, setTplName] = useState('');
@@ -41,9 +42,9 @@ export default function InvoiceTemplatesRemovedPage() {
 
         <Tabs value={'removed'}>
           <Tabs.List>
-            <Tabs.Tab value="active"><Link href="/employee/finance/invoice-templates">Active</Link></Tabs.Tab>
-            <Tabs.Tab value="archive"><Link href="/employee/finance/invoice-templates/archive">Archive</Link></Tabs.Tab>
-            <Tabs.Tab value="removed"><Link href="/employee/finance/invoice-templates/removed">Remove</Link></Tabs.Tab>
+            <Tabs.Tab value="active"><Link href="/employee/finance/settings/invoice-templates">Active</Link></Tabs.Tab>
+            <Tabs.Tab value="archive"><Link href="/employee/finance/settings/invoice-templates/archive">Archive</Link></Tabs.Tab>
+            <Tabs.Tab value="removed"><Link href="/employee/finance/settings/invoice-templates/removed">Remove</Link></Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
@@ -69,12 +70,11 @@ export default function InvoiceTemplatesRemovedPage() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item onClick={() => updateTemplate(tpl.id, { deletedAt: undefined, isArchived: false })}>Restore</Menu.Item>
+                    <Menu.Item onClick={() => restoreInvoiceTemplateDoc(tpl.id)}>Restore</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               ) },
             ];
-            const rows = removed;
             return <LocalDataTable rows={rows} columns={columns} defaultPageSize={10} enableSelection={false} />;
           })()}
         </Card>
