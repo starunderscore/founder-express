@@ -6,7 +6,7 @@ import { IconCreditCard } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-type Provider = { id: 'stripe' | 'paypal'; name: string; configured: boolean; envVar: string };
+type Provider = { id: 'stripe'; name: string; configured: boolean; envVar: string };
 
 export default function AdminPaymentProvidersConfigurationPage() {
   const router = useRouter();
@@ -56,7 +56,7 @@ export default function AdminPaymentProvidersConfigurationPage() {
               <IconCreditCard size={20} />
               <div>
                 <Title order={2}>Payment Providers</Title>
-                <Text c="dimmed">Stripe and PayPal configuration and selection.</Text>
+                <Text c="dimmed">Stripe configuration and selection.</Text>
               </div>
             </Group>
           </Group>
@@ -71,7 +71,7 @@ export default function AdminPaymentProvidersConfigurationPage() {
           title="No payment providers configured"
           subtitle="Add provider credentials as environment variables to enable payments."
         >
-          <Text size="sm">Supported env vars include: <code>STRIPE_API_KEY</code>, <code>PAYPAL_CLIENT_ID</code>, <code>PAYPAL_CLIENT_SECRET</code>. Restart the server after updating <code>.env.local</code>.</Text>
+          <Text size="sm">Supported env vars: <code>STRIPE_API_KEY</code>. Restart the server after updating <code>.env.local</code>.</Text>
         </AdminDisconnectedCard>
 
         {/* Bottom: Detected providers table */}
@@ -124,17 +124,15 @@ export default function AdminPaymentProvidersConfigurationPage() {
 Steps:
 1) Edit your env file (local):
    - Open .env.local
-   - Add the following keys you plan to use:
+   - Add the following key:
      STRIPE_API_KEY=YOUR_STRIPE_KEY
-     PAYPAL_CLIENT_ID=YOUR_CLIENT_ID
-     PAYPAL_CLIENT_SECRET=YOUR_CLIENT_SECRET
 
 2) Restart the dev server so the app can read the new env vars.
 
 3) Verify in app:
    - Go to Admin Settings → Payment Providers
-   - Confirm provider shows as Configured
-   - Select exactly one active provider
+   - Confirm Stripe shows as Configured
+   - Select Stripe as the active provider
 
 4) Production deploy:
    - Add the same env vars to your hosting provider

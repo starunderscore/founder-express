@@ -58,7 +58,7 @@ export default function AdminThirdPartyConfigurationPage() {
               <IconCreditCard size={18} />
               <div>
                 <Text fw={600}>Payment Providers</Text>
-                <Text c="dimmed" size="sm">Stripe and PayPal integrations</Text>
+                <Text c="dimmed" size="sm">Stripe integration</Text>
               </div>
             </Group>
             <Button component={Link as any} href="/employee/admin-settings/third-party-configuration/finance/providers" variant="light">Open</Button>

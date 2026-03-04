@@ -4,6 +4,7 @@ import { useFinanceStore } from '@/state/financeStore';
 import { listCRM } from '@/services/crm/firestore';
 import { Card, Group, SimpleGrid, Text, Title } from '@mantine/core';
 import { IconChartBar } from '@tabler/icons-react';
+import React, { useEffect, useState } from 'react';
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -18,8 +19,8 @@ function StatCard({ label, value }: { label: string; value: string }) {
 export default function FinanceOverviewPage() {
   const invoices = useFinanceStore((s) => s.invoices);
   const settings = useFinanceStore((s) => s.settings);
-  const [customersCount, setCustomersCount] = React.useState(0);
-  React.useEffect(() => { (async () => { const rows = await listCRM('active'); setCustomersCount(rows.filter((r:any)=>r.type==='customer').length); })(); }, []);
+  const [customersCount, setCustomersCount] = useState(0);
+  useEffect(() => { (async () => { const rows = await listCRM('active'); setCustomersCount(rows.filter((r:any)=>r.type==='customer').length); })(); }, []);
 
   const today = new Date();
   const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
