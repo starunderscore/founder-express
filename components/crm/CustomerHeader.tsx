@@ -22,7 +22,7 @@ export function CustomerHeader({
   backHref = '/employee/customers/crm',
 }: {
   customer: CustomerLike;
-  current: 'overview' | 'notes' | 'actions';
+  current: 'overview' | 'notes' | 'actions' | 'invoices';
   backHref?: string;
 }) {
   const router = useRouter();
@@ -111,6 +111,7 @@ export function CustomerHeader({
           { value: 'overview', label: 'Overview', href: `/employee/customers/crm/customer/${id}` },
           { value: 'notes', label: 'Notes', href: `/employee/customers/crm/customer/${id}/notes` },
           { value: 'actions', label: 'Actions', href: `/employee/customers/crm/customer/${id}/actions` },
+          { value: 'invoices', label: 'Invoices', href: `/employee/customers/crm/customer/${id}/invoices` },
         ]}
       />
     </>

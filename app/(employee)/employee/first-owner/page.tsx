@@ -53,6 +53,10 @@ export default function FirstOwnerPage() {
         }
         const cred = await signUpWithEmail(email.trim(), password);
         uid = cred.user.uid;
+        try {
+          const token = await cred.user.getIdToken();
+          await fetch('/api/account/after-signup', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        } catch { /* non-blocking */ }
         if (name.trim()) {
           await updateUserProfile({ displayName: name.trim() });
         }

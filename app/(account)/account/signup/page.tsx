@@ -46,7 +46,11 @@ export default function SignUpPage() {
         setError('You must accept the Privacy Policy to continue');
         return;
       }
-      await signUpWithEmail(email, password);
+      const cred = await signUpWithEmail(email, password);
+      try {
+        const token = await cred.user.getIdToken();
+        await fetch('/api/account/after-signup', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      } catch { /* non-blocking */ }
       router.replace('/portal');
     } catch (e: any) {
       setError(e?.message || 'Failed to sign up');

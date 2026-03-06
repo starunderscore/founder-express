@@ -1,17 +1,24 @@
 "use client";
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 import { AppShell, ScrollArea, useComputedColorScheme, Burger } from '@mantine/core';
 import { usePathname } from 'next/navigation';
 import { EmployerHeader } from '@/components/EmployerHeader';
 import { EmployerSidebar } from '@/components/EmployerSidebar';
 import { AccountBar } from '@/components/AccountBar';
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const scheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const bg = 'var(--mantine-color-body)';
-  const [opened, { toggle }] = useDisclosure(false);
+  const [opened, { toggle, close }] = useDisclosure(false);
   const pathname = usePathname() || '';
+  const isMobile = useMediaQuery('(max-width: 48em)');
+
+  // Close the navbar on mobile after navigation
+  useEffect(() => {
+    if (isMobile) close();
+  }, [pathname, isMobile, close]);
 
   // Render bare content for auth/claim pages (no dashboard chrome)
   if (pathname === '/employee/signin' || pathname === '/employee/first-owner') {
@@ -41,7 +48,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <AppShell.Navbar>
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <ScrollArea style={{ flex: 1 }}>
-            <EmployerSidebar />
+            <EmployerSidebar onNavigate={isMobile ? close : undefined} />
           </ScrollArea>
           <AccountBar accountHref="/employee/profile" />
         </div>

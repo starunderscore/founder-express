@@ -1,6 +1,7 @@
 "use client";
 import { EmployerAuthGate } from '@/components/EmployerAuthGate';
-import { Card, Group, Stack, Text, Title, Badge, Button } from '@mantine/core';
+import { Card, Group, Stack, Text, Title, Badge, Button, ActionIcon, Modal, Tooltip as MantineTooltip } from '@mantine/core';
+import { IconInfoCircle } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchUserCountsSummary, fetchUserSignupsByWeek } from '@/lib/firebase/analytics';
@@ -24,6 +25,10 @@ export default function EmployerDashboardPage() {
   }, []);
 
   const finance = useFinanceStore((s) => ({ invoicesCount: s.invoices.length }));
+
+  const [dauOpen, setDauOpen] = useState(false);
+  const [wauOpen, setWauOpen] = useState(false);
+  const [mauOpen, setMauOpen] = useState(false);
 
   useEffect(() => {
     const hasFirebase = !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -75,19 +80,40 @@ export default function EmployerDashboardPage() {
           </Card>
           <Card withBorder>
             <Stack gap={2}>
-              <Text c="dimmed" size="sm">DAU</Text>
+              <Group gap={6} align="center">
+                <Text c="dimmed" size="sm">DAU</Text>
+                <MantineTooltip label="What is DAU?" withArrow>
+                  <ActionIcon variant="subtle" size="sm" aria-label="What is DAU?" onClick={() => setDauOpen(true)}>
+                    <IconInfoCircle size={16} />
+                  </ActionIcon>
+                </MantineTooltip>
+              </Group>
               <Title order={3}>{summary?.dau ?? '—'}</Title>
             </Stack>
           </Card>
           <Card withBorder>
             <Stack gap={2}>
-              <Text c="dimmed" size="sm">WAU</Text>
+              <Group gap={6} align="center">
+                <Text c="dimmed" size="sm">WAU</Text>
+                <MantineTooltip label="What is WAU?" withArrow>
+                  <ActionIcon variant="subtle" size="sm" aria-label="What is WAU?" onClick={() => setWauOpen(true)}>
+                    <IconInfoCircle size={16} />
+                  </ActionIcon>
+                </MantineTooltip>
+              </Group>
               <Title order={3}>{summary?.wau ?? '—'}</Title>
             </Stack>
           </Card>
           <Card withBorder>
             <Stack gap={2}>
-              <Text c="dimmed" size="sm">MAU</Text>
+              <Group gap={6} align="center">
+                <Text c="dimmed" size="sm">MAU</Text>
+                <MantineTooltip label="What is MAU?" withArrow>
+                  <ActionIcon variant="subtle" size="sm" aria-label="What is MAU?" onClick={() => setMauOpen(true)}>
+                    <IconInfoCircle size={16} />
+                  </ActionIcon>
+                </MantineTooltip>
+              </Group>
               <Title order={3}>{summary?.mau ?? '—'}</Title>
             </Stack>
           </Card>
@@ -132,6 +158,24 @@ export default function EmployerDashboardPage() {
           </Card>
         </Group>
       </Stack>
+      <Modal opened={dauOpen} onClose={() => setDauOpen(false)} title="Daily Active Users (DAU)" centered>
+        <Stack gap={8}>
+          <Text size="sm">DAU is the number of unique users who were active in the last day.</Text>
+          <Text size="sm" c="dimmed">In this app, “active” means their profile’s lastActiveAt is within the past 24 hours.</Text>
+        </Stack>
+      </Modal>
+      <Modal opened={wauOpen} onClose={() => setWauOpen(false)} title="Weekly Active Users (WAU)" centered>
+        <Stack gap={8}>
+          <Text size="sm">WAU is the number of unique users who were active in the last 7 days.</Text>
+          <Text size="sm" c="dimmed">Calculated using lastActiveAt within the past 7 days.</Text>
+        </Stack>
+      </Modal>
+      <Modal opened={mauOpen} onClose={() => setMauOpen(false)} title="Monthly Active Users (MAU)" centered>
+        <Stack gap={8}>
+          <Text size="sm">MAU is the number of unique users who were active in the last 30 days.</Text>
+          <Text size="sm" c="dimmed">Calculated using lastActiveAt within the past 30 days.</Text>
+        </Stack>
+      </Modal>
     </EmployerAuthGate>
   );
 }
